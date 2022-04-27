@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -8,18 +18,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	avalancheGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/coreth/core/types"
-	"github.com/ava-labs/coreth/plugin/evm"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/modelsc"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminoethvm/core/types"
+	"github.com/chain4travel/caminoethvm/plugin/evm"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/logging"
+	caminoGoAvax "github.com/chain4travel/caminogo/vms/components/avax"
+	"github.com/chain4travel/caminogo/vms/secp256k1fx"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/modelsc"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/utils"
 )
 
 var (
@@ -27,16 +37,13 @@ var (
 )
 
 func newTestIndex(t *testing.T, networkID uint32, chainID ids.ID) (*utils.Connections, *Writer, func()) {
-	logConf, err := logging.DefaultConfig()
-	if err != nil {
-		t.Fatal("Failed to create logging config:", err.Error())
-	}
+	logConf := logging.DefaultConfig
 
 	conf := cfg.Services{
 		Logging: logConf,
 		DB: &cfg.DB{
 			Driver: "mysql",
-			DSN:    "root:password@tcp(127.0.0.1:3306)/ortelius_test?parseTime=true",
+			DSN:    "root:password@tcp(127.0.0.1:3306)/magellan_test?parseTime=true",
 		},
 	}
 
@@ -67,9 +74,9 @@ func TestInsertTxInternalExport(t *testing.T) {
 	extx := &evm.UnsignedExportTx{}
 	extxIn := evm.EVMInput{}
 	extx.Ins = []evm.EVMInput{extxIn}
-	transferableOut := &avalancheGoAvax.TransferableOutput{}
+	transferableOut := &caminoGoAvax.TransferableOutput{}
 	transferableOut.Out = &secp256k1fx.TransferOutput{}
-	extx.ExportedOutputs = []*avalancheGoAvax.TransferableOutput{transferableOut}
+	extx.ExportedOutputs = []*caminoGoAvax.TransferableOutput{transferableOut}
 
 	tx.UnsignedAtomicTx = extx
 	header := types.Header{}
@@ -99,9 +106,9 @@ func TestInsertTxInternalImport(t *testing.T) {
 	extx := &evm.UnsignedImportTx{}
 	evtxOut := evm.EVMOutput{}
 	extx.Outs = []evm.EVMOutput{evtxOut}
-	transferableIn := &avalancheGoAvax.TransferableInput{}
+	transferableIn := &caminoGoAvax.TransferableInput{}
 	transferableIn.In = &secp256k1fx.TransferInput{}
-	extx.ImportedInputs = []*avalancheGoAvax.TransferableInput{transferableIn}
+	extx.ImportedInputs = []*caminoGoAvax.TransferableInput{transferableIn}
 
 	tx.UnsignedAtomicTx = extx
 	header := types.Header{}

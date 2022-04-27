@@ -32,7 +32,7 @@ jobs:
           - 3306:3306
         env:
           MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: ortelius_test
+          MYSQL_DATABASE: magellan_test
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
     steps:
       - uses: actions/checkout@v2
@@ -41,12 +41,12 @@ jobs:
           go-version: ${{ matrix.go }}
 
       - name: Test binary build
-        run: go build cmds/orteliusd/orteliusd.go
+        run: go build cmds/magelland/magelland.go
 
       - name: Migrate the database
         run: |
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.11.0/migrate.linux-amd64.tar.gz | tar xvz
-          ./migrate.linux-amd64 -path=services/db/migrations/ -database "mysql://root:password@tcp(127.0.0.1:3306)/ortelius_test" up
+          ./migrate.linux-amd64 -path=services/db/migrations/ -database "mysql://root:password@tcp(127.0.0.1:3306)/magellan_test" up
 
       - name: Run tests
         run: make tests

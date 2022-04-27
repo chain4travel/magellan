@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package rewards
 
 import (
@@ -5,17 +15,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/api"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting"
-	avalancheGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avax"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/api"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/formatting"
+	caminoGoAvax "github.com/chain4travel/caminogo/vms/components/avax"
+	"github.com/chain4travel/caminogo/vms/platformvm"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avax"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/utils"
 )
 
 type Handler struct {
@@ -52,7 +62,7 @@ func (r *Handler) runTicker(sc *servicesctrl.Control, conns *utils.Connections) 
 	r.doneCh = make(chan struct{}, 1)
 
 	r.conns = conns
-	r.client = platformvm.NewClient(sc.ServicesCfg.AvalancheGO)
+	r.client = platformvm.NewClient(sc.ServicesCfg.CaminoGO)
 	r.perist = db.NewPersist()
 
 	r.avaxAssetID = sc.GenesisContainer.AvaxAssetID
@@ -161,7 +171,7 @@ func (r *Handler) processRewardUtxos(rewardsUtxos [][]byte, createdAt time.Time)
 	ctx := context.Background()
 
 	for _, reawrdUtxo := range rewardsUtxos {
-		var utxo *avalancheGoAvax.UTXO
+		var utxo *caminoGoAvax.UTXO
 		_, err = platformvm.Codec.Unmarshal(reawrdUtxo, &utxo)
 		if err != nil {
 			return err

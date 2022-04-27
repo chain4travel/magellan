@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package rpc
 
 import (
@@ -7,7 +17,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/chain4travel/caminogo/utils/logging"
 )
 
 type SuccessResponse struct {

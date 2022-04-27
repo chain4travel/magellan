@@ -1,14 +1,12 @@
-🔴WARNING: This has been deprecated, please read [this.](https://docs.avax.network/build/tools/deprecating-ortelius) 🔴
+# Magellan
 
-# Ortelius
-
-A data processing pipeline for the [Avalanche network](https://avax.network).
+A data processing pipeline for the [Camino network](https://camino.foundation).
 
 ## Features
 
-- Maintains a persistent log of all consensus events and decisions made on the Avalanche network.
+- Maintains a persistent log of all consensus events and decisions made on the Camino network.
 - Indexes Exchange (X), Platform (P), and Contract (C) chain transactions.
-- An [API](https://docs.avax.network/build/tools/ortelius) allowing easy exploration of the index.
+- An [API](https://docs.camino.foundation/build/tools/magellan) allowing easy exploration of the index.
 
 ## Prerequisite
 
@@ -16,13 +14,13 @@ https://docs.docker.com/engine/install/ubuntu/
 
 https://docs.docker.com/compose/install/
 
-## Quick Start with Standalone Mode on Fuji (testnet) network
+## Quick Start with Standalone Mode on Columbus (testnet) network
 
 The easiest way to get started is to try out the standalone mode.
 
 ```shell script
-git clone https://github.com/ava-labs/ortelius.git $GOPATH/github.com/ava-labs/ortelius
-cd $GOPATH/github.com/ava-labs/ortelius
+git clone https://github.com/chain4travel/magellan.git $GOPATH/github.com/chain4travel/magellan
+cd $GOPATH/github.com/chain4travel/magellan
 make dev_env_start
 make standalone_run
 ```

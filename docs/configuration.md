@@ -1,3 +1,3 @@
-# Ortelius Configuration
+# Magellan Configuration
 
-[configuration](https://github.com/ava-labs/ortelius/blob/master/docker/config.json)
+[configuration](https://github.com/chain4travel/magellan/blob/master/docker/config.json)

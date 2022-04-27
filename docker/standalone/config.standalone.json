@@ -1,10 +1,10 @@
 {
-  "networkID": 5,
-  "logDirectory": "/var/log/ortelius",
+  "networkID": 1001,
+  "logDirectory": "/var/log/magellan",
   "listenAddr": ":8080",
   "features": [
   ],
-  "avalanchego": "http://avalanche:9650",
+  "caminogo": "http://camino:9650",
   "nodeInstance": "default",
   "cchainId": "yH8D7ThNJkxmtkuv2jgBa4P1Rn3Qpr4pPr7QYNfcdoS6k6HWp",
   "chains": {
@@ -19,7 +19,7 @@
   },
   "services": {
     "db": {
-      "dsn": "root:password@tcp(mysql:3306)/ortelius",
+      "dsn": "root:password@tcp(mysql:3306)/magellan",
       "driver": "mysql"
     }
   }

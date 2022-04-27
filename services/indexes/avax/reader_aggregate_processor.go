@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package avax
 
 import (
@@ -7,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services/indexes/params"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
 

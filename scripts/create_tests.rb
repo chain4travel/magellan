@@ -1,3 +1,13 @@
+# Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+#
+# This file is a derived work, based on ava-labs code whose
+# original notices appear below.
+#
+# It is distributed under the same license conditions as the
+# original code from which it is derived.
+#
+# Much love to the original authors for their work.
+# **********************************************************
 # (c) 2020, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
@@ -75,7 +85,7 @@ send(XChainURI, {
     "params":{
         "username": Username,
         "password": Password,
-        "assetID": "AVA",
+        "assetID": "CAM",
         "amount": 100_000,
         "to": addr1
     }
@@ -90,7 +100,7 @@ send(XChainURI, {
     "params":{
         "username": Username,
         "password": Password,
-        "assetID": "AVA",
+        "assetID": "CAM",
         "amount": 10_000,
         "to": addr2
     }
@@ -104,7 +114,7 @@ send(XChainURI, {
     "params":{
         "username": Username,
         "password": Password,
-        "assetID": "AVA",
+        "assetID": "CAM",
         "amount": 10_001,
         "to": addr2
     }
@@ -118,9 +128,8 @@ send(XChainURI, {
     "params":{
         "username": Username,
         "password": Password,
-        "assetID": "AVA",
+        "assetID": "CAM",
         "amount": 20_002,
         "to": addr3
     }
 })
-

@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package replay
 
 import (
@@ -9,22 +19,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ava-labs/ortelius/servicesctrl"
+	"github.com/chain4travel/magellan/servicesctrl"
 
-	"github.com/ava-labs/ortelius/db"
+	"github.com/chain4travel/magellan/db"
 
-	"github.com/ava-labs/avalanchego/ids"
-	avlancheGoUtils "github.com/ava-labs/avalanchego/utils"
-	"github.com/ava-labs/coreth/core/types"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/modelsc"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avm"
-	"github.com/ava-labs/ortelius/services/indexes/cvm"
-	"github.com/ava-labs/ortelius/services/indexes/pvm"
-	"github.com/ava-labs/ortelius/stream"
-	"github.com/ava-labs/ortelius/stream/consumers"
-	"github.com/ava-labs/ortelius/utils"
+	caminoTypes "github.com/chain4travel/caminoethvm/core/types"
+	"github.com/chain4travel/caminogo/ids"
+	caminoGoUtils "github.com/chain4travel/caminogo/utils"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/modelsc"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avm"
+	"github.com/chain4travel/magellan/services/indexes/cvm"
+	"github.com/chain4travel/magellan/services/indexes/pvm"
+	"github.com/chain4travel/magellan/stream"
+	"github.com/chain4travel/magellan/stream/consumers"
+	"github.com/chain4travel/magellan/utils"
 )
 
 type Replay interface {
@@ -65,7 +75,7 @@ func NewDB(sc *servicesctrl.Control, config *cfg.Config, replayqueuesize int, re
 }
 
 type dbReplay struct {
-	errs   *avlancheGoUtils.AtomicInterface
+	errs   *caminoGoUtils.AtomicInterface
 	sc     *servicesctrl.Control
 	config *cfg.Config
 	conns  *utils.Connections
@@ -83,7 +93,7 @@ func (replay *dbReplay) Start() error {
 	cfg.PerformUpdates = true
 	replay.persist = db.NewPersist()
 
-	replay.errs = &avlancheGoUtils.AtomicInterface{}
+	replay.errs = &caminoGoUtils.AtomicInterface{}
 
 	worker := utils.NewWorker(replay.queueSize, replay.queueTheads, replay.workerProcessor())
 
@@ -305,7 +315,7 @@ func (replay *dbReplay) workerProcessor() func(int, interface{}) {
 					return
 				}
 			case CONSUMECLOG:
-				txLogs := &types.Log{}
+				txLogs := &caminoTypes.Log{}
 				err := json.Unmarshal(value.message.Body(), txLogs)
 				if err != nil {
 					replay.errs.SetValue(consumererr)

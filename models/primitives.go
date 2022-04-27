@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -7,15 +17,15 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/constants"
+	"github.com/chain4travel/caminogo/utils/formatting"
 )
 
 // Bech32HRP is the human-readable part of bech32 addresses. It needs to be
 // available to Address.MarshalJSON is there is no other way to give it this
 // data
-var Bech32HRP = constants.GetHRP(constants.EverestID)
+var Bech32HRP = constants.GetHRP(constants.ColumbusID)
 
 // SetBech32HRP sets the package-wide beck32HRP to use for Address marshaling.
 func SetBech32HRP(networkID uint32) {

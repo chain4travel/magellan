@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -10,19 +20,19 @@ import (
 
 	"github.com/palantir/stacktrace"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto"
-	"github.com/ava-labs/avalanchego/utils/formatting"
-	"github.com/ava-labs/avalanchego/utils/math"
-	"github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-	"github.com/ava-labs/avalanchego/vms/nftfx"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/crypto"
+	"github.com/chain4travel/caminogo/utils/formatting"
+	"github.com/chain4travel/caminogo/utils/math"
+	"github.com/chain4travel/caminogo/vms/components/avax"
+	"github.com/chain4travel/caminogo/vms/components/verify"
+	"github.com/chain4travel/caminogo/vms/nftfx"
+	"github.com/chain4travel/caminogo/vms/platformvm"
+	"github.com/chain4travel/caminogo/vms/secp256k1fx"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services"
 )
 
 var (

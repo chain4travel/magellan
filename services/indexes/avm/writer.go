@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -10,26 +20,26 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ava-labs/avalanchego/api/metrics"
-	"github.com/ava-labs/avalanchego/codec"
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/snow"
-	"github.com/ava-labs/avalanchego/snow/engine/avalanche/vertex"
-	"github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/hashing"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/avm"
-	avalancheGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/components/verify"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avax"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/api/metrics"
+	"github.com/chain4travel/caminogo/codec"
+	"github.com/chain4travel/caminogo/genesis"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/snow"
+	"github.com/chain4travel/caminogo/snow/engine/avalanche/vertex"
+	"github.com/chain4travel/caminogo/utils/constants"
+	"github.com/chain4travel/caminogo/utils/hashing"
+	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/caminogo/vms/avm"
+	caminoGoAvax "github.com/chain4travel/caminogo/vms/components/avax"
+	"github.com/chain4travel/caminogo/vms/components/verify"
+	"github.com/chain4travel/caminogo/vms/platformvm"
+	"github.com/chain4travel/caminogo/vms/secp256k1fx"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avax"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 	"github.com/palantir/stacktrace"
 )
@@ -383,7 +393,7 @@ func (w *Writer) insertOperationTx(
 	}
 	for _, txOps := range tx.Ops {
 		for _, u := range txOps.UTXOIDs {
-			ti := &avalancheGoAvax.TransferableInput{
+			ti := &caminoGoAvax.TransferableInput{
 				Asset:  txOps.Asset,
 				UTXOID: *u,
 				In:     &secp256k1fx.TransferInput{},

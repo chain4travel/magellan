@@ -22,8 +22,8 @@
 # vendor/
 
 # Development artifacts
-ortelius
-orteliusd
+magellan
+magelland
 main
 configs
 vendor

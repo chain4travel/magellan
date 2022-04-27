@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -7,11 +17,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/version"
+	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/caminogo/version"
 )
 
-const appName = "ortelius"
+const appName = "magellan"
 
 var (
 	ErrChainsConfigMustBeStringMap = errors.New("Chain config must a string map")
@@ -30,7 +40,7 @@ type Config struct {
 	AdminListenAddr   string `json:"adminListenAddr"`
 	Features          map[string]struct{}
 	CchainID          string `json:"cchainId"`
-	AvalancheGO       string `json:"avalanchego"`
+	CaminoGO          string `json:"caminogo"`
 	NodeInstance      string `json:"nodeInstance"`
 	AP5Activation     uint64
 }
@@ -82,10 +92,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	}
 
 	// Build logging config
-	loggingConf, err := logging.DefaultConfig()
-	if err != nil {
-		return nil, err
-	}
+	loggingConf := logging.DefaultConfig
 	loggingConf.Directory = v.GetString(keysLogDirectory)
 
 	dbdsn := servicesDBViper.GetString(keysServicesDBDSN)
@@ -126,7 +133,7 @@ func NewFromFile(filePath string) (*Config, error) {
 			},
 		},
 		CchainID:      v.GetString(keysStreamProducerCchainID),
-		AvalancheGO:   v.GetString(keysStreamProducerAvalanchego),
+		CaminoGO:      v.GetString(keysStreamProducerCaminogo),
 		NodeInstance:  v.GetString(keysStreamProducerNodeInstance),
 		AP5Activation: uint64(ap5Activation),
 	}, nil
