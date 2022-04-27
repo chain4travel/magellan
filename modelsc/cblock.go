@@ -152,25 +152,26 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 		if !strings.HasPrefix(txh, "0x") {
 			txh = "0x" + txh
 		}
-		var results []interface{}
-		err = c.rpcClient.CallContext(ctx, &results, "debug_traceTransaction",
-			txh, TracerParam{Tracer: TracerJS, Timeout: "1m"})
+
+		var result interface{}
+		err = c.rpcClient.CallContext(ctx, &result, "eth_getTransactionReceipt",
+			txh)
 		if err != nil {
 			return nil, err
 		}
-		for ipos, result := range results {
-			traceBits, err := json.Marshal(result)
-			if err != nil {
-				return nil, err
-			}
-			txTraces = append(txTraces,
-				&TransactionTrace{
-					Hash:  txh,
-					Idx:   uint32(ipos),
-					Trace: traceBits,
-				},
-			)
+		//for ipos, result := range results {
+		traceBits, err := json.Marshal(result)
+		if err != nil {
+			return nil, err
 		}
+		txTraces = append(txTraces,
+			&TransactionTrace{
+				Hash:  txh,
+				Idx:   uint32(0),
+				Trace: traceBits,
+			},
+		)
+		//}
 	}
 
 	blhash := bl.Hash()
