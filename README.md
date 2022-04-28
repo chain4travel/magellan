@@ -6,7 +6,7 @@ A data processing pipeline for the [Camino network](https://camino.foundation).
 
 - Maintains a persistent log of all consensus events and decisions made on the Camino network.
 - Indexes Exchange (X), Platform (P), and Contract (C) chain transactions.
-- An [API](https://docs.camino.foundation/build/tools/magellan) allowing easy exploration of the index.
+- An [API](https://docs.camino.foundation/apis/magellan) allowing easy exploration of the index.
 
 ## Prerequisite
 

@@ -206,7 +206,7 @@ magelland api -c path/to/config.json
 ```
 
 As CaminoGo bootstraps, the Producer will send all events to DB, the indexer will index, and the API will make them available. 
-You can test your setup [API](https://docs.camino.foundation/build/tools/magellan). 
+You can test your setup [API](https://docs.camino.foundation/apis/magellan).
 
 # Magellan re-indexing
 
