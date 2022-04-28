@@ -17,6 +17,6 @@ WORKDIR /opt
 
 # Copy in and wire up build artifacts
 COPY --from=builder /opt/magelland /opt/magelland
-COPY --from=builder /go/src/github.com/chain4travel/magellan/docker/config.json /opt/config.json
+COPY --from=builder /go/src/github.com/chain4travel/magellan/docker/columbus/config.json /opt/config.json
 COPY --from=builder /go/src/github.com/chain4travel/magellan/services/db/migrations /opt/migrations
 ENTRYPOINT ["/opt/magelland"]
