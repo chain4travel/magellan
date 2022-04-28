@@ -97,7 +97,7 @@ func TestInsertTxInternal(t *testing.T) {
 	tx.UnsignedTx = validatorTx
 
 	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
 	err := writer.indexTransaction(cCtx, tx.ID(), tx, false)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestInsertTxInternalRewards(t *testing.T) {
 	tx.UnsignedTx = validatorTx
 
 	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
 	err := writer.indexTransaction(cCtx, tx.ID(), tx, false)
 	if err != nil {
@@ -153,7 +153,7 @@ func TestCommonBlock(t *testing.T) {
 	blkid := ids.ID{}
 
 	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
 	err := writer.indexCommonBlock(cCtx, blkid, models.BlockTypeCommit, tx, []byte(""))
 	if err != nil {

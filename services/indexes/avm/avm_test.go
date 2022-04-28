@@ -73,7 +73,7 @@ func TestIndexBootstrap(t *testing.T) {
 	}
 
 	// inject a txfee for testing
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
 
 	transaction := &db.Transactions{
 		ID: string(txList.Transactions[0].ID),
@@ -205,7 +205,7 @@ func TestInsertTxInternal(t *testing.T) {
 	tx.UnsignedTx = baseTx
 
 	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
 	err := writer.insertTxInternal(cCtx, tx, tx.Bytes())
 	if err != nil {
@@ -259,7 +259,7 @@ func TestInsertTxInternalCreateAsset(t *testing.T) {
 	tx.UnsignedTx = baseTx
 
 	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
 	err := writer.insertTxInternal(cCtx, tx, tx.Bytes())
 	if err != nil {
@@ -293,7 +293,7 @@ func TestTransactionNext(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	session, _ := conns.DB().NewSession("test_tx", cfg.RequestTimeout)
+	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
 
 	_, _ = session.DeleteFrom("avm_transactions").ExecContext(ctx)
 
