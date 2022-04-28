@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package modelsc
 
 import (
@@ -10,10 +20,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/coreth/core/types"
-	"github.com/ava-labs/coreth/ethclient"
-	"github.com/ava-labs/coreth/interfaces"
-	"github.com/ava-labs/coreth/rpc"
+	"github.com/chain4travel/caminoethvm/core/types"
+	"github.com/chain4travel/caminoethvm/ethclient"
+	"github.com/chain4travel/caminoethvm/interfaces"
+	"github.com/chain4travel/caminoethvm/rpc"
 )
 
 var ErrNotFound = errors.New("block not found")
@@ -159,7 +169,6 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 		if err != nil {
 			return nil, err
 		}
-		//for ipos, result := range results {
 		traceBits, err := json.Marshal(result)
 		if err != nil {
 			return nil, err
@@ -171,7 +180,6 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 				Trace: traceBits,
 			},
 		)
-		//}
 	}
 
 	blhash := bl.Hash()

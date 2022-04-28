@@ -15,19 +15,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/ortelius/api"
-	"github.com/ava-labs/ortelius/balance"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/replay"
-	oreliusRpc "github.com/ava-labs/ortelius/rpc"
-	"github.com/ava-labs/ortelius/services/rewards"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/stream"
-	"github.com/ava-labs/ortelius/stream/consumers"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/magellan/api"
+	"github.com/chain4travel/magellan/balance"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/replay"
+	oreliusRpc "github.com/chain4travel/magellan/rpc"
+	"github.com/chain4travel/magellan/services/rewards"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/stream"
+	"github.com/chain4travel/magellan/stream/consumers"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -36,9 +36,8 @@ import (
 )
 
 const (
-	// rootCmdUse  = "orteliusd [command]\nex: orteliusd api"
-	rootCmdUse  = "orteliusd [command]"
-	rootCmdDesc = "Daemons for Ortelius."
+	rootCmdUse  = "magelland [command]"
+	rootCmdDesc = "Daemons for Magellan."
 
 	apiCmdUse  = "api"
 	apiCmdDesc = "Runs the API daemon"
@@ -53,7 +52,7 @@ const (
 	streamIndexerCmdDesc = "Runs the stream indexer daemon"
 
 	envCmdUse  = "env"
-	envCmdDesc = "Displays information about the Ortelius environment"
+	envCmdDesc = "Displays information about the Magellan environment"
 
 	defaultReplayQueueSize    = int(2000)
 	defaultReplayQueueThreads = int(4)
@@ -65,7 +64,7 @@ func main() {
 	}
 }
 
-// Execute runs the root command for ortelius
+// Execute runs the root command for magellan
 func execute() error {
 	rand.Seed(time.Now().UnixNano())
 
@@ -83,7 +82,7 @@ func execute() error {
 					log.Fatalln("Failed to read config file", *configFile, ":", err.Error())
 				}
 				lf := logging.NewFactory(c.Logging)
-				alog, err := lf.Make("ortelius")
+				alog, err := lf.Make("magellan")
 				if err != nil {
 					log.Fatalln("Failed to create log", c.Logging.Directory, ":", err.Error())
 				}

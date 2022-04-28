@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
+
 package pvm
 
 import (
@@ -5,17 +15,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avax"
-	"github.com/ava-labs/ortelius/services/indexes/params"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/caminogo/vms/platformvm"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avax"
+	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/utils"
 )
 
 var (
@@ -48,16 +58,13 @@ func TestBootstrap(t *testing.T) {
 }
 
 func newTestIndex(t *testing.T, networkID uint32, chainID ids.ID) (*utils.Connections, *Writer, *avax.Reader, func()) {
-	logConf, err := logging.DefaultConfig()
-	if err != nil {
-		t.Fatal("Failed to create logging config:", err.Error())
-	}
+	logConf := logging.DefaultConfig
 
 	conf := cfg.Services{
 		Logging: logConf,
 		DB: &cfg.DB{
 			Driver: "mysql",
-			DSN:    "root:password@tcp(127.0.0.1:3306)/ortelius_test?parseTime=true",
+			DSN:    "root:password@tcp(127.0.0.1:3306)/magellan_test?parseTime=true",
 		},
 	}
 

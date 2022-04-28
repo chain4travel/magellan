@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -10,16 +20,16 @@ import (
 	"sync"
 	"time"
 
-	avlancheGoUtils "github.com/ava-labs/avalanchego/utils"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avm"
-	"github.com/ava-labs/ortelius/services/indexes/cvm"
-	"github.com/ava-labs/ortelius/services/indexes/pvm"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/stream"
-	"github.com/ava-labs/ortelius/utils"
+	avlancheGoUtils "github.com/chain4travel/caminogo/utils"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avm"
+	"github.com/chain4travel/magellan/services/indexes/cvm"
+	"github.com/chain4travel/magellan/services/indexes/pvm"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/stream"
+	"github.com/chain4travel/magellan/utils"
 )
 
 const (

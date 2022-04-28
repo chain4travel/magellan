@@ -1,3 +1,13 @@
+// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -10,20 +20,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/avm"
-	avalancheGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-	"github.com/ava-labs/ortelius/cfg"
-	"github.com/ava-labs/ortelius/db"
-	"github.com/ava-labs/ortelius/models"
-	"github.com/ava-labs/ortelius/services"
-	"github.com/ava-labs/ortelius/services/indexes/avax"
-	"github.com/ava-labs/ortelius/services/indexes/params"
-	"github.com/ava-labs/ortelius/servicesctrl"
-	"github.com/ava-labs/ortelius/utils"
+	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/crypto"
+	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/caminogo/vms/avm"
+	caminoGoAvax "github.com/chain4travel/caminogo/vms/components/avax"
+	"github.com/chain4travel/caminogo/vms/secp256k1fx"
+	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services"
+	"github.com/chain4travel/magellan/services/indexes/avax"
+	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/utils"
 )
 
 var (
@@ -128,16 +138,12 @@ func TestIndexBootstrap(t *testing.T) {
 func newTestIndex(t *testing.T, chainID ids.ID) (*utils.Connections, *Writer, *avax.Reader, func()) {
 	networkID := uint32(5)
 
-	logConf, err := logging.DefaultConfig()
-	if err != nil {
-		t.Fatal("Failed to create logging config:", err.Error())
-	}
-
+	logConf := logging.DefaultConfig
 	conf := cfg.Services{
 		Logging: logConf,
 		DB: &cfg.DB{
 			Driver: "mysql",
-			DSN:    "root:password@tcp(127.0.0.1:3306)/ortelius_test?parseTime=true",
+			DSN:    "root:password@tcp(127.0.0.1:3306)/magellan_test?parseTime=true",
 		},
 	}
 
@@ -174,15 +180,15 @@ func TestInsertTxInternal(t *testing.T) {
 	tx := &avm.Tx{}
 	baseTx := &avm.BaseTx{}
 
-	transferableOut := &avalancheGoAvax.TransferableOutput{}
+	transferableOut := &caminoGoAvax.TransferableOutput{}
 	transferableOut.Out = &secp256k1fx.TransferOutput{
 		OutputOwners: secp256k1fx.OutputOwners{Addrs: []ids.ShortID{ids.ShortEmpty}},
 	}
-	baseTx.Outs = []*avalancheGoAvax.TransferableOutput{transferableOut}
+	baseTx.Outs = []*caminoGoAvax.TransferableOutput{transferableOut}
 
-	transferableIn := &avalancheGoAvax.TransferableInput{}
+	transferableIn := &caminoGoAvax.TransferableInput{}
 	transferableIn.In = &secp256k1fx.TransferInput{}
-	baseTx.Ins = []*avalancheGoAvax.TransferableInput{transferableIn}
+	baseTx.Ins = []*caminoGoAvax.TransferableInput{transferableIn}
 
 	f := crypto.FactorySECP256K1R{}
 	pk, _ := f.NewPrivateKey()
@@ -242,13 +248,13 @@ func TestInsertTxInternalCreateAsset(t *testing.T) {
 	tx := &avm.Tx{}
 	baseTx := &avm.CreateAssetTx{}
 
-	transferableOut := &avalancheGoAvax.TransferableOutput{}
+	transferableOut := &caminoGoAvax.TransferableOutput{}
 	transferableOut.Out = &secp256k1fx.TransferOutput{}
-	baseTx.Outs = []*avalancheGoAvax.TransferableOutput{transferableOut}
+	baseTx.Outs = []*caminoGoAvax.TransferableOutput{transferableOut}
 
-	transferableIn := &avalancheGoAvax.TransferableInput{}
+	transferableIn := &caminoGoAvax.TransferableInput{}
 	transferableIn.In = &secp256k1fx.TransferInput{}
-	baseTx.Ins = []*avalancheGoAvax.TransferableInput{transferableIn}
+	baseTx.Ins = []*caminoGoAvax.TransferableInput{transferableIn}
 
 	tx.UnsignedTx = baseTx
 

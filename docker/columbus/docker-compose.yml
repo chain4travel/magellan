@@ -11,7 +11,7 @@ services:
       - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: magellan
+      MYSQL_DATABASE: magellan_columbus
     restart: on-failure
   migrate:
     image: "migrate/migrate:v4.14.1"
@@ -21,13 +21,13 @@ services:
       - mysql
     entrypoint: ["/bin/sh"]
     command: |
-      -c 'while ! migrate -path=/migrations/ -database "mysql://root:password@tcp(mysql:3306)/magellan" up; do
+      -c 'while ! migrate -path=/migrations/ -database "mysql://root:password@tcp(mysql:3306)/magellan_columbus" up; do
         sleep 1
       done'
     restart: on-failure
   camino:
     env_file:
-      - production.env
+      - columbus.env
     image: "c4tplatform/caminogo:v0.1.0"
     command: /bin/sh -cx "exec /caminogo/build/caminogo
       --config-file=/opt/config.json
@@ -53,7 +53,7 @@ services:
       - migrate
     volumes:
       - camino-ipcs:/tmp
-      - ./../config.json:/opt/config.json
+      - ./config.json:/opt/config.json
     restart: on-failure
   api:
     <<: *magellan-app

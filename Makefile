@@ -1,3 +1,13 @@
+# Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+#
+# This file is a derived work, based on ava-labs code whose
+# original notices appear below.
+#
+# It is distributed under the same license conditions as the
+# original code from which it is derived.
+#
+# Much love to the original authors for their work.
+# **********************************************************
 # (c) 2020, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
@@ -80,11 +90,11 @@ check_binaries: ## Ensure the binaries build
 .PHONY: db_migrate_up db_migrate_down
 
 db_migrate_up: ## Migrate the database up
-	DSN="${DSN:-mysql://root:password@tcp(127.0.0.1:3306)/ortelius_dev}"
+	DSN="${DSN:-mysql://root:password@tcp(127.0.0.1:3306)/magellan_dev}"
 	${GOPATH}/bin/migrate -source file://services/db/migrations -database "${DSN}" up
 
 db_migrate_down: ## Migrate the database down
-	DSN="${DSN:-mysql://root:password@tcp(127.0.0.1:3306)/ortelius_dev}"
+	DSN="${DSN:-mysql://root:password@tcp(127.0.0.1:3306)/magellan_dev}"
 	${GOPATH}/bin/migrate -source file://services/db/migrations -database "${DSN}" down
 
 ##
@@ -94,7 +104,7 @@ db_migrate_down: ## Migrate the database down
 
 GIT_HASH = $(shell git rev-parse --short HEAD)
 
-DOCKER_REPO ?= avaplatform/ortelius
+DOCKER_REPO ?= c4tplatform/magellan
 DOCKER_TAG ?= $(GIT_HASH)
 DOCKER_IMAGE_NAME ?= ${DOCKER_REPO}:${DOCKER_TAG}
 
