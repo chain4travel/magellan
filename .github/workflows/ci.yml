@@ -1,6 +1,6 @@
----
-
 name: build-check
+
+on:
   push:
     branches: [chain4travel]
   pull_request:
