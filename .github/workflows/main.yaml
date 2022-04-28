@@ -7,9 +7,7 @@ name: publish latest Docker image
 
 on:
   push:
-    branches:
-      - "main"
-      - "master"
+    branches-ignore: ["*"]
 jobs:
   push_latest_to_registry:
     name: Push Docker image to Docker Hub

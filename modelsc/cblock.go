@@ -169,7 +169,6 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 		if err != nil {
 			return nil, err
 		}
-		//for ipos, result := range results {
 		traceBits, err := json.Marshal(result)
 		if err != nil {
 			return nil, err
@@ -181,7 +180,6 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 				Trace: traceBits,
 			},
 		)
-		//}
 	}
 
 	blhash := bl.Hash()
