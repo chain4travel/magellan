@@ -188,7 +188,7 @@ The indexer requires that a MySQL compatible database be available. The migratio
 
 ## Magellan Distribution
 
-Magellan can be built from source into a single binary or a Docker image. A public Docker image is also available on [Docker Hub](https://hub.docker.com/repository/docker/c4tplatform/magellan).
+Magellan can be built from source into a single binary or a Docker image. A public Docker image is also available on [Docker Hub](https://hub.docker.com/r/c4tplatform/magellan).
 
 Example: `docker run --rm c4tplatform/magellan --help`
 
