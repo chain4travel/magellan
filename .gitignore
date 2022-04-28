@@ -22,8 +22,8 @@
 # vendor/
 
 # Development artifacts
-magellan
-magelland
+/magellan
+/magelland
 main
 configs
 vendor
