@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -58,14 +59,40 @@ const (
 	defaultReplayQueueThreads = int(4)
 )
 
+var wgGlobal = &sync.WaitGroup{}
+
 func main() {
-	if err := execute(); err != nil {
-		log.Fatalln("Failed to run:", err.Error())
+	// Check for multiple commands
+	argFlags := []string{}
+	argCmds := [][]string{{}}
+	cmdPos := 0
+	for _, a := range os.Args[1:] {
+		if strings.HasPrefix(a, "-") {
+			argFlags = append(argFlags, a)
+		} else if a == "," {
+			argCmds = append(argCmds, []string{})
+			cmdPos++
+		} else {
+			argCmds[cmdPos] = append(argCmds[cmdPos], a)
+		}
 	}
+	for _, a := range argCmds {
+		if cmd, err := getCmd(); err != nil {
+			log.Fatalln("Failed to run:", err.Error())
+		} else {
+			cmd.SetArgs(append(argFlags, a...))
+			wgGlobal.Add(1)
+			go func() {
+				cmd.Execute()
+				wgGlobal.Done()
+			}()
+		}
+	}
+	wgGlobal.Wait()
 }
 
 // Execute runs the root command for magellan
-func execute() error {
+func getCmd() (*cobra.Command, error) {
 	rand.Seed(time.Now().UnixNano())
 
 	var (
@@ -153,12 +180,7 @@ func execute() error {
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
 
-	// Execute the command and return the runErr to the caller
-	if err := cmd.Execute(); err != nil {
-		return err
-	}
-
-	return runErr
+	return cmd, nil
 }
 
 func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) *cobra.Command {
