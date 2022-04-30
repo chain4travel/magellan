@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -59,40 +58,14 @@ const (
 	defaultReplayQueueThreads = int(4)
 )
 
-var wgGlobal = &sync.WaitGroup{}
-
 func main() {
-	// Check for multiple commands
-	argFlags := []string{}
-	argCmds := [][]string{{}}
-	cmdPos := 0
-	for _, a := range os.Args[1:] {
-		if strings.HasPrefix(a, "-") {
-			argFlags = append(argFlags, a)
-		} else if a == "," {
-			argCmds = append(argCmds, []string{})
-			cmdPos++
-		} else {
-			argCmds[cmdPos] = append(argCmds[cmdPos], a)
-		}
+	if err := execute(); err != nil {
+		log.Fatalln("Failed to run:", err.Error())
 	}
-	for _, a := range argCmds {
-		if cmd, err := getCmd(); err != nil {
-			log.Fatalln("Failed to run:", err.Error())
-		} else {
-			cmd.SetArgs(append(argFlags, a...))
-			wgGlobal.Add(1)
-			go func() {
-				cmd.Execute()
-				wgGlobal.Done()
-			}()
-		}
-	}
-	wgGlobal.Wait()
 }
 
 // Get the root command for magellan
-func getCmd() (*cobra.Command, error) {
+func execute() error {
 	rand.Seed(time.Now().UnixNano())
 
 	var (
@@ -180,7 +153,12 @@ func getCmd() (*cobra.Command, error) {
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
 
-	return cmd, nil
+	// Execute the command and return the runErr to the caller
+	if err := cmd.Execute(); err != nil {
+		return err
+	}
+
+	return runErr
 }
 
 func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) *cobra.Command {
@@ -339,7 +317,7 @@ func runStreamProcessorManagers(
 	factoriesChainDB []stream.ProcessorFactoryChainDB,
 	factoriesInstDB []stream.ProcessorFactoryInstDB,
 ) func(_ *cobra.Command, _ []string) {
-	return func(_ *cobra.Command, _ []string) {
+	return func(_ *cobra.Command, arg []string) {
 		wg := &sync.WaitGroup{}
 
 		bm, _ := sc.BalanceManager.(*balance.Manager)
@@ -376,6 +354,15 @@ func runStreamProcessorManagers(
 		if err != nil {
 			*runError = err
 			return
+		}
+
+		if len(arg) > 0 && arg[0] == "api" {
+			lc, err := api.NewServer(sc, *config)
+			if err != nil {
+				log.Fatalln("API listen error:", err.Error())
+			} else {
+				listenCloseFactories = append(listenCloseFactories, lc)
+			}
 		}
 
 		for _, listenCloseFactory := range listenCloseFactories {
