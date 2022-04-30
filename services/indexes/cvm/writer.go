@@ -228,7 +228,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		toStr := utils.CommonAddressHexRepair(rawtx.To())
 
 		signer := types.LatestSignerForChainID(rawtx.ChainId())
-		fromAddr, err := signer.Sender(&rawtx)
+		fromAddr, err := signer.Sender(&rawtxCp)
 		if err != nil {
 			return err
 		}

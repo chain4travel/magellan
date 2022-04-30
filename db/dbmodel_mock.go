@@ -5,7 +5,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/gocraft/dbr/v2"
@@ -627,7 +626,7 @@ func (m *MockPersist) InsertKeyValueStore(ctx context.Context, runner dbr.Sessio
 func (m *MockPersist) QueryCvmTransactionsReceipt(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsReceipt) (*CvmTransactionsReceipt, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	if v, present := m.CvmTransactionsReceipt[fmt.Sprintf("%s", v.Hash)]; present {
+	if v, present := m.CvmTransactionsReceipt[v.Hash]; present {
 		return v, nil
 	}
 	return nil, nil
@@ -638,7 +637,7 @@ func (m *MockPersist) InsertCvmTransactionsReceipt(ctx context.Context, runner d
 	defer m.lock.Unlock()
 	nv := &CvmTransactionsReceipt{}
 	*nv = *v
-	m.CvmTransactionsReceipt[fmt.Sprintf("%s", v.Hash)] = nv
+	m.CvmTransactionsReceipt[v.Hash] = nv
 	return nil
 }
 

@@ -483,8 +483,7 @@ func (p *ProducerCChain) processWork(conns *utils.Connections, localBlock *local
 			return err
 		}
 
-		idsv := fmt.Sprintf("%s", receipt.Hash)
-		id, err := ids.ToID(hashing.ComputeHash256([]byte(idsv)))
+		id, err := ids.ToID(hashing.ComputeHash256([]byte(receipt.Hash)))
 		if err != nil {
 			return err
 		}

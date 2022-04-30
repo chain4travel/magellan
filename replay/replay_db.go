@@ -307,8 +307,8 @@ func (replay *dbReplay) workerProcessor() func(int, interface{}) {
 					replay.errs.SetValue(consumererr)
 					return
 				}
-			default:
 			}
+		default:
 		}
 	}
 }

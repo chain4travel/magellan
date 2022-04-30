@@ -142,12 +142,12 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 }
 
 func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *dbr.Session, sq *dbr.SelectStmt) {
-	createdatefilter := func(tbl string, b *dbr.SelectStmt) *dbr.SelectStmt {
+	createdatefilter := func(b *dbr.SelectStmt) *dbr.SelectStmt {
 		if p.ListParams.StartTimeProvided && !p.ListParams.StartTime.IsZero() {
-			b.Where(tbl+".created_at >= ?", p.ListParams.StartTime)
+			b.Where(db.TableCvmTransactionsTxdata+".created_at >= ?", p.ListParams.StartTime)
 		}
 		if p.ListParams.EndTimeProvided && !p.ListParams.EndTime.IsZero() {
-			b.Where(tbl+".created_at < ?", p.ListParams.EndTime)
+			b.Where(db.TableCvmTransactionsTxdata+".created_at < ?", p.ListParams.EndTime)
 		}
 		return b
 	}
@@ -179,7 +179,7 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 	}
 
 	if len(p.CAddressesTo) > 0 {
-		subq := createdatefilter(db.TableCvmTransactionsTxdata,
+		subq := createdatefilter(
 			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
 				Where(db.TableCvmTransactionsTxdata+".to_addr in ?", p.CAddressesTo)),
 		)
@@ -190,7 +190,7 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 	}
 
 	if len(p.CAddressesFrom) > 0 {
-		subq := createdatefilter(db.TableCvmTransactionsTxdata,
+		subq := createdatefilter(
 			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
 				Where(db.TableCvmTransactionsTxdata+".from_addr in ?", p.CAddressesFrom)),
 		)
@@ -201,11 +201,11 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 	}
 
 	if len(p.CAddresses) > 0 {
-		subqfrom := createdatefilter(db.TableCvmTransactionsTxdata,
+		subqfrom := createdatefilter(
 			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
 				Where(db.TableCvmTransactionsTxdata+".from_addr in ?", p.CAddresses)),
 		)
-		subqto := createdatefilter(db.TableCvmTransactionsTxdata,
+		subqto := createdatefilter(
 			blockrcptfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
 				Where("to_addr in ?", p.CAddresses)),
 		)
