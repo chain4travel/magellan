@@ -23,7 +23,6 @@ import (
 
 	"github.com/chain4travel/magellan/db"
 
-	caminoTypes "github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminogo/ids"
 	caminoGoUtils "github.com/chain4travel/caminogo/utils"
 	"github.com/chain4travel/magellan/cfg"
@@ -47,8 +46,7 @@ var (
 	CONSUME          ConsumeType = 1
 	CONSUMECONSENSUS ConsumeType = 2
 	CONSUMEC         ConsumeType = 3
-	CONSUMECTRC      ConsumeType = 4
-	CONSUMECLOG      ConsumeType = 5
+	CONSUMECRCPT     ConsumeType = 4
 )
 
 type WorkerPacket struct {
@@ -194,15 +192,10 @@ func (replay *dbReplay) handleCReader(chain string, waitGroup *int64, worker uti
 	if err != nil {
 		return err
 	}
-	err = replay.startCchainTrc(chain, waitGroup, worker, writer)
+	err = replay.startCchainRcpt(chain, waitGroup, worker, writer)
 	if err != nil {
 		return err
 	}
-	err = replay.startCchainLog(chain, waitGroup, worker, writer)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -295,35 +288,16 @@ func (replay *dbReplay) workerProcessor() func(int, interface{}) {
 					replay.errs.SetValue(consumererr)
 					return
 				}
-			case CONSUMECTRC:
-				transactionTrace := &modelsc.TransactionTrace{}
-				err := json.Unmarshal(value.message.Body(), transactionTrace)
+			case CONSUMECRCPT:
+				transactionReceipt := &modelsc.TransactionReceipt{}
+				err := json.Unmarshal(value.message.Body(), transactionReceipt)
 				if err != nil {
 					replay.errs.SetValue(consumererr)
 					return
 				}
 				rsleep := utils.NewRetrySleeper(1, 100*time.Millisecond, time.Second)
 				for {
-					consumererr = value.cwriter.ConsumeTrace(ctx, replay.conns, value.message, transactionTrace, replay.persist)
-					if !utils.ErrIsLockError(consumererr) {
-						break
-					}
-					rsleep.Inc()
-				}
-				if consumererr != nil {
-					replay.errs.SetValue(consumererr)
-					return
-				}
-			case CONSUMECLOG:
-				txLogs := &caminoTypes.Log{}
-				err := json.Unmarshal(value.message.Body(), txLogs)
-				if err != nil {
-					replay.errs.SetValue(consumererr)
-					return
-				}
-				rsleep := utils.NewRetrySleeper(1, 100*time.Millisecond, time.Second)
-				for {
-					consumererr = value.cwriter.ConsumeLogs(ctx, replay.conns, value.message, txLogs, replay.persist)
+					consumererr = value.cwriter.ConsumeReceipt(ctx, replay.conns, value.message, transactionReceipt, replay.persist)
 					if !utils.ErrIsLockError(consumererr) {
 						break
 					}
@@ -417,7 +391,7 @@ func (replay *dbReplay) startCchain(chain string, waitGroup *int64, worker utils
 	return nil
 }
 
-func (replay *dbReplay) startCchainTrc(chain string, waitGroup *int64, worker utils.Worker, writer *cvm.Writer) error {
+func (replay *dbReplay) startCchainRcpt(chain string, waitGroup *int64, worker utils.Worker, writer *cvm.Writer) error {
 	tn := fmt.Sprintf("%d-%s-cchain-trc", replay.config.NetworkID, chain)
 
 	replay.counterWaits.Inc(tn)
@@ -478,75 +452,7 @@ func (replay *dbReplay) startCchainTrc(chain string, waitGroup *int64, worker ut
 				int64(txPool.CreatedAt.UTC().Nanosecond()),
 			)
 
-			worker.Enque(&WorkerPacket{cwriter: writer, message: msgc, consumeType: CONSUMECTRC})
-		}
-	}()
-
-	return nil
-}
-
-func (replay *dbReplay) startCchainLog(chain string, waitGroup *int64, worker utils.Worker, writer *cvm.Writer) error {
-	tn := fmt.Sprintf("%d-%s-cchain-logs", replay.config.NetworkID, chain)
-
-	replay.counterWaits.Inc(tn)
-	replay.counterAdded.Add(tn, 0)
-
-	atomic.AddInt64(waitGroup, 1)
-	go func() {
-		defer atomic.AddInt64(waitGroup, -1)
-		defer replay.counterWaits.Add(tn, -1)
-
-		job := replay.conns.Stream().NewJob("query-replay-txpoll")
-		sess := replay.conns.DB().NewSessionForEventReceiver(job)
-
-		ctx := context.Background()
-		var txPools []TxPoolID
-		_, err := sess.Select("id").
-			From(db.TableTxPool).
-			Where("topic=?", tn).
-			OrderAsc("created_at").
-			LoadContext(ctx, &txPools)
-		if err != nil {
-			replay.errs.SetValue(err)
-			return
-		}
-
-		for _, txPoolID := range txPools {
-			if replay.errs.GetValue() != nil {
-				replay.sc.Log.Info("replay for topic %s stopped for errors", tn)
-				return
-			}
-
-			txPoolQ := db.TxPool{
-				ID: txPoolID.ID,
-			}
-			var txPool *db.TxPool
-			for {
-				txPool, err = replay.persist.QueryTxPool(ctx, sess, &txPoolQ)
-				if err == nil {
-					break
-				}
-				replay.sc.Log.Warn("replay for topic %s error %v", tn, err)
-				time.Sleep(500 * time.Millisecond)
-			}
-
-			id, err := ids.FromString(txPool.MsgKey)
-			if err != nil {
-				replay.errs.SetValue(err)
-				return
-			}
-
-			replay.counterAdded.Inc(tn)
-
-			msgc := stream.NewMessage(
-				id.String(),
-				chain,
-				txPool.Serialization,
-				txPool.CreatedAt.UTC().Unix(),
-				int64(txPool.CreatedAt.UTC().Nanosecond()),
-			)
-
-			worker.Enque(&WorkerPacket{cwriter: writer, message: msgc, consumeType: CONSUMECLOG})
+			worker.Enque(&WorkerPacket{cwriter: writer, message: msgc, consumeType: CONSUMECRCPT})
 		}
 	}()
 

@@ -5,7 +5,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/gocraft/dbr/v2"
@@ -41,9 +40,8 @@ type MockPersist struct {
 	TransactionsRewardsOwners        map[string]*TransactionsRewardsOwners
 	TxPool                           map[string]*TxPool
 	KeyValueStore                    map[string]*KeyValueStore
-	CvmTransactionsTxdataTrace       map[string]*CvmTransactionsTxdataTrace
+	CvmTransactionsReceipt           map[string]*CvmTransactionsReceipt
 	NodeIndex                        map[string]*NodeIndex
-	CvmLogs                          map[string]*CvmLogs
 	PvmProposer                      map[string]*PvmProposer
 }
 
@@ -77,9 +75,8 @@ func NewPersistMock() *MockPersist {
 		TransactionsRewardsOwnersOutputs: make(map[string]*TransactionsRewardsOwnersOutputs),
 		TxPool:                           make(map[string]*TxPool),
 		KeyValueStore:                    make(map[string]*KeyValueStore),
-		CvmTransactionsTxdataTrace:       make(map[string]*CvmTransactionsTxdataTrace),
+		CvmTransactionsReceipt:           make(map[string]*CvmTransactionsReceipt),
 		NodeIndex:                        make(map[string]*NodeIndex),
-		CvmLogs:                          make(map[string]*CvmLogs),
 		PvmProposer:                      make(map[string]*PvmProposer),
 	}
 }
@@ -626,21 +623,21 @@ func (m *MockPersist) InsertKeyValueStore(ctx context.Context, runner dbr.Sessio
 	return nil
 }
 
-func (m *MockPersist) QueryCvmTransactionsTxdataTrace(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsTxdataTrace) (*CvmTransactionsTxdataTrace, error) {
+func (m *MockPersist) QueryCvmTransactionsReceipt(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsReceipt) (*CvmTransactionsReceipt, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	if v, present := m.CvmTransactionsTxdataTrace[fmt.Sprintf("%s:%v", v.Hash, v.Idx)]; present {
+	if v, present := m.CvmTransactionsReceipt[v.Hash]; present {
 		return v, nil
 	}
 	return nil, nil
 }
 
-func (m *MockPersist) InsertCvmTransactionsTxdataTrace(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsTxdataTrace, _ bool) error {
+func (m *MockPersist) InsertCvmTransactionsReceipt(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsReceipt, _ bool) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	nv := &CvmTransactionsTxdataTrace{}
+	nv := &CvmTransactionsReceipt{}
 	*nv = *v
-	m.CvmTransactionsTxdataTrace[fmt.Sprintf("%s:%v", v.Hash, v.Idx)] = nv
+	m.CvmTransactionsReceipt[v.Hash] = nv
 	return nil
 }
 
@@ -668,24 +665,6 @@ func (m *MockPersist) UpdateNodeIndex(ctx context.Context, runner dbr.SessionRun
 	if fv, present := m.NodeIndex[v.Topic]; present {
 		fv.Idx = v.Idx
 	}
-	return nil
-}
-
-func (m *MockPersist) QueryCvmLogs(ctx context.Context, runner dbr.SessionRunner, v *CvmLogs) (*CvmLogs, error) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	if v, present := m.CvmLogs[v.ID]; present {
-		return v, nil
-	}
-	return nil, nil
-}
-
-func (m *MockPersist) InsertCvmLogs(ctx context.Context, runner dbr.SessionRunner, v *CvmLogs, _ bool) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	nv := &CvmLogs{}
-	*nv = *v
-	m.CvmLogs[v.ID] = nv
 	return nil
 }
 

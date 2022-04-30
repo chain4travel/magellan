@@ -119,8 +119,8 @@ There will be a caminogo, and mysql container.
 # docker ps -a
 CONTAINER ID   IMAGE                             COMMAND                  CREATED          STATUS                      PORTS                                              NAMES
 f9bd3c9d6f74   c4tplatform/caminogo:v0.1.0    "/bin/sh -cx 'exec .…"   19 minutes ago   Up 19 minutes               0.0.0.0:9650->9650/tcp                             production_caminogo_1
-70c5b875c07d   c4tplatform/magellan:140ac5c      "/opt/magelland api …"   19 minutes ago   Up 19 minutes               0.0.0.0:8080->8080/tcp                             production_api_1
-ee28fdea61c2   c4tplatform/magellan:140ac5c      "/opt/magelland stre…"   19 minutes ago   Up 19 minutes                                                                  production_indexer_1
+70c5b875c07d   c4tplatform/magellan:v0.0.0      "/opt/magelland api …"   19 minutes ago   Up 19 minutes               0.0.0.0:8080->8080/tcp                             production_api_1
+ee28fdea61c2   c4tplatform/magellan:v0.0.0      "/opt/magelland stre…"   19 minutes ago   Up 19 minutes                                                                  production_indexer_1
 ae923d0489f0   mysql:8.0.26                      "docker-entrypoint.s…"   19 minutes ago   Up 19 minutes               0.0.0.0:3306->3306/tcp, 33060/tcp                  production_mysql_1
 ```
 
@@ -201,6 +201,7 @@ Example: `docker run --rm c4tplatform/magellan --help`
 Magellan is a collection of services. The full stack consists of the Indexer, and API which can all be started from the single binary:
 
 ```
+magelland stream indexer api -c path/to/config.json
 magelland stream indexer -c path/to/config.json
 magelland api -c path/to/config.json
 ```

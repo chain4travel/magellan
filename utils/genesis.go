@@ -22,6 +22,7 @@ import (
 
 type GenesisContainer struct {
 	NetworkID       uint32
+	Time            uint64
 	XChainGenesisTx *platformvm.Tx
 	XChainID        ids.ID
 	AvaxAssetID     ids.ID
@@ -30,8 +31,9 @@ type GenesisContainer struct {
 
 func NewGenesisContainer(networkID uint32) (*GenesisContainer, error) {
 	gc := &GenesisContainer{NetworkID: networkID}
+	config := genesis.GetConfig(gc.NetworkID)
 	var err error
-	gc.GenesisBytes, gc.AvaxAssetID, err = genesis.FromConfig(genesis.GetConfig(gc.NetworkID))
+	gc.GenesisBytes, gc.AvaxAssetID, err = genesis.FromConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -42,5 +44,7 @@ func NewGenesisContainer(networkID uint32) (*GenesisContainer, error) {
 	}
 
 	gc.XChainID = gc.XChainGenesisTx.ID()
+
+	gc.Time = config.StartTime
 	return gc, nil
 }

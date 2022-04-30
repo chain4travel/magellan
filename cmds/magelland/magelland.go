@@ -64,7 +64,7 @@ func main() {
 	}
 }
 
-// Execute runs the root command for magellan
+// Get the root command for magellan
 func execute() error {
 	rand.Seed(time.Now().UnixNano())
 
@@ -317,7 +317,7 @@ func runStreamProcessorManagers(
 	factoriesChainDB []stream.ProcessorFactoryChainDB,
 	factoriesInstDB []stream.ProcessorFactoryInstDB,
 ) func(_ *cobra.Command, _ []string) {
-	return func(_ *cobra.Command, _ []string) {
+	return func(_ *cobra.Command, arg []string) {
 		wg := &sync.WaitGroup{}
 
 		bm, _ := sc.BalanceManager.(*balance.Manager)
@@ -354,6 +354,15 @@ func runStreamProcessorManagers(
 		if err != nil {
 			*runError = err
 			return
+		}
+
+		if len(arg) > 0 && arg[0] == "api" {
+			lc, err := api.NewServer(sc, *config)
+			if err != nil {
+				log.Fatalln("API listen error:", err.Error())
+			} else {
+				listenCloseFactories = append(listenCloseFactories, lc)
+			}
 		}
 
 		for _, listenCloseFactory := range listenCloseFactories {
