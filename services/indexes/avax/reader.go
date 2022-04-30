@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -1083,7 +1082,7 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		sq := dbRunner.
 			Select("block").
 			From("cvm_transactions_txdata").
-			Where("hash=? or rcpt=?", h, h)
+			Where("hash=? or rto_addr=?", h, h)
 
 		_, err = dbRunner.
 			Select("serialization").
@@ -1113,12 +1112,10 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		BlockID        string                   `json:"blockID"`
 		Header         corethType.Header        `json:"header"`
 		Uncles         []corethType.Header      `json:"uncles"`
-		TxsBytes       [][]byte                 `json:"txs"`
 		Version        uint32                   `json:"version"`
 		BlockExtraData []byte                   `json:"blockExtraData"`
 		BlockExtraID   string                   `json:"blockExtraID"`
 		Txs            []corethType.Transaction `json:"transactions,omitempty"`
-		Logs           []corethType.Log         `json:"logs,omitempty"`
 	}
 
 	unserializedBlock, err := modelsc.Unmarshal(row.Serialization)
@@ -1181,36 +1178,6 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		}
 		block.Txs = append(block.Txs, tr)
 	}
-
-	type RowLog struct {
-		Serialization []byte
-	}
-	rowsLog := []RowLog{}
-
-	_, err = dbRunner.
-		Select(
-			"serialization",
-		).
-		From(db.TableCvmLogs).
-		Where("block="+block.Header.Number.String()).
-		LoadContext(ctx, &rowsLog)
-	if err != nil {
-		return nil, err
-	}
-
-	block.Logs = make([]corethType.Log, 0, len(rowsData))
-	for _, rowData := range rowsLog {
-		var clog corethType.Log
-		err := json.Unmarshal(rowData.Serialization, &clog)
-		if err != nil {
-			return nil, err
-		}
-		block.Logs = append(block.Logs, clog)
-	}
-
-	sort.Slice(block.Logs, func(i, j int) bool {
-		return block.Logs[i].Index < block.Logs[j].Index
-	})
 
 	return json.Marshal(block)
 }

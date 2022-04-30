@@ -32,6 +32,7 @@ import (
 	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/utils"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -476,13 +477,13 @@ func (p *ProducerCChain) processWork(conns *utils.Connections, localBlock *local
 		return err
 	}
 
-	for _, txTranactionTraces := range localBlock.blockContainer.Traces {
-		txTransactionTracesBits, err := json.Marshal(txTranactionTraces)
+	for _, receipt := range localBlock.blockContainer.Receipts {
+		txTransactionReceiptBits, err := json.Marshal(receipt)
 		if err != nil {
 			return err
 		}
 
-		idsv := fmt.Sprintf("%s:%d", txTranactionTraces.Hash, txTranactionTraces.Idx)
+		idsv := fmt.Sprintf("%s", receipt.Hash)
 		id, err := ids.ToID(hashing.ComputeHash256([]byte(idsv)))
 		if err != nil {
 			return err
@@ -492,40 +493,9 @@ func (p *ProducerCChain) processWork(conns *utils.Connections, localBlock *local
 			NetworkID:     p.conf.NetworkID,
 			ChainID:       p.conf.CchainID,
 			MsgKey:        id.String(),
-			Serialization: txTransactionTracesBits,
+			Serialization: txTransactionReceiptBits,
 			Processed:     0,
 			Topic:         p.topicTrc,
-			CreatedAt:     localBlock.time,
-		}
-		err = txPool.ComputeID()
-		if err != nil {
-			return err
-		}
-		err = UpdateTxPool(dbWriteTimeout, conns, p.sc.Persist, txPool, p.sc)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, log := range localBlock.blockContainer.Logs {
-		logBits, err := json.Marshal(log)
-		if err != nil {
-			return err
-		}
-
-		idsv := fmt.Sprintf("%s:%s:%d", log.BlockHash, log.TxHash, log.Index)
-		id, err := ids.ToID(hashing.ComputeHash256([]byte(idsv)))
-		if err != nil {
-			return err
-		}
-
-		txPool := &db.TxPool{
-			NetworkID:     p.conf.NetworkID,
-			ChainID:       p.conf.CchainID,
-			MsgKey:        id.String(),
-			Serialization: logBits,
-			Processed:     0,
-			Topic:         p.topicLogs,
 			CreatedAt:     localBlock.time,
 		}
 		err = txPool.ComputeID()
@@ -596,7 +566,14 @@ func (p *ProducerCChain) blockProcessor(pc *producerCChainContainer, client *mod
 				continue
 			}
 
-			localBlockObject := &localBlockObject{blockContainer: blContainer, time: time.Now()}
+			var blockTime int64
+			if blContainer.Block.Number().Cmp(common.Big0) == 0 {
+				blockTime = int64(p.sc.GenesisContainer.Time)
+			} else {
+				blockTime = int64(blContainer.Block.Time())
+			}
+
+			localBlockObject := &localBlockObject{blockContainer: blContainer, time: time.Unix(blockTime, 0).UTC()}
 			err = p.processWork(conns, localBlockObject)
 			if err != nil {
 				blockWork.errs.SetValue(err)

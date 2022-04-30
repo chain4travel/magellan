@@ -22,7 +22,6 @@ import (
 
 	"github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminoethvm/ethclient"
-	"github.com/chain4travel/caminoethvm/interfaces"
 	"github.com/chain4travel/caminoethvm/rpc"
 )
 
@@ -94,12 +93,6 @@ func Unmarshal(data []byte) (*Block, error) {
 	return &block, err
 }
 
-type TransactionTrace struct {
-	Hash  string `json:"hash"`
-	Idx   uint32 `json:"idx"`
-	Trace []byte `json:"trace"`
-}
-
 type Client struct {
 	rpcClient *rpc.Client
 	ethClient ethclient.Client
@@ -133,15 +126,14 @@ func (c *Client) Close() {
 	c.rpcClient.Close()
 }
 
-type TracerParam struct {
-	Tracer  string `json:"tracer"`
-	Timeout string `json:"timeout"`
+type TransactionReceipt struct {
+	Hash    string `json:"hash"`
+	Receipt []byte `json:"receipt"`
 }
 
 type BlockContainer struct {
-	Block  *types.Block
-	Traces []*TransactionTrace
-	Logs   []*types.Log
+	Block    *types.Block
+	Receipts []*TransactionReceipt
 }
 
 func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*BlockContainer, error) {
@@ -156,44 +148,28 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 		return nil, err
 	}
 
-	txTraces := make([]*TransactionTrace, 0, len(bl.Transactions()))
+	txReceipts := make([]*TransactionReceipt, 0, len(bl.Transactions()))
 	for _, tx := range bl.Transactions() {
 		txh := tx.Hash().Hex()
 		if !strings.HasPrefix(txh, "0x") {
 			txh = "0x" + txh
 		}
 
-		var result interface{}
+		var result types.Receipt
 		err = c.rpcClient.CallContext(ctx, &result, "eth_getTransactionReceipt",
 			txh)
 		if err != nil {
 			return nil, err
 		}
-		traceBits, err := json.Marshal(result)
+		receiptBits, err := json.Marshal(result)
 		if err != nil {
 			return nil, err
 		}
-		txTraces = append(txTraces,
-			&TransactionTrace{
-				Hash:  txh,
-				Idx:   uint32(0),
-				Trace: traceBits,
-			},
-		)
-	}
 
-	blhash := bl.Hash()
-	fq := interfaces.FilterQuery{BlockHash: &blhash}
-	fls, err := c.ethClient.FilterLogs(ctx, fq)
-	if err != nil {
-		return nil, err
+		txReceipts = append(txReceipts, &TransactionReceipt{
+			Hash:    txh,
+			Receipt: receiptBits,
+		})
 	}
-
-	flrs := make([]*types.Log, 0, len(fls))
-	for _, fl := range fls {
-		flcopy := fl
-		flrs = append(flrs, &flcopy)
-	}
-
-	return &BlockContainer{Block: bl, Traces: txTraces, Logs: flrs}, nil
+	return &BlockContainer{Block: bl, Receipts: txReceipts}, nil
 }

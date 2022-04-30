@@ -6,22 +6,17 @@ create table `node_index`
     primary key (instance, topic)
 );
 
-drop index cvm_transactions_txdata_trace_from_addr
-    on cvm_transactions_txdata_trace;
-drop index cvm_transactions_txdata_trace_to_addr
-    on cvm_transactions_txdata_trace;
-
-create index cvm_transactions_txdata_trace_from_addr_created_at
-    on cvm_transactions_txdata_trace (from_addr, created_at);
-
-create index cvm_transactions_txdata_trace_to_addr_created_at
-    on cvm_transactions_txdata_trace (to_addr, created_at);
-
-drop index cvm_transactions_txdata_rcpt
+drop index cvm_transactions_txdata_from
     on cvm_transactions_txdata;
 
-create index cvm_transactions_txdata_rcpt_created_at
-    on cvm_transactions_txdata (rcpt,created_at);
+drop index cvm_transactions_txdata_to
+    on cvm_transactions_txdata;
+
+create index cvm_transactions_txdata_from_created_at
+    on cvm_transactions_txdata (from_addr, created_at);
+
+create index cvm_transactions_txdata_to_created_at
+    on cvm_transactions_txdata (to_addr, created_at);
 
 alter table `rewards` add COLUMN `processed` smallint unsigned default 0;
 create index rewards_processed on rewards (processed, created_at);

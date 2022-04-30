@@ -91,7 +91,7 @@ func main() {
 	wgGlobal.Wait()
 }
 
-// Execute runs the root command for magellan
+// Get the root command for magellan
 func getCmd() (*cobra.Command, error) {
 	rand.Seed(time.Now().UnixNano())
 

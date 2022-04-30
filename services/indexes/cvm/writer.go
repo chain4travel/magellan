@@ -120,7 +120,7 @@ func (w *Writer) extractAtomicTxsPostApricotPhase5(atomicTxBytes []byte) ([]*evm
 	return atomicTxs, nil
 }
 
-func (w *Writer) ConsumeLogs(ctx context.Context, conns *utils.Connections, c services.Consumable, txLogs *types.Log, persist db.Persist) error {
+func (w *Writer) ConsumeReceipt(ctx context.Context, conns *utils.Connections, c services.Consumable, transactionReceipt *modelsc.TransactionReceipt, persist db.Persist) error {
 	job := conns.Stream().NewJob("cvm-index")
 	sess := conns.DB().NewSessionForEventReceiver(job)
 
@@ -132,62 +132,13 @@ func (w *Writer) ConsumeLogs(ctx context.Context, conns *utils.Connections, c se
 
 	cCtx := services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist)
 
-	firstTopic := ""
-	if len(txLogs.Topics) > 0 {
-		firstTopic = txLogs.Topics[0].Hex()
-	}
-	cvmLogs := &db.CvmLogs{
-		BlockHash:     txLogs.BlockHash.Hex(),
-		TxHash:        txLogs.TxHash.Hex(),
-		LogIndex:      uint64(txLogs.Index),
-		Block:         fmt.Sprintf("%d", txLogs.BlockNumber),
-		FirstTopic:    firstTopic,
-		Removed:       txLogs.Removed,
-		CreatedAt:     cCtx.Time(),
-		Serialization: c.Body(),
-	}
-	err = cvmLogs.ComputeID()
-	if err != nil {
-		return err
-	}
-	err = persist.InsertCvmLogs(ctx, dbTx, cvmLogs, cfg.PerformUpdates)
-	if err != nil {
-		return err
-	}
-
-	return dbTx.Commit()
-}
-
-func (w *Writer) ConsumeTrace(ctx context.Context, conns *utils.Connections, c services.Consumable, transactionTrace *modelsc.TransactionTrace, persist db.Persist) error {
-	job := conns.Stream().NewJob("cvm-index")
-	sess := conns.DB().NewSessionForEventReceiver(job)
-
-	dbTx, err := sess.Begin()
-	if err != nil {
-		return err
-	}
-	defer dbTx.RollbackUnlessCommitted()
-
-	txTraceModel := &models.CvmTransactionsTxDataTrace{}
-	err = json.Unmarshal(transactionTrace.Trace, txTraceModel)
-	if err != nil {
-		return err
-	}
-
-	cCtx := services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist)
-
-	txTraceService := &db.CvmTransactionsTxdataTrace{
-		Hash:          transactionTrace.Hash,
-		Idx:           transactionTrace.Idx,
-		ToAddr:        txTraceModel.ToAddr,
-		FromAddr:      txTraceModel.FromAddr,
-		CallType:      txTraceModel.CallType,
-		Type:          txTraceModel.Type,
-		Serialization: transactionTrace.Trace,
+	txReceiptService := &db.CvmTransactionsReceipt{
+		Hash:          transactionReceipt.Hash,
+		Serialization: transactionReceipt.Receipt,
 		CreatedAt:     cCtx.Time(),
 	}
 
-	err = persist.InsertCvmTransactionsTxdataTrace(ctx, dbTx, txTraceService, cfg.PerformUpdates)
+	err = persist.InsertCvmTransactionsReceipt(ctx, dbTx, txReceiptService, cfg.PerformUpdates)
 	if err != nil {
 		return err
 	}
@@ -274,12 +225,21 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 			return err
 		}
 		rawhash := rawtx.Hash()
-		rcptstr := utils.CommonAddressHexRepair(rawtx.To())
+		toStr := utils.CommonAddressHexRepair(rawtx.To())
+
+		signer := types.LatestSignerForChainID(rawtx.ChainId())
+		fromAddr, err := signer.Sender(&rawtx)
+		if err != nil {
+			return err
+		}
+		fromStr := utils.CommonAddressHexRepair(&fromAddr)
+
 		cvmTransactionTxdata := &db.CvmTransactionsTxdata{
 			Hash:          rawhash.String(),
 			Block:         block.Header.Number.String(),
 			Idx:           uint64(ipos),
-			Rcpt:          rcptstr,
+			FromAddr:      fromStr,
+			ToAddr:        toStr,
 			Nonce:         rawtx.Nonce(),
 			Serialization: txdata,
 			CreatedAt:     ctx.Time(),
