@@ -153,7 +153,7 @@ func TestAggregateTxfee(t *testing.T) {
 		Txfee:     10,
 		CreatedAt: tnow,
 	}
-	_ = persist.InsertTransactions(ctx, sess, transaction, false)
+	_ = persist.InsertTransactionsAtomic(ctx, sess, transaction, false)
 
 	transaction = &db.Transactions{
 		ID:        "id2",
@@ -162,7 +162,7 @@ func TestAggregateTxfee(t *testing.T) {
 		Txfee:     15,
 		CreatedAt: tnow.Add(-1 * time.Hour),
 	}
-	_ = persist.InsertTransactions(ctx, sess, transaction, false)
+	_ = persist.InsertTransactionsAtomic(ctx, sess, transaction, false)
 
 	starttime := tnow.Add(-2 * time.Hour)
 	endtime := tnow.Add(1 * time.Second)

@@ -291,19 +291,6 @@ func (p *ProducerCChain) ID() string {
 	return p.id
 }
 
-func (p *ProducerCChain) updateBlock(conns *utils.Connections, blockNumber *big.Int, updateTime time.Time) error {
-	sess := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("update-block"))
-
-	ctx, cancelCtx := context.WithTimeout(context.Background(), dbWriteTimeout)
-	defer cancelCtx()
-
-	cvmBlocks := &db.CvmBlocks{
-		Block:     blockNumber.String(),
-		CreatedAt: updateTime,
-	}
-	return p.sc.Persist.InsertCvmBlocks(ctx, sess, cvmBlocks)
-}
-
 func (p *ProducerCChain) Failure() {
 	_ = utils.Prometheus.CounterInc(p.metricFailureCountKey)
 	_ = utils.Prometheus.CounterInc(servicesctrl.MetricProduceFailureCountKey)
@@ -565,21 +552,16 @@ func (p *ProducerCChain) blockProcessor(pc *producerCChainContainer, client *mod
 				continue
 			}
 
-			var blockTime int64
+			var blockTimeSecs int64
 			if blContainer.Block.Number().Cmp(common.Big0) == 0 {
-				blockTime = int64(p.sc.GenesisContainer.Time)
+				blockTimeSecs = int64(p.sc.GenesisContainer.Time)
 			} else {
-				blockTime = int64(blContainer.Block.Time())
+				blockTimeSecs = int64(blContainer.Block.Time())
 			}
+			blockTime := time.Unix(blockTimeSecs, 0).UTC()
 
-			localBlockObject := &localBlockObject{blockContainer: blContainer, time: time.Unix(blockTime, 0).UTC()}
+			localBlockObject := &localBlockObject{blockContainer: blContainer, time: blockTime}
 			err = p.processWork(conns, localBlockObject)
-			if err != nil {
-				blockWork.errs.SetValue(err)
-				continue
-			}
-
-			err = p.updateBlock(conns, blockWork.blockNumber, localBlockObject.time)
 			if err != nil {
 				blockWork.errs.SetValue(err)
 				continue

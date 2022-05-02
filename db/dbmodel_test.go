@@ -50,11 +50,11 @@ func TestTransaction(t *testing.T) {
 	}
 	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
 
-	err = p.InsertTransactions(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err := p.QueryTransactions(ctx, rawDBConn.NewSession(stream), v)
+	fv, err := p.QueryTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
@@ -70,11 +70,11 @@ func TestTransaction(t *testing.T) {
 	v.Txfee = 2
 	v.Genesis = false
 	v.NetworkID = 2
-	err = p.InsertTransactions(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err = p.QueryTransactions(ctx, rawDBConn.NewSession(stream), v)
+	fv, err = p.QueryTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
@@ -555,6 +555,8 @@ func TestCvmBlocks(t *testing.T) {
 
 	v := &CvmBlocks{}
 	v.Block = "1"
+	v.Serialization = []byte("{}")
+	v.Hash = "0x"
 	v.CreatedAt = tm
 
 	stream := &dbr.NullEventReceiver{}
@@ -569,7 +571,7 @@ func TestCvmBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err := p.QueryCvmBlocks(ctx, rawDBConn.NewSession(stream), v)
+	fv, err := p.QueryCvmBlock(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
@@ -642,21 +644,14 @@ func TestCvmAddresses(t *testing.T) {
 func TestCvmTransactions(t *testing.T) {
 	p := NewPersist()
 	ctx := context.Background()
-	tm := time.Now().UTC().Truncate(1 * time.Second)
-	txtime := time.Now().UTC().Truncate(1 * time.Second).Add(-1 * time.Hour)
+	tm := time.Now().UTC().Truncate(1 * time.Second).Add(-1 * time.Hour)
 
-	v := &CvmTransactions{}
-	v.ID = "id1"
+	v := &CvmTransactionsAtomic{}
 	v.TransactionID = "trid1"
 	v.Type = models.CChainIn
-	v.BlockchainID = "bid1"
+	v.ChainID = "bid1"
 	v.Block = "1"
 	v.CreatedAt = tm
-	v.Serialization = []byte("test123")
-	v.TxTime = txtime
-	v.Nonce = 10
-	v.Hash = "h1"
-	v.ParentHash = "ph1"
 
 	stream := &dbr.NullEventReceiver{}
 
@@ -664,13 +659,13 @@ func TestCvmTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal("db fail", err)
 	}
-	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableCvmTransactions).Exec()
+	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableCvmTransactionsAtomic).Exec()
 
-	err = p.InsertCvmTransactions(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertCvmTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err := p.QueryCvmTransactions(ctx, rawDBConn.NewSession(stream), v)
+	fv, err := p.QueryCvmTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
@@ -678,31 +673,23 @@ func TestCvmTransactions(t *testing.T) {
 		t.Fatal("compare fail")
 	}
 
-	txtime2 := time.Now().UTC().Truncate(1 * time.Second).Add(-1 * time.Hour)
+	tm = time.Now().UTC().Truncate(1 * time.Second).Add(-1 * time.Hour)
 
 	v.Type = models.CchainOut
 	v.TransactionID = "trid2"
-	v.BlockchainID = "bid2"
+	v.ChainID = "bid2"
 	v.Block = "2"
 	v.CreatedAt = tm
-	v.Serialization = []byte("test456")
-	v.TxTime = txtime2
-	v.Nonce = 11
-	v.Hash = "h2"
-	v.ParentHash = "ph2"
 
-	err = p.InsertCvmTransactions(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertCvmTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err = p.QueryCvmTransactions(ctx, rawDBConn.NewSession(stream), v)
+	fv, err = p.QueryCvmTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
-	if string(fv.Serialization) != "test456" {
-		t.Fatal("compare fail")
-	}
-	if !fv.TxTime.Equal(txtime2) {
+	if !fv.CreatedAt.Equal(tm) {
 		t.Fatal("compare fail")
 	}
 	if fv.TransactionID != "trid2" {
@@ -1500,6 +1487,8 @@ func TestCvmTransactionsReceipt(t *testing.T) {
 
 	v := &CvmTransactionsReceipt{}
 	v.Hash = "h1"
+	v.Status = 1
+	v.GasUsed = 123
 	v.Serialization = []byte("bits1")
 	v.CreatedAt = tm
 

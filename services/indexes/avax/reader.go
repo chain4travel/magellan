@@ -21,17 +21,14 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
 	corethType "github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/hashing"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
-	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/chain4travel/magellan/servicesctrl"
@@ -1056,162 +1053,48 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		return nil, err
 	}
 
-	type Row struct {
-		Serialization []byte
-	}
-
-	rows := []Row{}
-
 	idInt, ok := big.NewInt(0).SetString(p.ID, 10)
-	if idInt != nil && ok {
-		_, err = dbRunner.
-			Select("serialization").
-			From("cvm_transactions").
+	if !ok {
+		err = dbRunner.
+			Select("MAX(id)").
+			From(db.TableCvmBlocks).
 			Where("block="+idInt.String()).
 			Limit(1).
-			LoadContext(ctx, &rows)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		h := p.ID
-		if !strings.HasPrefix(p.ID, "0x") {
-			h = "0x" + h
-		}
-
-		sq := dbRunner.
-			Select("block").
-			From("cvm_transactions_txdata").
-			Where("hash=? or rto_addr=?", h, h)
-
-		_, err = dbRunner.
-			Select("serialization").
-			From("cvm_transactions").
-			Where("hash=? or block in ?",
-				h,
-				dbRunner.Select("block").From(sq.As("sq")),
-			).
-			OrderDesc("block").
-			Limit(1).
-			LoadContext(ctx, &rows)
+			LoadOneContext(ctx, &idInt)
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	if len(rows) == 0 {
-		return []byte(""), nil
-	}
-
-	row := rows[0]
 
 	// copy of the Block object for export to json
 	type BlockExport struct {
-		BlockNumber    string                   `json:"blockNumber"`
-		BlockHash      string                   `json:"blockHash"`
-		BlockID        string                   `json:"blockID"`
-		Header         corethType.Header        `json:"header"`
-		Uncles         []corethType.Header      `json:"uncles"`
-		Version        uint32                   `json:"version"`
-		BlockExtraData []byte                   `json:"blockExtraData"`
-		BlockExtraID   string                   `json:"blockExtraID"`
-		Txs            []corethType.Transaction `json:"transactions,omitempty"`
+		Hash         string                     `json:"hash"`
+		Header       corethType.Header          `json:"header"`
+		Transactions []*models.CTransactionData `json:"transactions"`
 	}
 
-	unserializedBlock, err := modelsc.Unmarshal(row.Serialization)
+	// Load the block header
+	cvmBlock := &db.CvmBlocks{Block: idInt.String()}
+	cvmBlock, err = r.sc.Persist.QueryCvmBlock(ctx, dbRunner, cvmBlock)
 	if err != nil {
 		return nil, err
 	}
 
-	txIDs := ""
-	if len(unserializedBlock.BlockExtraData) != 0 {
-		txID, err := ids.ToID(hashing.ComputeHash256(unserializedBlock.BlockExtraData))
-		if err != nil {
-			return nil, err
-		}
-		txIDs = txID.String()
-	}
+	block := BlockExport{Hash: cvmBlock.Hash}
 
-	blockHash := unserializedBlock.Header.Hash()
-	hID, err := ids.ToID(blockHash[:])
+	err = block.Header.UnmarshalJSON(cvmBlock.Serialization)
 	if err != nil {
 		return nil, err
 	}
 
-	block := &BlockExport{
-		BlockNumber:    unserializedBlock.Header.Number.String(),
-		BlockHash:      blockHash.String(),
-		BlockID:        hID.String(),
-		Header:         unserializedBlock.Header,
-		Uncles:         unserializedBlock.Uncles,
-		Version:        unserializedBlock.Version,
-		BlockExtraData: unserializedBlock.BlockExtraData,
-		BlockExtraID:   txIDs,
-		Txs:            unserializedBlock.Txs,
-	}
-
-	type RowData struct {
-		Idx           uint64
-		Serialization []byte
-	}
-	rowsData := []RowData{}
-
-	_, err = dbRunner.
-		Select(
-			"idx",
-			"serialization",
-		).
-		From("cvm_transactions_txdata").
-		Where("block="+block.Header.Number.String()).
-		OrderAsc("idx").
-		LoadContext(ctx, &rowsData)
+	// Load Transactions and signatures
+	cTransactionList, err := r.ListCTransactions(ctx, &params.ListCTransactionsParams{BlockStart: idInt, BlockEnd: idInt})
 	if err != nil {
 		return nil, err
 	}
-
-	block.Txs = make([]corethType.Transaction, 0, len(rowsData))
-	for _, rowData := range rowsData {
-		var tr corethType.Transaction
-		err := tr.UnmarshalJSON(rowData.Serialization)
-		if err != nil {
-			return nil, err
-		}
-		block.Txs = append(block.Txs, tr)
-	}
+	block.Transactions = cTransactionList.Transactions
 
 	return json.Marshal(block)
-}
-
-func (r *Reader) ETxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, error) {
-	dbRunner, err := r.conns.DB().NewSession("etx_data", cfg.RequestTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	type Row struct {
-		Serialization []byte
-	}
-	rows := []Row{}
-
-	idInt, ok := big.NewInt(0).SetString(p.ID, 10)
-	if idInt != nil && ok {
-		_, err = dbRunner.
-			Select("serialization").
-			From(db.TableCvmTransactions).
-			Where("block="+idInt.String()).
-			LoadContext(ctx, &rows)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(rows) == 0 {
-		return []byte(""), nil
-	}
-
-	row := rows[0]
-
-	return r.cChainCconsumer.ParseJSON(row.Serialization)
 }
 
 func (r *Reader) RawTransaction(ctx context.Context, id ids.ID) (*models.RawTx, error) {

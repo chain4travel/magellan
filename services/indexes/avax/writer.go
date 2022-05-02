@@ -171,7 +171,7 @@ func (w *Writer) InsertTransactionBase(
 		NetworkID:              networkID,
 	}
 
-	return ctx.Persist().InsertTransactions(ctx.Ctx(), ctx.DB(), t, cfg.PerformUpdates)
+	return ctx.Persist().InsertTransactionsAtomic(ctx.Ctx(), ctx.DB(), t, cfg.PerformUpdates)
 }
 
 func (w *Writer) InsertTransactionIns(

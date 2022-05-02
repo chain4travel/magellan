@@ -80,16 +80,16 @@ func TestInsertTxInternalExport(t *testing.T) {
 
 	tx.UnsignedAtomicTx = extx
 	header := types.Header{}
-	block := &modelsc.Block{Header: header}
+	block := &modelsc.Block{Header: header, BlockExtraData: tx.Bytes()}
 
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))
-	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
-	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, tx.Bytes(), block)
+	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
+	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, block)
 	if err != nil {
 		t.Fatal("insert failed", err)
 	}
-	if len(persist.CvmTransactions) != 1 {
+	if len(persist.CvmTransactionsAtomic) != 1 {
 		t.Fatal("insert failed")
 	}
 	if len(persist.Outputs) != 1 {
@@ -112,16 +112,16 @@ func TestInsertTxInternalImport(t *testing.T) {
 
 	tx.UnsignedAtomicTx = extx
 	header := types.Header{}
-	block := &modelsc.Block{Header: header}
+	block := &modelsc.Block{Header: header, BlockExtraData: tx.Bytes()}
 
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))
-	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist)
-	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, tx.Bytes(), block)
+	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
+	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, block)
 	if err != nil {
 		t.Fatal("insert failed", err)
 	}
-	if len(persist.CvmTransactions) != 1 {
+	if len(persist.CvmTransactionsAtomic) != 1 {
 		t.Fatal("insert failed")
 	}
 	if len(persist.CvmAddresses) != 1 {

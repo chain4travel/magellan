@@ -36,7 +36,7 @@ const (
 	TableTransactionsEpochs               = "transactions_epoch"
 	TableCvmAddresses                     = "cvm_addresses"
 	TableCvmBlocks                        = "cvm_blocks"
-	TableCvmTransactions                  = "cvm_transactions"
+	TableCvmTransactionsAtomic            = "cvm_transactions_atomic"
 	TableCvmTransactionsTxdata            = "cvm_transactions_txdata"
 	TablePvmBlocks                        = "pvm_blocks"
 	TableRewards                          = "rewards"
@@ -60,12 +60,12 @@ const (
 )
 
 type Persist interface {
-	QueryTransactions(
+	QueryTransactionsAtomic(
 		context.Context,
 		dbr.SessionRunner,
 		*Transactions,
 	) (*Transactions, error)
-	InsertTransactions(
+	InsertTransactionsAtomic(
 		context.Context,
 		dbr.SessionRunner,
 		*Transactions,
@@ -162,7 +162,7 @@ type Persist interface {
 		bool,
 	) error
 
-	QueryCvmBlocks(
+	QueryCvmBlock(
 		context.Context,
 		dbr.SessionRunner,
 		*CvmBlocks,
@@ -185,15 +185,15 @@ type Persist interface {
 		bool,
 	) error
 
-	QueryCvmTransactions(
+	QueryCvmTransactionsAtomic(
 		context.Context,
 		dbr.SessionRunner,
-		*CvmTransactions,
-	) (*CvmTransactions, error)
-	InsertCvmTransactions(
+		*CvmTransactionsAtomic,
+	) (*CvmTransactionsAtomic, error)
+	InsertCvmTransactionsAtomic(
 		context.Context,
 		dbr.SessionRunner,
-		*CvmTransactions,
+		*CvmTransactionsAtomic,
 		bool,
 	) error
 
@@ -480,7 +480,7 @@ type Transactions struct {
 	CreatedAt              time.Time
 }
 
-func (p *persist) QueryTransactions(
+func (p *persist) QueryTransactionsAtomic(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	q *Transactions,
@@ -502,7 +502,7 @@ func (p *persist) QueryTransactions(
 	return v, err
 }
 
-func (p *persist) InsertTransactions(
+func (p *persist) InsertTransactionsAtomic(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	v *Transactions,
@@ -1051,11 +1051,16 @@ func (p *persist) InsertTransactionsEpoch(
 }
 
 type CvmBlocks struct {
-	Block     string
-	CreatedAt time.Time
+	Block         string
+	Hash          string
+	ChainID       string
+	EvmTx         int16
+	AtomicTx      int16
+	Serialization []byte
+	CreatedAt     time.Time
 }
 
-func (p *persist) QueryCvmBlocks(
+func (p *persist) QueryCvmBlock(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	q *CvmBlocks,
@@ -1063,6 +1068,11 @@ func (p *persist) QueryCvmBlocks(
 	v := &CvmBlocks{}
 	err := sess.Select(
 		"block",
+		"hash",
+		"chain_id",
+		"evm_tx",
+		"atomic_tx",
+		"serialization",
 		"created_at",
 	).From(TableCvmBlocks).
 		Where("block="+q.Block).
@@ -1077,8 +1087,8 @@ func (p *persist) InsertCvmBlocks(
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmBlocks+" (block,created_at) values("+v.Block+",?)",
-			v.CreatedAt).
+		InsertBySql("insert into "+TableCvmBlocks+" (block,hash,chain_id,evm_tx,atomic_tx,serialization,created_at) values("+v.Block+",?,?,?,?,?,?)",
+			v.Hash, v.ChainID, v.EvmTx, v.AtomicTx, v.Serialization, v.CreatedAt).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmBlocks, false, err)
@@ -1162,65 +1172,53 @@ func (p *persist) InsertCvmAddresses(
 	return nil
 }
 
-type CvmTransactions struct {
-	ID            string
+type CvmTransactionsAtomic struct {
 	TransactionID string
-	Type          models.CChainType
-	BlockchainID  string
 	Block         string
+	ChainID       string
+	Type          models.CChainType
 	CreatedAt     time.Time
-	Serialization []byte
-	TxTime        time.Time
-	Nonce         uint64
-	Hash          string
-	ParentHash    string
 }
 
-func (p *persist) QueryCvmTransactions(
+func (p *persist) QueryCvmTransactionsAtomic(
 	ctx context.Context,
 	sess dbr.SessionRunner,
-	q *CvmTransactions,
-) (*CvmTransactions, error) {
-	v := &CvmTransactions{}
+	q *CvmTransactionsAtomic,
+) (*CvmTransactionsAtomic, error) {
+	v := &CvmTransactionsAtomic{}
 	err := sess.Select(
-		"id",
 		"transaction_id",
-		"type",
-		"blockchain_id",
 		"cast(block as char) as block",
+		"chain_id",
+		"type",
 		"created_at",
-		"serialization",
-		"tx_time",
-		"nonce",
-		"hash",
-		"parent_hash",
-	).From(TableCvmTransactions).
-		Where("id=?", q.ID).
+	).From(TableCvmTransactionsAtomic).
+		Where("transaction_id=?", q.TransactionID).
 		LoadOneContext(ctx, v)
 	return v, err
 }
 
-func (p *persist) InsertCvmTransactions(
+func (p *persist) InsertCvmTransactionsAtomic(
 	ctx context.Context,
 	sess dbr.SessionRunner,
-	v *CvmTransactions,
+	v *CvmTransactionsAtomic,
 	upd bool,
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmTransactions+" (id,transaction_id,type,blockchain_id,created_at,block,serialization,tx_time,nonce,hash,parent_hash) values(?,?,?,?,?,"+v.Block+",?,?,?,?,?)",
-			v.ID, v.TransactionID, v.Type, v.BlockchainID, v.CreatedAt, v.Serialization, v.TxTime, v.Nonce, v.Hash, v.ParentHash).
+		InsertBySql("insert into "+TableCvmTransactionsAtomic+" (transaction_id,block,chain_id,type,created_at) values(?,"+v.Block+",?,?,?)",
+			v.TransactionID, v.ChainID, v.Type, v.CreatedAt).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
-		return EventErr(TableCvmTransactions, false, err)
+		return EventErr(TableCvmTransactionsAtomic, false, err)
 	}
 	if upd {
 		_, err = sess.
-			UpdateBySql("update "+TableCvmTransactions+" set transaction_id=?,type=?,blockchain_id=?,block="+v.Block+",serialization=?,tx_time=?,nonce=?,hash=?,parent_hash=?,created_at=? where id=?",
-				v.TransactionID, v.Type, v.BlockchainID, v.Serialization, v.TxTime, v.Nonce, v.Hash, v.ParentHash, v.CreatedAt, v.ID).
+			UpdateBySql("update "+TableCvmTransactionsAtomic+" set block="+v.Block+",chain_id=?,type=?,created_at=? where transaction_id=?",
+				v.ChainID, v.Type, v.CreatedAt, v.TransactionID).
 			ExecContext(ctx)
 		if err != nil {
-			return EventErr(TableCvmTransactions, true, err)
+			return EventErr(TableCvmTransactionsAtomic, true, err)
 		}
 	}
 	return nil
@@ -2269,6 +2267,8 @@ func (p *persist) InsertKeyValueStore(
 
 type CvmTransactionsReceipt struct {
 	Hash          string
+	Status        uint16
+	GasUsed       uint64
 	Serialization []byte
 	CreatedAt     time.Time
 }
@@ -2281,6 +2281,8 @@ func (p *persist) QueryCvmTransactionsReceipt(
 	v := &CvmTransactionsReceipt{}
 	err := sess.Select(
 		"hash",
+		"status",
+		"gas_used",
 		"serialization",
 		"created_at",
 	).From(TableCvmTransactionsReceipts).
@@ -2299,6 +2301,8 @@ func (p *persist) InsertCvmTransactionsReceipt(
 	_, err = sess.
 		InsertInto(TableCvmTransactionsReceipts).
 		Pair("hash", v.Hash).
+		Pair("status", v.Status).
+		Pair("gas_used", v.GasUsed).
 		Pair("serialization", v.Serialization).
 		Pair("created_at", v.CreatedAt).
 		ExecContext(ctx)
@@ -2308,6 +2312,8 @@ func (p *persist) InsertCvmTransactionsReceipt(
 	if upd {
 		_, err = sess.
 			Update(TableCvmTransactionsReceipts).
+			Set("status", v.Status).
+			Set("gas_used", v.GasUsed).
 			Set("serialization", v.Serialization).
 			Set("created_at", v.CreatedAt).
 			Where("hash=?", v.Hash).

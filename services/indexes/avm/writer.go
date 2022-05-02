@@ -182,7 +182,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 
 		job := conns.Stream().NewJob("bootstrap")
 		dbSess := conns.DB().NewSessionForEventReceiver(job)
-		cCtx := services.NewConsumerContext(ctx, dbSess, int64(platformGenesis.Timestamp), 0, persist)
+		cCtx := services.NewConsumerContext(ctx, dbSess, int64(platformGenesis.Timestamp), 0, persist, w.chainID)
 		err = w.insertGenesis(cCtx, createChainTx.GenesisData)
 		if err != nil {
 			return err
@@ -221,7 +221,7 @@ func (w *Writer) ConsumeConsensus(ctx context.Context, conns *utils.Connections,
 	}
 	defer dbTx.RollbackUnlessCommitted()
 
-	cCtx := services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist)
+	cCtx := services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist, c.ChainID())
 
 	for _, tx := range txs {
 		var txID ids.ID
@@ -270,7 +270,7 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, i servic
 	defer dbTx.RollbackUnlessCommitted()
 
 	// Ingest the tx and commit
-	err = w.insertTx(services.NewConsumerContext(ctx, dbTx, i.Timestamp(), i.Nanosecond(), persist), i.Body())
+	err = w.insertTx(services.NewConsumerContext(ctx, dbTx, i.Timestamp(), i.Nanosecond(), persist, i.ChainID()), i.Body())
 	if err != nil {
 		return err
 	}

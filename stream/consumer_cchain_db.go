@@ -187,7 +187,7 @@ func (c *consumerCChainDB) Consume(conns *utils.Connections, msg services.Consum
 	}
 
 	id := hashing.ComputeHash256(block.BlockExtraData)
-	nmsg := NewMessage(string(id), msg.ChainID(), block.BlockExtraData, msg.Timestamp(), msg.Nanosecond())
+	nmsg := NewMessage(string(id), msg.ChainID(), []byte{}, msg.Timestamp(), msg.Nanosecond())
 
 	rsleep := utils.NewRetrySleeper(1, 100*time.Millisecond, time.Second)
 	for {

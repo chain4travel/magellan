@@ -641,7 +641,7 @@ func collectCvmTransactions(ctx context.Context, dbRunner dbr.SessionRunner, txI
 	var cvmAddress []models.CvmOutput
 	_, err := dbRunner.Select(
 		"cvm_addresses.type",
-		"cvm_transactions.type as transaction_type",
+		"cvm_transactions_atomic.type as transaction_type",
 		"cvm_addresses.idx",
 		"cast(cvm_addresses.amount as char) as amount",
 		"cvm_addresses.nonce",
@@ -650,11 +650,11 @@ func collectCvmTransactions(ctx context.Context, dbRunner dbr.SessionRunner, txI
 		"cvm_addresses.address",
 		"cvm_addresses.asset_id",
 		"cvm_addresses.created_at",
-		"cvm_transactions.blockchain_id as chain_id",
-		"cvm_transactions.block",
+		"cvm_transactions_atomic.chain_id",
+		"cvm_transactions_atomic.block",
 	).
 		From("cvm_addresses").
-		Join("cvm_transactions", "cvm_addresses.transaction_id=cvm_transactions.transaction_id").
+		Join("cvm_transactions_atomic", "cvm_addresses.transaction_id=cvm_transactions_atomic.transaction_id").
 		Where("cvm_addresses.transaction_id IN ?", txIDs).
 		LoadContext(ctx, &cvmAddress)
 	if err != nil {
