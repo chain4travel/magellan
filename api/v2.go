@@ -26,6 +26,7 @@ import (
 	"github.com/gocraft/web"
 )
 
+const DefaultLimit = 1000
 const DefaultOffsetLimit = 10000
 
 type V2Context struct {
@@ -118,7 +119,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/atxdata/:id", (*V2Context).ATxData).
 		Get("/ptxdata/:id", (*V2Context).PTxData).
 		Get("/ctxdata/:id", (*V2Context).CTxData).
-		Get("/etxdata/:id", (*V2Context).ETxData).
+		Get("/cblocks", (*V2Context).ListCBlocks).
 		Get("/ctransactions", (*V2Context).ListCTransactions).
 		Get("/rawtransaction/:id", (*V2Context).RawTransaction).
 		Get("/cacheaddresscounts", (*V2Context).CacheAddressCounts).
@@ -333,6 +334,52 @@ func (c *V2Context) ListCTransactions(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForParams("list_ctransactions", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return c.avaxReader.ListCTransactions(ctx, p)
+		},
+	})
+}
+
+func (c *V2Context) ListCBlocks(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricCTransactionsMillis),
+		utils.NewCounterIncCollect(MetricCTransactionsCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.ListCBlocksParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	if p.ListParams.Limit > DefaultLimit {
+		c.WriteErr(w, 400, fmt.Errorf("invalid block limit"))
+		return
+	}
+
+	if p.TxLimit > DefaultLimit {
+		c.WriteErr(w, 400, fmt.Errorf("invalid tx limit"))
+		return
+	}
+
+	if p.ListParams.Offset > DefaultOffsetLimit {
+		c.WriteErr(w, 400, fmt.Errorf("invalid block offset"))
+		return
+	}
+
+	if p.TxOffset > DefaultOffsetLimit {
+		c.WriteErr(w, 400, fmt.Errorf("invalid tx offset"))
+		return
+	}
+
+	c.WriteCacheable(w, utils.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForParams("list_cblocks", p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.ListCBlocks(ctx, p)
 		},
 	})
 }
@@ -662,25 +709,6 @@ func (c *V2Context) CTxData(w web.ResponseWriter, r *web.Request) {
 	p.ID = id
 
 	b, err := c.avaxReader.CTxDATA(ctx, p)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-	WriteJSON(w, b)
-}
-
-func (c *V2Context) ETxData(w web.ResponseWriter, r *web.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.RequestTimeout)
-	defer cancel()
-	p := &params.TxDataParam{}
-	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-	id := r.PathParams["id"]
-	p.ID = id
-
-	b, err := c.avaxReader.ETxDATA(ctx, p)
 	if err != nil {
 		c.WriteErr(w, 400, err)
 		return

@@ -63,6 +63,50 @@ type CTransactionData struct {
 	Receipt *types.Receipt `json:"receipt"`
 }
 
+type CBlockHeaderBase struct {
+	Hash       string `json:"hash"`
+	Coinbase   string `json:"miner"`
+	Difficulty string `json:"difficulty"`
+	Number     string `json:"number"`
+	GasLimit   string `json:"gasLimit"`
+	GasUsed    string `json:"gasUsed"`
+	Time       string `json:"timestamp"`
+	BaseFee    string `json:"baseFeePerGas"`
+
+	ExtDataGasUsed string `json:"extDataGasUsed,omitempty"`
+	BlockGasCost   string `json:"blockGasCost,omitempty"`
+
+	EvmTx    int16 `json:"evmTx,omitempty"`
+	AtomicTx int16 `json:"atomicTx,omitempty"`
+}
+
+type CTransactionDataBase struct {
+	Type      string `json:"type"`
+	Block     string `json:"block"`
+	Index     string `json:"index"`
+	Hash      string `json:"hash"`
+	Nonce     string `json:"nonce"`
+	GasPrice  string `json:"gasPrice,omitempty"`
+	GasFeeCap string `json:"maxFeePerGas,omitempty"`
+	GasTipCap string `json:"maxPriorityFeePerGas,omitempty"`
+	Gas       string `json:"gas"`
+	Amount    string `json:"value"`
+	From      string `json:"from"`
+	To        string `json:"to,omitempty"`
+
+	CreatedAt string `json:"timestamp"`
+	Status    string `json:"status"`
+	GasUsed   string `json:"gasUsed"`
+}
+
+type CBlockList struct {
+	BlockCount       uint64 `json:"blockCount"`
+	TransactionCount uint64 `json:"transactionCount"`
+
+	Blocks       []*CBlockHeaderBase     `json:"blocks"`
+	Transactions []*CTransactionDataBase `json:"transactions"`
+}
+
 type CTransactionList struct {
 	Transactions []*CTransactionData
 	// StartTime is the calculated start time rounded to the nearest

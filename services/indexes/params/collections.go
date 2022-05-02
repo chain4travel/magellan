@@ -43,6 +43,8 @@ var (
 	_ Param = &ListAssetsParams{}
 	_ Param = &ListAddressesParams{}
 	_ Param = &ListOutputsParams{}
+	_ Param = &ListCTransactionsParams{}
+	_ Param = &ListBlocksParams{}
 )
 
 type SearchParams struct {
@@ -332,6 +334,52 @@ func (p *ListCTransactionsParams) CacheKey() []string {
 func (p *ListCTransactionsParams) Apply(b *dbr.SelectBuilder) *dbr.SelectBuilder {
 	p.ListParams.ApplyPk(db.TableCvmTransactionsTxdata, b, "hash", false)
 
+	return b
+}
+
+type ListCBlocksParams struct {
+	ListParams ListParams
+	TxLimit    int
+	TxOffset   int
+}
+
+func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
+	err = p.ListParams.ForValues(version, q)
+	if err != nil {
+		return err
+	}
+
+	p.TxLimit = 0
+	limits, ok := q[KeyLimit]
+	if ok && len(limits) > 1 {
+		if p.TxLimit, err = strconv.Atoi(limits[1]); err != nil {
+			return err
+		}
+	}
+
+	p.TxOffset = 0
+	offsets, ok := q[KeyOffset]
+	if ok && len(offsets) > 1 {
+		if p.TxOffset, err = strconv.Atoi(offsets[1]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *ListCBlocksParams) CacheKey() []string {
+	k := make([]string, 0, 2)
+
+	k = append(k,
+		CacheKey(KeyLimit, p.TxLimit),
+		CacheKey(KeyOffset, p.TxOffset),
+	)
+
+	return append(p.ListParams.CacheKey(), k...)
+}
+
+func (p *ListCBlocksParams) Apply(b *dbr.SelectBuilder) *dbr.SelectBuilder {
 	return b
 }
 

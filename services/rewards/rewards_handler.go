@@ -57,7 +57,7 @@ func (r *Handler) runTicker(sc *servicesctrl.Control, conns *utils.Connections) 
 		sc.Log.Info("stop")
 	}()
 
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(24 * time.Hour)
 
 	r.doneCh = make(chan struct{}, 1)
 
@@ -177,7 +177,7 @@ func (r *Handler) processRewardUtxos(rewardsUtxos [][]byte, createdAt time.Time)
 			return err
 		}
 
-		cCtx := services.NewConsumerContext(ctx, sess, createdAt.Unix(), int64(createdAt.Nanosecond()), r.perist)
+		cCtx := services.NewConsumerContext(ctx, sess, createdAt.Unix(), int64(createdAt.Nanosecond()), r.perist, r.cid.String())
 
 		_, _, err = r.writer.ProcessStateOut(
 			cCtx,

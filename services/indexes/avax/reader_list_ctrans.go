@@ -160,20 +160,7 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 			b.Where(db.TableCvmTransactionsTxdata + ".block >= " + p.BlockStart.String())
 		}
 		if p.BlockEnd != nil {
-			b.Where(db.TableCvmTransactionsTxdata + ".block < " + p.BlockEnd.String())
-		}
-		return b
-	}
-
-	blockrcptfilter := func(b *dbr.SelectStmt) *dbr.SelectStmt {
-		if p.BlockStart == nil && p.BlockEnd == nil {
-			return b
-		}
-		if p.BlockStart != nil {
-			b.Where(db.TableCvmTransactionsTxdata + ".block >= " + p.BlockStart.String())
-		}
-		if p.BlockEnd != nil {
-			b.Where(db.TableCvmTransactionsTxdata + ".block < " + p.BlockEnd.String())
+			b.Where(db.TableCvmTransactionsTxdata + ".block <= " + p.BlockEnd.String())
 		}
 		return b
 	}
@@ -203,10 +190,10 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 	if len(p.CAddresses) > 0 {
 		subqfrom := createdatefilter(
 			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
-				Where(db.TableCvmTransactionsTxdata+".from_addr in ?", p.CAddresses)),
+				Where(".from_addr in ?", p.CAddresses)),
 		)
 		subqto := createdatefilter(
-			blockrcptfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
+			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
 				Where("to_addr in ?", p.CAddresses)),
 		)
 		sq.
@@ -215,7 +202,7 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 			)
 	}
 
-	blockrcptfilter(sq)
+	blockfilter(sq)
 }
 
 func (r *Reader) getReceipts(ctx context.Context, dbRunner *dbr.Session, hashes []string, trItemsByHash map[string]*models.CTransactionData) error {
@@ -225,9 +212,7 @@ func (r *Reader) getReceipts(ctx context.Context, dbRunner *dbr.Session, hashes 
 	var err error
 	var txTransactionReceiptServices []*db.CvmTransactionsReceipt
 	_, err = dbRunner.Select(
-		"hash",
 		"serialization",
-		"created_at",
 	).From(db.TableCvmTransactionsReceipts).
 		Where("hash in ?", hashes).
 		LoadContext(ctx, &txTransactionReceiptServices)

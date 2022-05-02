@@ -128,6 +128,8 @@ func (c *Client) Close() {
 
 type TransactionReceipt struct {
 	Hash    string `json:"hash"`
+	Status  uint16 `json:"status"`
+	GasUsed uint64 `json:"gasUsed"`
 	Receipt []byte `json:"receipt"`
 }
 
@@ -168,6 +170,8 @@ func (c *Client) ReadBlock(blockNumber *big.Int, rpcTimeout time.Duration) (*Blo
 
 		txReceipts = append(txReceipts, &TransactionReceipt{
 			Hash:    txh,
+			Status:  uint16(result.Status),
+			GasUsed: result.GasUsed,
 			Receipt: receiptBits,
 		})
 	}

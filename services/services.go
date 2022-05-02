@@ -48,14 +48,16 @@ type ConsumerCtx struct {
 	db      dbr.SessionRunner
 	time    time.Time
 	persist db.Persist
+	chainID string
 }
 
-func NewConsumerContext(ctx context.Context, db dbr.SessionRunner, ts int64, nanosecond int64, persist db.Persist) ConsumerCtx {
+func NewConsumerContext(ctx context.Context, db dbr.SessionRunner, ts int64, nanosecond int64, persist db.Persist, chainID string) ConsumerCtx {
 	return ConsumerCtx{
 		ctx:     ctx,
 		db:      db,
 		time:    time.Unix(ts, nanosecond),
 		persist: persist,
+		chainID: chainID,
 	}
 }
 
@@ -63,3 +65,4 @@ func (ic *ConsumerCtx) Time() time.Time       { return ic.time }
 func (ic *ConsumerCtx) DB() dbr.SessionRunner { return ic.db }
 func (ic *ConsumerCtx) Ctx() context.Context  { return ic.ctx }
 func (ic *ConsumerCtx) Persist() db.Persist   { return ic.persist }
+func (ic *ConsumerCtx) ChainID() string       { return ic.chainID }

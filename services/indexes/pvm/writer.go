@@ -269,7 +269,7 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 	defer dbTx.RollbackUnlessCommitted()
 
 	// Consume the tx and commit
-	err = w.indexBlock(services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist), c.Body())
+	err = w.indexBlock(services.NewConsumerContext(ctx, dbTx, c.Timestamp(), c.Nanosecond(), persist, c.ChainID()), c.Body())
 	if err != nil {
 		return err
 	}
@@ -295,7 +295,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		job  = conns.Stream().NewJob("bootstrap")
 		db   = conns.DB().NewSessionForEventReceiver(job)
 		errs = wrappers.Errs{}
-		cCtx = services.NewConsumerContext(ctx, db, int64(platformGenesis.Timestamp), 0, persist)
+		cCtx = services.NewConsumerContext(ctx, db, int64(platformGenesis.Timestamp), 0, persist, w.chainID)
 	)
 
 	for idx, utxo := range platformGenesis.UTXOs {
