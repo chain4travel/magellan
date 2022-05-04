@@ -477,8 +477,8 @@ type Transactions struct {
 	Txfee                  uint64
 	NetworkID              uint32
 	Genesis                bool
-	CreatedAt              time.Time
 	Status                 uint8
+	CreatedAt              time.Time
 }
 
 func (p *persist) QueryTransactions(

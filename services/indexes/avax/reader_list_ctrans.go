@@ -212,6 +212,7 @@ func (r *Reader) getReceipts(ctx context.Context, dbRunner *dbr.Session, hashes 
 	var err error
 	var txTransactionReceiptServices []*db.CvmTransactionsReceipt
 	_, err = dbRunner.Select(
+		"hash",
 		"serialization",
 	).From(db.TableCvmTransactionsReceipts).
 		Where("hash in ?", hashes).
