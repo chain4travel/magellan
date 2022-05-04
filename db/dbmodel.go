@@ -60,12 +60,12 @@ const (
 )
 
 type Persist interface {
-	QueryTransactionsAtomic(
+	QueryTransactions(
 		context.Context,
 		dbr.SessionRunner,
 		*Transactions,
 	) (*Transactions, error)
-	InsertTransactionsAtomic(
+	InsertTransactions(
 		context.Context,
 		dbr.SessionRunner,
 		*Transactions,
@@ -478,9 +478,10 @@ type Transactions struct {
 	NetworkID              uint32
 	Genesis                bool
 	CreatedAt              time.Time
+	Status                 uint8
 }
 
-func (p *persist) QueryTransactionsAtomic(
+func (p *persist) QueryTransactions(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	q *Transactions,
@@ -496,13 +497,14 @@ func (p *persist) QueryTransactionsAtomic(
 		"txfee",
 		"genesis",
 		"network_id",
+		"status",
 	).From(TableTransactions).
 		Where("id=?", q.ID).
 		LoadOneContext(ctx, v)
 	return v, err
 }
 
-func (p *persist) InsertTransactionsAtomic(
+func (p *persist) InsertTransactions(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	v *Transactions,
@@ -520,6 +522,7 @@ func (p *persist) InsertTransactionsAtomic(
 		Pair("txfee", v.Txfee).
 		Pair("genesis", v.Genesis).
 		Pair("network_id", v.NetworkID).
+		Pair("status", v.Status).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableTransactions, false, err)
@@ -535,6 +538,7 @@ func (p *persist) InsertTransactionsAtomic(
 			Set("genesis", v.Genesis).
 			Set("network_id", v.NetworkID).
 			Set("created_at", v.CreatedAt).
+			Set("Status", v.Status).
 			Where("id = ?", v.ID).
 			ExecContext(ctx)
 		if err != nil {

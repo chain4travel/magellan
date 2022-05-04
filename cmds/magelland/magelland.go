@@ -235,7 +235,9 @@ func createStreamCmds(sc *servicesctrl.Control, config *cfg.Config, runErr *erro
 
 func producerFactories(sc *servicesctrl.Control, cfg *cfg.Config) []utils.ListenCloser {
 	var factories []utils.ListenCloser
-	factories = append(factories, stream.NewProducerCChain(sc, *cfg))
+	if !sc.IsCChainIndex {
+		factories = append(factories, stream.NewProducerCChain(sc, *cfg))
+	}
 	for _, v := range cfg.Chains {
 		switch v.VMType {
 		case consumers.IndexerAVMName:

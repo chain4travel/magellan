@@ -138,8 +138,8 @@ type IndexerFactoryControl struct {
 	doneCh chan struct{}
 }
 
-func (c *IndexerFactoryControl) updateTxPollStatus(conns *utils.Connections, txPoll *db.TxPool) error {
-	sess := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("update-txpoll-status"))
+func (c *IndexerFactoryControl) updateTxPoolStatus(conns *utils.Connections, txPoll *db.TxPool) error {
+	sess := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("update-txpool-status"))
 	ctx, cancelFn := context.WithTimeout(context.Background(), cfg.DefaultConsumeProcessWriteTimeout)
 	defer cancelFn()
 	return c.sc.Persist.UpdateTxPoolStatus(ctx, sess, txPoll)
@@ -168,7 +168,7 @@ func (c *IndexerFactoryControl) handleTxPool(_ int, conns *utils.Connections) {
 					continue
 				}
 				txd.TxPool.Processed = 1
-				err = c.updateTxPollStatus(conns, txd.TxPool)
+				err = c.updateTxPoolStatus(conns, txd.TxPool)
 				if err != nil {
 					if txd.Errs != nil {
 						txd.Errs.SetValue(err)

@@ -324,7 +324,7 @@ func (replay *dbReplay) startCchain(chain string, waitGroup *int64, worker utils
 		defer atomic.AddInt64(waitGroup, -1)
 		defer replay.counterWaits.Add(tn, -1)
 
-		job := replay.conns.Stream().NewJob("query-replay-txpoll")
+		job := replay.conns.Stream().NewJob("query-replay-txpool")
 		sess := replay.conns.DB().NewSessionForEventReceiver(job)
 
 		ctx := context.Background()
@@ -402,7 +402,7 @@ func (replay *dbReplay) startCchainRcpt(chain string, waitGroup *int64, worker u
 		defer atomic.AddInt64(waitGroup, -1)
 		defer replay.counterWaits.Add(tn, -1)
 
-		job := replay.conns.Stream().NewJob("query-replay-txpoll")
+		job := replay.conns.Stream().NewJob("query-replay-txpool")
 		sess := replay.conns.DB().NewSessionForEventReceiver(job)
 
 		ctx := context.Background()
@@ -470,7 +470,7 @@ func (replay *dbReplay) startConsensus(chain cfg.Chain, waitGroup *int64, worker
 		defer atomic.AddInt64(waitGroup, -1)
 		defer replay.counterWaits.Add(tn, -1)
 
-		job := replay.conns.Stream().NewJob("query-replay-txpoll")
+		job := replay.conns.Stream().NewJob("query-replay-txpool")
 		sess := replay.conns.DB().NewSessionForEventReceiver(job)
 
 		ctx := context.Background()
@@ -538,7 +538,7 @@ func (replay *dbReplay) startDecision(chain cfg.Chain, waitGroup *int64, worker 
 		defer atomic.AddInt64(waitGroup, -1)
 		defer replay.counterWaits.Add(tn, -1)
 
-		job := replay.conns.Stream().NewJob("query-replay-txpoll")
+		job := replay.conns.Stream().NewJob("query-replay-txpool")
 		sess := replay.conns.DB().NewSessionForEventReceiver(job)
 
 		ctx := context.Background()

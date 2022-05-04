@@ -81,7 +81,7 @@ func NewPersistMock() *MockPersist {
 	}
 }
 
-func (m *MockPersist) QueryTransactionsAtomic(ctx context.Context, runner dbr.SessionRunner, v *Transactions) (*Transactions, error) {
+func (m *MockPersist) QueryTransactions(ctx context.Context, runner dbr.SessionRunner, v *Transactions) (*Transactions, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	if v, present := m.Transactions[v.ID]; present {
@@ -90,7 +90,7 @@ func (m *MockPersist) QueryTransactionsAtomic(ctx context.Context, runner dbr.Se
 	return nil, nil
 }
 
-func (m *MockPersist) InsertTransactionsAtomic(ctx context.Context, runner dbr.SessionRunner, v *Transactions, b bool) error {
+func (m *MockPersist) InsertTransactions(ctx context.Context, runner dbr.SessionRunner, v *Transactions, b bool) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	nv := &Transactions{}

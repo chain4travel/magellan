@@ -41,6 +41,7 @@ func TestTransaction(t *testing.T) {
 	v.Genesis = true
 	v.CreatedAt = tm
 	v.NetworkID = 1
+	v.Status = 1
 
 	stream := &dbr.NullEventReceiver{}
 
@@ -50,11 +51,11 @@ func TestTransaction(t *testing.T) {
 	}
 	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
 
-	err = p.InsertTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertTransactions(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err := p.QueryTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
+	fv, err := p.QueryTransactions(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
@@ -70,11 +71,11 @@ func TestTransaction(t *testing.T) {
 	v.Txfee = 2
 	v.Genesis = false
 	v.NetworkID = 2
-	err = p.InsertTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v, true)
+	err = p.InsertTransactions(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	fv, err = p.QueryTransactionsAtomic(ctx, rawDBConn.NewSession(stream), v)
+	fv, err = p.QueryTransactions(ctx, rawDBConn.NewSession(stream), v)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}

@@ -78,9 +78,9 @@ func TestIndexBootstrap(t *testing.T) {
 	transaction := &db.Transactions{
 		ID: string(txList.Transactions[0].ID),
 	}
-	transaction, _ = persist.QueryTransactionsAtomic(context.Background(), session, transaction)
+	transaction, _ = persist.QueryTransactions(context.Background(), session, transaction)
 	transaction.Txfee = 101
-	_ = persist.InsertTransactionsAtomic(context.Background(), session, transaction, true)
+	_ = persist.InsertTransactions(context.Background(), session, transaction, true)
 
 	txList, _ = reader.ListTransactions(context.Background(), &params.ListTransactionsParams{
 		ChainIDs: []string{string(txList.Transactions[0].ChainID)},
@@ -307,7 +307,7 @@ func TestTransactionNext(t *testing.T) {
 		ChainID:   "1",
 		CreatedAt: tnow1,
 	}
-	_ = persist.InsertTransactionsAtomic(ctx, session, tx1, false)
+	_ = persist.InsertTransactions(ctx, session, tx1, false)
 
 	tnow2 := tnow1.Add(time.Second)
 	tx2 := &db.Transactions{
@@ -315,7 +315,7 @@ func TestTransactionNext(t *testing.T) {
 		ChainID:   "1",
 		CreatedAt: tnow2,
 	}
-	_ = persist.InsertTransactionsAtomic(ctx, session, tx2, false)
+	_ = persist.InsertTransactions(ctx, session, tx2, false)
 
 	tnow3 := tnow2.Add(time.Second)
 	tx3 := &db.Transactions{
@@ -323,7 +323,7 @@ func TestTransactionNext(t *testing.T) {
 		ChainID:   "1",
 		CreatedAt: tnow3,
 	}
-	_ = persist.InsertTransactionsAtomic(ctx, session, tx3, false)
+	_ = persist.InsertTransactions(ctx, session, tx3, false)
 
 	tnow4 := tnow3.Add(time.Second)
 	tx4 := &db.Transactions{
@@ -331,7 +331,7 @@ func TestTransactionNext(t *testing.T) {
 		ChainID:   "1",
 		CreatedAt: tnow4,
 	}
-	_ = persist.InsertTransactionsAtomic(ctx, session, tx4, false)
+	_ = persist.InsertTransactions(ctx, session, tx4, false)
 
 	tp := params.ListTransactionsParams{}
 	_ = tp.ForValues(0, url.Values{})
