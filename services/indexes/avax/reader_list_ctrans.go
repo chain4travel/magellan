@@ -226,7 +226,7 @@ func (r *Reader) getReceipts(ctx context.Context, dbRunner *dbr.Session, hashes 
 		if err != nil {
 			return err
 		}
-		trItemsByHash[txTransactionReceiptService.Hash].Receipt = txTransactionReceiptModel
+		trItemsByHash[txTransactionReceiptModel.TxHash.String()].Receipt = txTransactionReceiptModel
 	}
 	return nil
 }
