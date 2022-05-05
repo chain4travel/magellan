@@ -155,7 +155,7 @@ func TestCommonBlock(t *testing.T) {
 	persist := db.NewPersistMock()
 	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
-	err := writer.indexCommonBlock(cCtx, blkid, models.BlockTypeCommit, tx, []byte(""))
+	err := writer.indexCommonBlock(cCtx, blkid, models.BlockTypeCommit, tx, &models.BlockProposal{}, []byte(""))
 	if err != nil {
 		t.Fatal("insert failed", err)
 	}

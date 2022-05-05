@@ -25,8 +25,9 @@ import (
 )
 
 const (
-	DriverMysql = "mysql"
-	DriverNone  = ""
+	DriverMysql     = "mysql"
+	DriverNone      = ""
+	RequiredVersion = 43
 )
 
 // Conn is a wrapper around a dbr connection and a health stream
@@ -57,6 +58,10 @@ func (c *Conn) NewSession(name string, timeout time.Duration) (*dbr.Session, err
 		if _, err := session.Exec(fmt.Sprintf("SET @@MAX_STATEMENT_TIME=%d", timeout.Milliseconds())); err != nil {
 			return nil, err
 		}
+	}
+	var version int64
+	if err := session.QueryRow("SELECT version FROM migrate_schema").Scan(&version); err == nil && version < RequiredVersion {
+		return nil, fmt.Errorf("migration required")
 	}
 	return session, nil
 }

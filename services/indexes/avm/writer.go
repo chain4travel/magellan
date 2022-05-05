@@ -131,7 +131,7 @@ func (w *Writer) initCtx(tx *avm.Tx) {
 	}
 }
 
-func (w *Writer) ParseJSON(txBytes []byte) ([]byte, error) {
+func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]byte, error) {
 	tx, err := parseTx(w.codec, txBytes)
 	if err != nil {
 		return nil, err
