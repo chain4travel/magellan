@@ -43,7 +43,7 @@ type consumerDB struct {
 	topicName string
 }
 
-type serviceConsumerFactory func(uint32, string, string) (services.Consumer, error)
+type serviceConsumerFactory func(uint32, string, string, *cfg.Config) (services.Consumer, error)
 
 // NewConsumerFactory returns a processorFactory for the given service consumer
 func NewConsumerDBFactory(factory serviceConsumerFactory, eventType EventType) ProcessorFactoryChainDB {
@@ -76,7 +76,7 @@ func NewConsumerDBFactory(factory serviceConsumerFactory, eventType EventType) P
 		sc.InitConsumeMetrics()
 
 		var err error
-		c.consumer, err = factory(conf.NetworkID, chainVM, chainID)
+		c.consumer, err = factory(conf.NetworkID, chainVM, chainID, &conf)
 		if err != nil {
 			_ = c.Close()
 			return nil, err

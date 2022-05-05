@@ -394,7 +394,7 @@ type Persist interface {
 		dbr.SessionRunner,
 		*TxPool,
 	) error
-	UpdateTxPoolStatus(
+	RemoveTxPool(
 		context.Context,
 		dbr.SessionRunner,
 		*TxPool,
@@ -2153,7 +2153,6 @@ type TxPool struct {
 	ChainID       string
 	MsgKey        string
 	Serialization []byte
-	Processed     int
 	Topic         string
 	CreatedAt     time.Time
 }
@@ -2180,7 +2179,6 @@ func (p *persist) QueryTxPool(
 		"chain_id",
 		"msg_key",
 		"serialization",
-		"processed",
 		"topic",
 		"created_at",
 	).From(TableTxPool).
@@ -2202,7 +2200,6 @@ func (p *persist) InsertTxPool(
 		Pair("chain_id", v.ChainID).
 		Pair("msg_key", v.MsgKey).
 		Pair("serialization", v.Serialization).
-		Pair("processed", v.Processed).
 		Pair("topic", v.Topic).
 		Pair("created_at", v.CreatedAt).
 		ExecContext(ctx)
@@ -2213,15 +2210,14 @@ func (p *persist) InsertTxPool(
 	return nil
 }
 
-func (p *persist) UpdateTxPoolStatus(
+func (p *persist) RemoveTxPool(
 	ctx context.Context,
 	sess dbr.SessionRunner,
 	v *TxPool,
 ) error {
 	var err error
 	_, err = sess.
-		Update(TableTxPool).
-		Set("processed", v.Processed).
+		DeleteFrom(TableTxPool).
 		Where("id=?", v.ID).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {

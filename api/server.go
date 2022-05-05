@@ -94,17 +94,13 @@ func newRouter(sc *servicesctrl.Control, conf cfg.Config) (*web.Router, error) {
 
 	consumersmap := make(map[string]services.Consumer)
 	for chid, chain := range conf.Chains {
-		consumer, err := consumers.IndexerConsumer(conf.NetworkID, chain.VMType, chid)
+		consumer, err := consumers.IndexerConsumer(conf.NetworkID, chain.VMType, chid, &conf)
 		if err != nil {
 			return nil, err
 		}
 		consumersmap[chid] = consumer
 	}
-	consumercchain, err := consumers.IndexerConsumerCChain(conf.NetworkID, conf.CchainID)
-	if err != nil {
-		return nil, err
-	}
-	avaxReader, err := avax.NewReader(conf.NetworkID, connections, consumersmap, consumercchain, sc)
+	avaxReader, err := avax.NewReader(conf.NetworkID, connections, consumersmap, sc)
 	if err != nil {
 		return nil, err
 	}

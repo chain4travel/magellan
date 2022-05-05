@@ -164,10 +164,6 @@ type CvmOutput struct {
 	Block           string      `json:"block"`
 }
 
-type RawTx struct {
-	Tx string `json:"tx"`
-}
-
 type ChainCounts struct {
 	ChainID StringID `json:"chainID"`
 	Total   string   `json:"total"`

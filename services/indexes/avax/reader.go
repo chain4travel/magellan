@@ -15,7 +15,6 @@ package avax
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -65,26 +64,24 @@ var (
 )
 
 type Reader struct {
-	conns           *utils.Connections
-	sc              *servicesctrl.Control
-	avmLock         sync.RWMutex
-	networkID       uint32
-	chainConsumers  map[string]services.Consumer
-	cChainCconsumer services.ConsumerCChain
+	conns          *utils.Connections
+	sc             *servicesctrl.Control
+	avmLock        sync.RWMutex
+	networkID      uint32
+	chainConsumers map[string]services.Consumer
 
 	readerAggregate ReaderAggregate
 
 	doneCh chan struct{}
 }
 
-func NewReader(networkID uint32, conns *utils.Connections, chainConsumers map[string]services.Consumer, cChainCconsumer services.ConsumerCChain, sc *servicesctrl.Control) (*Reader, error) {
+func NewReader(networkID uint32, conns *utils.Connections, chainConsumers map[string]services.Consumer, sc *servicesctrl.Control) (*Reader, error) {
 	reader := &Reader{
-		conns:           conns,
-		sc:              sc,
-		networkID:       networkID,
-		chainConsumers:  chainConsumers,
-		cChainCconsumer: cChainCconsumer,
-		doneCh:          make(chan struct{}),
+		conns:          conns,
+		sc:             sc,
+		networkID:      networkID,
+		chainConsumers: chainConsumers,
+		doneCh:         make(chan struct{}),
 	}
 
 	err := reader.aggregateProcessor()
@@ -1017,13 +1014,13 @@ func (r *Reader) PTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 
 	row := rows[0]
 
-	// check if the proposer exists, and pull the serialization from the tx_pool.
+	// check if the proposer exists, and pull the serialization from pvm_blocks.
 	proposerrows := []Row{}
 
 	_, err = dbRunner.
-		Select(db.TableTxPool+".serialization").
+		Select(db.TablePvmBlocks+".serialization").
 		From(db.TablePvmProposer).
-		Join(db.TableTxPool, db.TablePvmProposer+".proposer_blk_id = "+db.TableTxPool+".msg_key").
+		Join(db.TablePvmBlocks, db.TablePvmProposer+".blk_id = "+db.TablePvmBlocks+".id").
 		Where(db.TablePvmProposer+".blk_id=?", row.ID).
 		LoadContext(ctx, &proposerrows)
 	if err != nil {
@@ -1044,6 +1041,18 @@ func (r *Reader) PTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
+	// add missing data if required:
+	/*
+		"proposer": {
+		    "tx": "C9zSRcueSCkpdX82FMA6RmK9NFyNXNnXLbyNFHY6eiLdtskmM",
+		    "parentID": "x2wJRJFB9UGh3BbftSjXiLvsP9Q8pHz1wGGtoQbqbSHLmhgkZ",
+		    "pChainHeight": 0,
+		    "proposer": "111111111111111111116DBWJs",
+		    "timeStamp": "2022-05-03T23:08:16+02:00"
+		  },
+		  "proposerType": "*block.statelessBlock"
+	*/
+
 	return j, nil
 }
 
@@ -1095,32 +1104,6 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 	block.Transactions = cTransactionList.Transactions
 
 	return json.Marshal(block)
-}
-
-func (r *Reader) RawTransaction(ctx context.Context, id ids.ID) (*models.RawTx, error) {
-	dbRunner, err := r.conns.DB().NewSession("raw-transaction", cfg.RequestTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	type SerialData struct {
-		Serialization []byte
-	}
-
-	serialData := SerialData{}
-
-	err = dbRunner.
-		Select("serialization").
-		From(db.TableTxPool).
-		Where("msg_key=?", id.String()).
-		LoadOneContext(ctx, &serialData)
-	if err != nil {
-		return nil, err
-	}
-
-	rawTx := models.RawTx{Tx: "0x" + hex.EncodeToString(serialData.Serialization)}
-
-	return &rawTx, nil
 }
 
 func uint64Ptr(u64 uint64) *uint64 {

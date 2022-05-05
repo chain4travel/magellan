@@ -35,38 +35,36 @@ import (
 const (
 	IndexerAVMName = "avm"
 	IndexerPVMName = "pvm"
+	IndexerCVMName = "cvm"
 
 	MaximumRecordsRead = 10000
-	MaxTheads          = 10
+	MaxTheads          = 1
 
 	IteratorTimeout = 3 * time.Minute
 )
 
-type ConsumerFactory func(uint32, string, string) (services.Consumer, error)
+type ConsumerFactory func(uint32, string, string, *cfg.Config) (services.Consumer, error)
 
-var IndexerConsumer = func(networkID uint32, chainVM string, chainID string) (indexer services.Consumer, err error) {
+var IndexerConsumer = func(networkID uint32, chainVM string, chainID string, conf *cfg.Config) (indexer services.Consumer, err error) {
 	switch chainVM {
 	case IndexerAVMName:
 		indexer, err = avm.NewWriter(networkID, chainID)
 	case IndexerPVMName:
 		indexer, err = pvm.NewWriter(networkID, chainID)
+	case IndexerCVMName:
+		indexer, err = cvm.NewWriter(networkID, chainID, conf)
 	default:
 		return nil, stream.ErrUnknownVM
 	}
 	return indexer, err
 }
 
-var IndexerConsumerCChain = func(networkID uint32, chainID string) (indexer services.ConsumerCChain, err error) {
-	return cvm.NewWriter(networkID, chainID)
-}
-
 type ConsumerDBFactory func(uint32, string, string) (stream.ProcessorFactoryChainDB, error)
 
 var IndexerDB = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeDecisions)
 var IndexerConsensusDB = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeConsensus)
-var IndexerCChainDB = stream.NewConsumerCChainDB
 
-func Bootstrap(sc *servicesctrl.Control, networkID uint32, chains cfg.Chains, factories []ConsumerFactory) error {
+func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, factories []ConsumerFactory) error {
 	if sc.IsDisableBootstrap {
 		return nil
 	}
@@ -99,9 +97,9 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, chains cfg.Chains, fa
 	errs := avlancheGoUtils.AtomicInterface{}
 
 	wg := sync.WaitGroup{}
-	for _, chain := range chains {
+	for _, chain := range conf.Chains {
 		for _, factory := range factories {
-			bootstrapfactory, err := factory(networkID, chain.VMType, chain.ID)
+			bootstrapfactory, err := factory(networkID, chain.VMType, chain.ID, conf)
 			if err != nil {
 				return err
 			}
@@ -138,11 +136,11 @@ type IndexerFactoryControl struct {
 	doneCh chan struct{}
 }
 
-func (c *IndexerFactoryControl) updateTxPoolStatus(conns *utils.Connections, txPoll *db.TxPool) error {
+func (c *IndexerFactoryControl) removeTxPool(conns *utils.Connections, txPool *db.TxPool) error {
 	sess := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("update-txpool-status"))
 	ctx, cancelFn := context.WithTimeout(context.Background(), cfg.DefaultConsumeProcessWriteTimeout)
 	defer cancelFn()
-	return c.sc.Persist.UpdateTxPoolStatus(ctx, sess, txPoll)
+	return c.sc.Persist.RemoveTxPool(ctx, sess, txPool)
 }
 
 func (c *IndexerFactoryControl) handleTxPool(_ int, conns *utils.Connections) {
@@ -167,8 +165,7 @@ func (c *IndexerFactoryControl) handleTxPool(_ int, conns *utils.Connections) {
 					}
 					continue
 				}
-				txd.TxPool.Processed = 1
-				err = c.updateTxPoolStatus(conns, txd.TxPool)
+				err = c.removeTxPool(conns, txd.TxPool)
 				if err != nil {
 					if txd.Errs != nil {
 						txd.Errs.SetValue(err)
@@ -267,12 +264,11 @@ func IndexerFactories(
 					"chain_id",
 					"msg_key",
 					"serialization",
-					"processed",
 					"topic",
 					"created_at",
 				).From(db.TableTxPool).
-					Where("processed=? and topic in ?", 0, topicNames).
-					OrderAsc("processed").OrderAsc("created_at").
+					Where("topic in ?", topicNames).
+					OrderAsc("created_at").
 					IterateContext(ctx)
 				if err != nil {
 					sc.Log.Warn("iter %v", err)

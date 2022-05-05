@@ -209,7 +209,6 @@ func (p *producerChainContainer) ProcessNextMessage() error {
 			ChainID:       p.chainID,
 			MsgKey:        id.String(),
 			Serialization: container.Bytes,
-			Processed:     0,
 			Topic:         p.topic,
 			CreatedAt:     time.Unix(container.Timestamp, 0),
 		}

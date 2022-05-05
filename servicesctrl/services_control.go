@@ -52,7 +52,6 @@ type Control struct {
 	IsAccumulateBalanceReader  bool
 	IsDisableBootstrap         bool
 	IsAggregateCache           bool
-	IsCChainIndex              bool
 	IndexedList                utils.IndexedList
 	LocalTxPool                chan *LocalTxPoolJob
 }
@@ -80,9 +79,6 @@ func (s *Control) Init(networkID uint32) error {
 	}
 	if _, ok := s.Features["aggregate_cache"]; ok {
 		s.IsAggregateCache = true
-	}
-	if _, ok := s.Features["cchain_index"]; ok {
-		s.IsCChainIndex = true
 	}
 	var err error
 	s.GenesisContainer, err = utils.NewGenesisContainer(networkID)
