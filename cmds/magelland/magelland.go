@@ -21,7 +21,6 @@ import (
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
-	"github.com/chain4travel/magellan/replay"
 	oreliusRpc "github.com/chain4travel/magellan/rpc"
 	"github.com/chain4travel/magellan/services/rewards"
 	"github.com/chain4travel/magellan/servicesctrl"
@@ -44,9 +43,6 @@ const (
 
 	streamCmdUse  = "stream"
 	streamCmdDesc = "Runs stream commands"
-
-	streamReplayCmdUse  = "replay"
-	streamReplayCmdDesc = "Runs the replay"
 
 	streamIndexerCmdUse  = "indexer"
 	streamIndexerCmdDesc = "Runs the stream indexer daemon"
@@ -148,7 +144,6 @@ func execute() error {
 	cmd.PersistentFlags().IntVarP(replayqueuethreads, "replayqueuethreads", "", defaultReplayQueueThreads, fmt.Sprintf("replay queue size threads default %d", defaultReplayQueueThreads))
 
 	cmd.AddCommand(
-		createReplayCmds(serviceControl, config, &runErr, replayqueuesize, replayqueuethreads),
 		createStreamCmds(serviceControl, config, &runErr),
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
@@ -175,23 +170,6 @@ func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) 
 			runListenCloser(lc)
 		},
 	}
-}
-
-func createReplayCmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error, replayqueuesize *int, replayqueuethreads *int) *cobra.Command {
-	replayCmd := &cobra.Command{
-		Use:   streamReplayCmdUse,
-		Short: streamReplayCmdDesc,
-		Long:  streamReplayCmdDesc,
-		Run: func(cmd *cobra.Command, args []string) {
-			replay := replay.NewDB(sc, config, *replayqueuesize, *replayqueuethreads)
-			err := replay.Start()
-			if err != nil {
-				*runErr = err
-			}
-		},
-	}
-
-	return replayCmd
 }
 
 func createStreamCmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) *cobra.Command {
@@ -223,9 +201,7 @@ func createStreamCmds(sc *servicesctrl.Control, config *cfg.Config, runErr *erro
 					consumers.IndexerDB,
 					consumers.IndexerConsensusDB,
 				},
-				[]stream.ProcessorFactoryInstDB{
-					consumers.IndexerCChainDB(),
-				},
+				[]stream.ProcessorFactoryInstDB{},
 			)(cmd, arg)
 		},
 	})
@@ -235,9 +211,6 @@ func createStreamCmds(sc *servicesctrl.Control, config *cfg.Config, runErr *erro
 
 func producerFactories(sc *servicesctrl.Control, cfg *cfg.Config) []utils.ListenCloser {
 	var factories []utils.ListenCloser
-	if !sc.IsCChainIndex {
-		factories = append(factories, stream.NewProducerCChain(sc, *cfg))
-	}
 	for _, v := range cfg.Chains {
 		switch v.VMType {
 		case consumers.IndexerAVMName:
@@ -257,17 +230,14 @@ func producerFactories(sc *servicesctrl.Control, cfg *cfg.Config) []utils.Listen
 				panic(err)
 			}
 			factories = append(factories, p)
+		case consumers.IndexerCVMName:
+			p, err := stream.NewProducerChain(sc, *cfg, v.ID, stream.EventTypeDecisions, stream.IndexTypeBlocks, stream.IndexCChain)
+			if err != nil {
+				panic(err)
+			}
+			factories = append(factories, p)
 		}
 	}
-
-	if sc.IsCChainIndex {
-		p, err := stream.NewProducerChain(sc, *cfg, cfg.CchainID, stream.EventTypeDecisions, stream.IndexTypeBlocks, stream.IndexCChain)
-		if err != nil {
-			panic(err)
-		}
-		factories = append(factories, p)
-	}
-
 	return factories
 }
 
@@ -342,7 +312,7 @@ func runStreamProcessorManagers(
 			rh.Close()
 		}()
 
-		err = consumers.Bootstrap(sc, config.NetworkID, config.Chains, consumerFactories)
+		err = consumers.Bootstrap(sc, config.NetworkID, config, consumerFactories)
 		if err != nil {
 			*runError = err
 			return

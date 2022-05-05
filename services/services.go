@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/chain4travel/magellan/db"
-	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
@@ -34,12 +33,6 @@ type Consumer interface {
 	Bootstrap(context.Context, *utils.Connections, db.Persist) error
 	Consume(context.Context, *utils.Connections, Consumable, db.Persist) error
 	ConsumeConsensus(context.Context, *utils.Connections, Consumable, db.Persist) error
-	ParseJSON([]byte) ([]byte, error)
-}
-
-type ConsumerCChain interface {
-	Name() string
-	Consume(context.Context, *utils.Connections, Consumable, *modelsc.Block, db.Persist) error
 	ParseJSON([]byte) ([]byte, error)
 }
 

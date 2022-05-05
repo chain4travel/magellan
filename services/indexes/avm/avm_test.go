@@ -45,12 +45,17 @@ func TestIndexBootstrap(t *testing.T) {
 	defer closeFn()
 
 	persist := db.NewPersist()
+	ctx := context.Background()
+	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
+
+	_, _ = session.DeleteFrom("avm_transactions").ExecContext(ctx)
+
 	err := writer.Bootstrap(newTestContext(), conns, persist)
 	if err != nil {
 		t.Fatal("Failed to bootstrap index:", err.Error())
 	}
 
-	txList, err := reader.ListTransactions(context.Background(), &params.ListTransactionsParams{
+	txList, err := reader.ListTransactions(ctx, &params.ListTransactionsParams{
 		ChainIDs: []string{testXChainID.String()},
 	}, ids.Empty)
 	if err != nil {
@@ -72,17 +77,14 @@ func TestIndexBootstrap(t *testing.T) {
 		t.Fatal("Transaction fee is not 0")
 	}
 
-	// inject a txfee for testing
-	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
-
 	transaction := &db.Transactions{
 		ID: string(txList.Transactions[0].ID),
 	}
-	transaction, _ = persist.QueryTransactions(context.Background(), session, transaction)
+	transaction, _ = persist.QueryTransactions(ctx, session, transaction)
 	transaction.Txfee = 101
-	_ = persist.InsertTransactions(context.Background(), session, transaction, true)
+	_ = persist.InsertTransactions(ctx, session, transaction, true)
 
-	txList, _ = reader.ListTransactions(context.Background(), &params.ListTransactionsParams{
+	txList, _ = reader.ListTransactions(ctx, &params.ListTransactionsParams{
 		ChainIDs: []string{string(txList.Transactions[0].ChainID)},
 	}, ids.Empty)
 
@@ -100,9 +102,9 @@ func TestIndexBootstrap(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}
-	_ = persist.InsertAddressChain(context.Background(), sess, addressChain, false)
+	_ = persist.InsertAddressChain(ctx, sess, addressChain, false)
 
-	addressChains, err := reader.AddressChains(context.Background(), &params.AddressChainsParams{
+	addressChains, err := reader.AddressChains(ctx, &params.AddressChainsParams{
 		Addresses: []ids.ShortID{addr},
 	})
 	if err != nil {
@@ -117,7 +119,7 @@ func TestIndexBootstrap(t *testing.T) {
 	}
 
 	// invoke the address and asset logic to test the db.
-	txList, err = reader.ListTransactions(context.Background(), &params.ListTransactionsParams{
+	txList, err = reader.ListTransactions(ctx, &params.ListTransactionsParams{
 		ChainIDs:  []string{testXChainID.String()},
 		Addresses: []ids.ShortID{ids.ShortEmpty},
 	}, ids.Empty)
@@ -160,7 +162,7 @@ func newTestIndex(t *testing.T, chainID ids.ID) (*utils.Connections, *Writer, *a
 	}
 
 	cmap := make(map[string]services.Consumer)
-	reader, _ := avax.NewReader(networkID, conns, cmap, nil, sc)
+	reader, _ := avax.NewReader(networkID, conns, cmap, sc)
 	return conns, writer, reader, func() {
 		_ = conns.Close()
 	}

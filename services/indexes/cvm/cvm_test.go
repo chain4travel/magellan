@@ -26,7 +26,6 @@ import (
 	"github.com/chain4travel/caminogo/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
-	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/utils"
@@ -54,7 +53,7 @@ func newTestIndex(t *testing.T, networkID uint32, chainID ids.ID) (*utils.Connec
 	}
 
 	// Create index
-	writer, err := NewWriter(networkID, chainID.String())
+	writer, err := NewWriter(networkID, chainID.String(), nil)
 	if err != nil {
 		t.Fatal("Failed to create writer:", err.Error())
 	}
@@ -79,8 +78,15 @@ func TestInsertTxInternalExport(t *testing.T) {
 	extx.ExportedOutputs = []*caminoGoAvax.TransferableOutput{transferableOut}
 
 	tx.UnsignedAtomicTx = extx
-	header := types.Header{}
-	block := &modelsc.Block{Header: header, BlockExtraData: tx.Bytes()}
+	block := types.NewBlock(
+		&types.Header{},
+		[]*types.Transaction{},
+		[]*types.Header{},
+		[]*types.Receipt{},
+		nil,
+		tx.Bytes(),
+		false,
+	)
 
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))
@@ -111,8 +117,15 @@ func TestInsertTxInternalImport(t *testing.T) {
 	extx.ImportedInputs = []*caminoGoAvax.TransferableInput{transferableIn}
 
 	tx.UnsignedAtomicTx = extx
-	header := types.Header{}
-	block := &modelsc.Block{Header: header, BlockExtraData: tx.Bytes()}
+	block := types.NewBlock(
+		&types.Header{},
+		[]*types.Transaction{},
+		[]*types.Header{},
+		[]*types.Receipt{},
+		nil,
+		tx.Bytes(),
+		false,
+	)
 
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))

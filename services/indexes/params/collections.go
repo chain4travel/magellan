@@ -344,7 +344,7 @@ type ListCBlocksParams struct {
 }
 
 func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
-	err = p.ListParams.ForValues(version, q)
+	err = p.ListParams.ForValuesAllowOffset(version, q)
 	if err != nil {
 		return err
 	}

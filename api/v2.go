@@ -121,7 +121,6 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/ctxdata/:id", (*V2Context).CTxData).
 		Get("/cblocks", (*V2Context).ListCBlocks).
 		Get("/ctransactions", (*V2Context).ListCTransactions).
-		Get("/rawtransaction/:id", (*V2Context).RawTransaction).
 		Get("/cacheaddresscounts", (*V2Context).CacheAddressCounts).
 		Get("/cachetxscounts", (*V2Context).CacheTxCounts).
 		Get("/cacheassets", (*V2Context).CacheAssets).
@@ -713,31 +712,6 @@ func (c *V2Context) CTxData(w web.ResponseWriter, r *web.Request) {
 		c.WriteErr(w, 400, err)
 		return
 	}
-	WriteJSON(w, b)
-}
-
-func (c *V2Context) RawTransaction(w web.ResponseWriter, r *web.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.RequestTimeout)
-	defer cancel()
-
-	id, err := ids.FromString(r.PathParams["id"])
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-
-	rawdata, err := c.avaxReader.RawTransaction(ctx, id)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-
-	b, err := json.Marshal(rawdata)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-
 	WriteJSON(w, b)
 }
 
