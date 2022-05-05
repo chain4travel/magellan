@@ -28,6 +28,7 @@ import (
 	"github.com/chain4travel/caminogo/utils/math"
 	"github.com/chain4travel/caminogo/version"
 	"github.com/chain4travel/caminogo/vms/components/verify"
+	"github.com/chain4travel/caminogo/vms/proposervm/block"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
@@ -147,9 +148,14 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 
 func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	ethBlock := &types.Block{}
-	if err := rlp.DecodeBytes(blockBytes[62:len(blockBytes)-4], ethBlock); err != nil {
+
+	if proposerBlock, err := block.Parse(blockBytes); err != nil {
 		// Container with index 0 doesn't have the 62 byte header + leading checksum
 		if err = rlp.DecodeBytes(blockBytes, ethBlock); err != nil {
+			return err
+		}
+	} else {
+		if err = rlp.DecodeBytes(proposerBlock.Block(), ethBlock); err != nil {
 			return err
 		}
 	}
