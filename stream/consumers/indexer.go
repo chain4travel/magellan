@@ -323,7 +323,7 @@ func IndexerFactories(
 				}
 
 				if readMessages == 0 {
-					time.Sleep(500 * time.Millisecond)
+					time.Sleep(2 * time.Second)
 				}
 			}
 			iterateTxPool()
