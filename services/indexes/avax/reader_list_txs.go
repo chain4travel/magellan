@@ -553,9 +553,9 @@ func dressTransactionsTx(
 	}
 }
 
-func resolveProposers(ctx context.Context, dbRunner dbr.SessionRunner, properIds []models.StringID) (map[models.StringID]*models.BlockProposal, error) {
+func resolveProposers(ctx context.Context, dbRunner dbr.SessionRunner, blockIds []models.StringID) (map[models.StringID]*models.BlockProposal, error) {
 	pvmProposerModels := make(map[models.StringID]*models.BlockProposal)
-	if len(properIds) == 0 {
+	if len(blockIds) == 0 {
 		return pvmProposerModels, nil
 	}
 	pvmBlocks := []db.PvmBlocks{}
@@ -564,7 +564,7 @@ func resolveProposers(ctx context.Context, dbRunner dbr.SessionRunner, properIds
 		"proposer",
 		"proposer_time",
 	).From(db.TablePvmBlocks).
-		Where("blk_id in ?", properIds).
+		Where("id in ?", blockIds).
 		LoadContext(ctx, &pvmBlocks)
 	if err != nil {
 		return nil, err

@@ -42,10 +42,21 @@ func New(eventer *EventRcvr, conf cfg.DB, ro bool) (*Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Conn{
+
+	result := &Conn{
 		conn:    conn,
 		eventer: eventer,
-	}, nil
+	}
+	session, err := result.NewSession("startup", time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	var version int64
+	if err := session.QueryRow("SELECT version FROM schema_migrations").Scan(&version); err == nil && version < RequiredVersion {
+		return nil, fmt.Errorf("migration required")
+	}
+	return result, nil
 }
 
 func (c *Conn) Close(context.Context) error {
@@ -58,10 +69,6 @@ func (c *Conn) NewSession(name string, timeout time.Duration) (*dbr.Session, err
 		if _, err := session.Exec(fmt.Sprintf("SET @@MAX_STATEMENT_TIME=%d", timeout.Milliseconds())); err != nil {
 			return nil, err
 		}
-	}
-	var version int64
-	if err := session.QueryRow("SELECT version FROM migrate_schema").Scan(&version); err == nil && version < RequiredVersion {
-		return nil, fmt.Errorf("migration required")
 	}
 	return session, nil
 }
