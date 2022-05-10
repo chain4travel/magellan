@@ -44,7 +44,7 @@ var (
 	ResultTypeAddress      SearchResultType = "address"
 	ResultTypeOutput       SearchResultType = "output"
 	ResultTypeCTransaction SearchResultType = "ctransaction"
-	ResultTypeCBlock SearchResultType = "cblock"
+	ResultTypeCBlock       SearchResultType = "cblock"
 
 	TypeUnknown = "unknown"
 )
