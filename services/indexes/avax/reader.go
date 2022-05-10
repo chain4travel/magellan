@@ -167,7 +167,7 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 		return nil, err
 	}
 	builderCBlocks := cBlocksQuery(cBlocksRunner).
-		Where(dbr.Like("cvm_blocks.hash", p.ListParams.Query+"%")).
+		Where(dbr.Or(dbr.Like("cvm_blocks.hash", p.ListParams.Query+"%"), dbr.Like("cvm_blocks.block", p.ListParams.Query+"%"))).
 		OrderDesc("cvm_blocks.created_at").
 		Limit(uint64(p.ListParams.Limit) - uint64(currentCount))
 
