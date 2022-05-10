@@ -39,10 +39,12 @@ var (
 	TransactionTypeAdvanceTime        TransactionType = 0x13
 	TransactionTypeRewardValidator    TransactionType = 0x14
 
-	ResultTypeTransaction SearchResultType = "transaction"
-	ResultTypeAsset       SearchResultType = "asset"
-	ResultTypeAddress     SearchResultType = "address"
-	ResultTypeOutput      SearchResultType = "output"
+	ResultTypeTransaction  SearchResultType = "transaction"
+	ResultTypeAsset        SearchResultType = "asset"
+	ResultTypeAddress      SearchResultType = "address"
+	ResultTypeOutput       SearchResultType = "output"
+	ResultTypeCTransaction SearchResultType = "ctransaction"
+	ResultTypeCBlock SearchResultType = "cblock"
 
 	TypeUnknown = "unknown"
 )

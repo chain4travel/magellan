@@ -95,10 +95,6 @@ func NewReader(networkID uint32, conns *utils.Connections, chainConsumers map[st
 func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID ids.ID) (*models.SearchResults, error) {
 	p.ListParams.DisableCounting = true
 
-	if len(p.ListParams.Query) < MinSearchQueryLength {
-		return nil, ErrSearchQueryTooShort
-	}
-
 	// See if the query string is an id or shortID. If so we can search on them
 	// directly. Otherwise we treat the query as a normal query-string.
 	if shortID, err := params.AddressFromString(p.ListParams.Query); err == nil {
@@ -111,33 +107,23 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	var assets []*models.Asset
 	var txs []*models.Transaction
 	var addresses []*models.AddressInfo
+	var ctxs []*models.CTransactionData
+	var cBlocks []*db.CvmBlocks
+	// Keep track of already found, so that limit can be applied correctly on all queries
+	var currentCount = 0
 
-	lenSearchResults := func() int {
-		return len(assets) + len(txs) + len(addresses)
-	}
-
+	// Gather Assets and check if limit reached
 	assetsResp, err := r.ListAssets(ctx, &params.ListAssetsParams{ListParams: p.ListParams}, nil)
 	if err != nil {
 		return nil, err
 	}
 	assets = assetsResp.Assets
-	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs)
+	currentCount += len(assets)
+	if currentCount >= p.ListParams.Limit {
+		return collateSearchResults(assets, addresses, txs, ctxs, cBlocks)
 	}
 
-	if false {
-		// The query string was not an id/shortid so perform an ID prefix search
-		// against transactions and addresses.
-		transactionsRes, err := r.ListTransactions(ctx, &params.ListTransactionsParams{ListParams: p.ListParams}, avaxAssetID)
-		if err != nil {
-			return nil, err
-		}
-		txs = transactionsRes.Transactions
-		if lenSearchResults() >= p.ListParams.Limit {
-			return collateSearchResults(assets, addresses, txs)
-		}
-	}
-
+	// Gather X/P-Transactions and see if limit is reached
 	dbRunner, err := r.conns.DB().NewSession("search", cfg.RequestTimeout)
 	if err != nil {
 		return nil, err
@@ -146,36 +132,49 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	builder1 := transactionQuery(dbRunner).
 		Where(dbr.Like("avm_transactions.id", p.ListParams.Query+"%")).
 		OrderDesc("avm_transactions.created_at").
-		Limit(uint64(p.ListParams.Limit))
+		Limit(uint64(p.ListParams.Limit) - uint64(currentCount))
 	if _, err := builder1.LoadContext(ctx, &txs); err != nil {
 		return nil, err
 	}
-	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs)
+
+	currentCount += len(txs)
+	if currentCount >= p.ListParams.Limit {
+		return collateSearchResults(assets, addresses, txs, ctxs, cBlocks)
 	}
 
-	/*
-		A regex search on address can't work..
-		And on output_id makes no sense...
+	// Gather C-Transactions and see if limit is reached
+	cTransactionsRunner, err := r.conns.DB().NewSession("searchCTransactions", cfg.RequestTimeout)
+	builderCTransactions := cTransactionsQuery(cTransactionsRunner).
+		Where(dbr.Like("cvm_transactions_txdata.hash", p.ListParams.Query+"%")).
+		OrderDesc("cvm_transactions_txdata.created_at").
+		Limit(uint64(p.ListParams.Limit) - uint64(currentCount))
 
-		Addresses are stored in the db in 20byte hex, and the query is by address 'fuji.....'
-		There is no way to convert a part of an address into a "few" bytes...
-
-		Future: store the address in the db in the address format 'fuji.....'
-		then a part query could work.
-	*/
-	if false {
-		addressesRes, err := r.ListAddresses(ctx, &params.ListAddressesParams{ListParams: p.ListParams})
-		if err != nil {
-			return nil, err
-		}
-		addresses = addressesRes.Addresses
-		if lenSearchResults() >= p.ListParams.Limit {
-			return collateSearchResults(assets, addresses, txs)
-		}
+	if _, err := builderCTransactions.LoadContext(ctx, &ctxs); err != nil {
+		return nil, err
 	}
 
-	return collateSearchResults(assets, addresses, txs)
+	currentCount += len(ctxs)
+	if currentCount >= p.ListParams.Limit {
+		return collateSearchResults(assets, addresses, txs, ctxs, cBlocks)
+	}
+
+	// Gather C-Blocks and see if limit is reached
+	cBlocksRunner, err := r.conns.DB().NewSession("searchCBlocks", cfg.RequestTimeout)
+	builderCBlocks := cBlocksQuery(cBlocksRunner).
+		Where(dbr.Like("cvm_blocks.hash", p.ListParams.Query+"%")).
+		OrderDesc("cvm_blocks.created_at").
+		Limit(uint64(p.ListParams.Limit) - uint64(currentCount))
+
+	if _, err := builderCBlocks.LoadContext(ctx, &cBlocks); err != nil {
+		return nil, err
+	}
+
+	currentCount += len(cBlocks)
+	if currentCount >= p.ListParams.Limit {
+		return collateSearchResults(assets, addresses, txs, ctxs, cBlocks)
+	}
+
+	return collateSearchResults(assets, addresses, txs, ctxs, cBlocks)
 }
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
@@ -835,7 +834,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 	}
 
 	if len(txs) > 0 {
-		return collateSearchResults(nil, nil, txs)
+		return collateSearchResults(nil, nil, txs, nil, nil)
 	}
 
 	if false {
@@ -847,7 +846,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 		}, avaxAssetID); err != nil {
 			return nil, err
 		} else if len(txs.Transactions) > 0 {
-			return collateSearchResults(nil, nil, txs.Transactions)
+			return collateSearchResults(nil, nil, txs.Transactions, nil, nil)
 		}
 	}
 
@@ -860,15 +859,15 @@ func (r *Reader) searchByShortID(ctx context.Context, id ids.ShortID) (*models.S
 	if addrs, err := r.ListAddresses(ctx, &params.ListAddressesParams{ListParams: listParams, Address: &id}); err != nil {
 		return nil, err
 	} else if len(addrs.Addresses) > 0 {
-		return collateSearchResults(nil, addrs.Addresses, nil)
+		return collateSearchResults(nil, addrs.Addresses, nil, nil, nil)
 	}
 
 	return &models.SearchResults{}, nil
 }
 
-func collateSearchResults(assets []*models.Asset, addresses []*models.AddressInfo, transactions []*models.Transaction) (*models.SearchResults, error) {
+func collateSearchResults(assets []*models.Asset, addresses []*models.AddressInfo, transactions []*models.Transaction, ctransactions []*models.CTransactionData, cBlocks []*db.CvmBlocks) (*models.SearchResults, error) {
 	// Build overall SearchResults object from our pieces
-	returnedResultCount := len(assets) + len(addresses) + len(transactions)
+	returnedResultCount := len(assets) + len(addresses) + len(transactions) + len(ctransactions) + len(cBlocks)
 	if returnedResultCount > params.PaginationMaxLimit {
 		returnedResultCount = params.PaginationMaxLimit
 	}
@@ -893,9 +892,24 @@ func collateSearchResults(assets []*models.Asset, addresses []*models.AddressInf
 			Data:             result,
 		})
 	}
+
+	for _, result := range ctransactions {
+		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
+			SearchResultType: models.ResultTypeCTransaction,
+			Data:             result,
+		})
+	}
+
 	for _, result := range assets {
 		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
 			SearchResultType: models.ResultTypeAsset,
+			Data:             result,
+		})
+	}
+
+	for _, result := range cBlocks {
+		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
+			SearchResultType: models.ResultTypeCBlock,
 			Data:             result,
 		})
 	}
@@ -924,6 +938,30 @@ func transactionQuery(dbRunner *dbr.Session) *dbr.SelectStmt {
 		LeftJoin("transactions_epoch", "avm_transactions.id = transactions_epoch.id").
 		LeftJoin("transactions_validator", "avm_transactions.id = transactions_validator.id").
 		LeftJoin("transactions_block", "avm_transactions.id = transactions_block.id")
+}
+
+func cTransactionsQuery(dbRunner *dbr.Session) *dbr.SelectStmt {
+	return dbRunner.Select(
+		"hash",
+		"block",
+		"idx",
+		"from_addr",
+		"to_addr",
+		"nonce",
+		"serialization",
+		"created_at",
+	).From(db.TableCvmTransactionsTxdata)
+}
+
+func cBlocksQuery(dbRunner *dbr.Session) *dbr.SelectStmt {
+	return dbRunner.Select(
+		"block",
+		"hash",
+		"chain_id",
+		"evm_tx",
+		"atomic_tx",
+		"created_at",
+	).From(db.TableCvmBlocks)
 }
 
 func (r *Reader) chainWriter(chainID string) (services.Consumer, error) {
