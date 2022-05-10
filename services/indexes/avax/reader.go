@@ -144,6 +144,9 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 
 	// Gather C-Transactions and see if limit is reached
 	cTransactionsRunner, err := r.conns.DB().NewSession("searchCTransactions", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
 	builderCTransactions := cTransactionsQuery(cTransactionsRunner).
 		Where(dbr.Like("cvm_transactions_txdata.hash", p.ListParams.Query+"%")).
 		OrderDesc("cvm_transactions_txdata.created_at").
@@ -160,6 +163,9 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 
 	// Gather C-Blocks and see if limit is reached
 	cBlocksRunner, err := r.conns.DB().NewSession("searchCBlocks", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
 	builderCBlocks := cBlocksQuery(cBlocksRunner).
 		Where(dbr.Like("cvm_blocks.hash", p.ListParams.Query+"%")).
 		OrderDesc("cvm_blocks.created_at").
