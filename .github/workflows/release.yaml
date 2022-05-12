@@ -9,6 +9,8 @@ on:
   release:
     types: [published]
   push:
+    branches:
+      - "chain4travel"
     tags:
       - "v*"
       - "test*"
