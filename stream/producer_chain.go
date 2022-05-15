@@ -289,7 +289,7 @@ func NewProducerChain(sc *servicesctrl.Control, conf cfg.Config, chainID string,
 
 	endpoint := fmt.Sprintf("/ext/index/%s/%s", indexerChain, indexerType)
 
-	nodeIndexer := indexer.NewClient(conf.CaminoGO, endpoint)
+	nodeIndexer := indexer.NewClient(conf.CaminoNode, endpoint)
 
 	p := &ProducerChain{
 		indexerType:             indexerType,

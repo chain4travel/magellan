@@ -64,7 +64,7 @@ func NewWriter(networkID uint32, chainID string, conf *cfg.Config) (*Writer, err
 
 	var client *modelsc.Client
 	if conf != nil { // check for test cases
-		if client, err = modelsc.NewClient(conf.CaminoGO + "/ext/bc/C/rpc"); err != nil {
+		if client, err = modelsc.NewClient(conf.CaminoNode + "/ext/bc/C/rpc"); err != nil {
 			return nil, err
 		}
 	}
