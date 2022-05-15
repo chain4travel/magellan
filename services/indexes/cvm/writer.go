@@ -64,7 +64,7 @@ func NewWriter(networkID uint32, chainID string, conf *cfg.Config) (*Writer, err
 
 	var client *modelsc.Client
 	if conf != nil { // check for test cases
-		if client, err = modelsc.NewClient(conf.CaminoGO + "/ext/bc/C/rpc"); err != nil {
+		if client, err = modelsc.NewClient(conf.CaminoNode + "/ext/bc/C/rpc"); err != nil {
 			return nil, err
 		}
 	}
@@ -88,7 +88,7 @@ func (w *Writer) Close() {
 
 func (*Writer) Name() string { return "cvm-index" }
 
-func (w *Writer) ParseJSON(txdata []byte) ([]byte, error) {
+func (w *Writer) ParseJSON(txdata []byte, proposer *models.BlockProposal) ([]byte, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
@@ -148,6 +148,7 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 
 func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	ethBlock := &types.Block{}
+	cvmProposer := &models.BlockProposal{}
 
 	if proposerBlock, err := block.Parse(blockBytes); err != nil {
 		// Container with index 0 doesn't have the 62 byte header + leading checksum
@@ -158,6 +159,8 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 		if err = rlp.DecodeBytes(proposerBlock.Block(), ethBlock); err != nil {
 			return err
 		}
+		ctxTime := ctx.Time()
+		cvmProposer = models.NewBlockProposal(proposerBlock, &ctxTime)
 	}
 
 	var atomicTxs []*evm.Tx
@@ -172,10 +175,10 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 			return err
 		}
 	}
-	return w.indexBlockInternal(ctx, atomicTxs, ethBlock)
+	return w.indexBlockInternal(ctx, atomicTxs, cvmProposer, ethBlock)
 }
 
-func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.Tx, block *types.Block) error {
+func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.Tx, proposer *models.BlockProposal, block *types.Block) error {
 	txIDs := make([]string, len(atomicTXs))
 
 	var typ models.CChainType = 0
@@ -286,6 +289,8 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		AtomicTx:      int16(len(txIDs)),
 		Serialization: blockBytes,
 		CreatedAt:     ctx.Time(),
+		Proposer:      proposer.Proposer,
+		ProposerTime:  proposer.TimeStamp,
 	}
 	err = ctx.Persist().InsertCvmBlocks(ctx.Ctx(), ctx.DB(), cvmBlocks)
 	if err != nil {

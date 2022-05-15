@@ -968,7 +968,7 @@ func (r *Reader) ATxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-	j, err := c.ParseJSON(row.Serialization)
+	j, err := c.ParseJSON(row.Serialization, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -985,13 +985,15 @@ func (r *Reader) PTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		ID            string
 		Serialization []byte
 		ChainID       string
+		Proposer      string
+		ProposerTime  *time.Time
 	}
 	rows := []Row{}
 
 	idInt, ok := big.NewInt(0).SetString(p.ID, 10)
 	if idInt != nil && ok {
 		_, err = dbRunner.
-			Select("id", "serialization", "chain_id").
+			Select("id", "serialization", "chain_id", "proposer", "proposer_time").
 			From(db.TablePvmBlocks).
 			Where("height="+idInt.String()).
 			LoadContext(ctx, &rows)
@@ -1000,7 +1002,7 @@ func (r *Reader) PTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 		}
 	} else {
 		_, err = dbRunner.
-			Select("id", "serialization", "chain_id").
+			Select("id", "serialization", "chain_id", "proposer", "proposer_time").
 			From(db.TablePvmBlocks).
 			Where("id=?", p.ID).
 			LoadContext(ctx, &rows)
@@ -1014,45 +1016,16 @@ func (r *Reader) PTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 
 	row := rows[0]
 
-	// check if the proposer exists, and pull the serialization from pvm_blocks.
-	proposerrows := []Row{}
-
-	_, err = dbRunner.
-		Select(db.TablePvmBlocks+".serialization").
-		From(db.TablePvmProposer).
-		Join(db.TablePvmBlocks, db.TablePvmProposer+".blk_id = "+db.TablePvmBlocks+".id").
-		Where(db.TablePvmProposer+".blk_id=?", row.ID).
-		LoadContext(ctx, &proposerrows)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(proposerrows) > 0 {
-		proposerrow := proposerrows[0]
-		row.Serialization = proposerrow.Serialization
-	}
-
 	var c services.Consumer
 	c, err = r.chainWriter(row.ChainID)
 	if err != nil {
 		return nil, err
 	}
-	j, err := c.ParseJSON(row.Serialization)
+	j, err := c.ParseJSON(row.Serialization,
+		&models.BlockProposal{Proposer: row.Proposer, TimeStamp: row.ProposerTime})
 	if err != nil {
 		return nil, err
 	}
-	// add missing data if required:
-	/*
-		"proposer": {
-		    "tx": "C9zSRcueSCkpdX82FMA6RmK9NFyNXNnXLbyNFHY6eiLdtskmM",
-		    "parentID": "x2wJRJFB9UGh3BbftSjXiLvsP9Q8pHz1wGGtoQbqbSHLmhgkZ",
-		    "pChainHeight": 0,
-		    "proposer": "111111111111111111116DBWJs",
-		    "timeStamp": "2022-05-03T23:08:16+02:00"
-		  },
-		  "proposerType": "*block.statelessBlock"
-	*/
-
 	return j, nil
 }
 

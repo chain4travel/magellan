@@ -169,44 +169,16 @@ func (w *Writer) initCtx(b platformvm.Block) {
 	}
 }
 
-type PtxDataProposerModel struct {
-	ID           string    `json:"tx"`
-	ParentID     string    `json:"parentID"`
-	PChainHeight uint64    `json:"pChainHeight"`
-	Proposer     string    `json:"proposer"`
-	TimeStamp    time.Time `json:"timeStamp"`
-}
-
-func NewPtxDataProposerModel(b block.Block) *PtxDataProposerModel {
-	switch properBlockDetail := b.(type) {
-	case block.SignedBlock:
-		return &PtxDataProposerModel{
-			ID:           properBlockDetail.ID().String(),
-			ParentID:     properBlockDetail.ParentID().String(),
-			PChainHeight: properBlockDetail.PChainHeight(),
-			Proposer:     properBlockDetail.Proposer().String(),
-			TimeStamp:    properBlockDetail.Timestamp(),
-		}
-	default:
-		return &PtxDataProposerModel{
-			ID:           properBlockDetail.ID().String(),
-			PChainHeight: 0,
-			Proposer:     "",
-		}
-	}
-}
-
 type PtxDataModel struct {
-	Tx           *platformvm.Tx        `json:"tx,omitempty"`
-	TxType       *string               `json:"txType,omitempty"`
-	Block        *platformvm.Block     `json:"block,omitempty"`
-	BlockID      *string               `json:"blockID,omitempty"`
-	BlockType    *string               `json:"blockType,omitempty"`
-	Proposer     *PtxDataProposerModel `json:"proposer,omitempty"`
-	ProposerType *string               `json:"proposerType,omitempty"`
+	Tx        *platformvm.Tx        `json:"tx,omitempty"`
+	TxType    *string               `json:"txType,omitempty"`
+	Block     *platformvm.Block     `json:"block,omitempty"`
+	BlockID   *string               `json:"blockID,omitempty"`
+	BlockType *string               `json:"blockType,omitempty"`
+	Proposer  *models.BlockProposal `json:"proposer,omitempty"`
 }
 
-func (w *Writer) ParseJSON(txBytes []byte) ([]byte, error) {
+func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]byte, error) {
 	parsePlatformTx := func(b []byte) (*PtxDataModel, error) {
 		var block platformvm.Block
 		_, err := w.codec.Unmarshal(b, &block)
@@ -238,6 +210,7 @@ func (w *Writer) ParseJSON(txBytes []byte) ([]byte, error) {
 	proposerBlock, err := block.Parse(txBytes)
 	if err != nil {
 		platformBlock, err := parsePlatformTx(txBytes)
+		platformBlock.Proposer = proposer
 		if err != nil {
 			return nil, err
 		}
@@ -247,10 +220,7 @@ func (w *Writer) ParseJSON(txBytes []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	platformBlock.Proposer = NewPtxDataProposerModel(proposerBlock)
-	pbtype := reflect.TypeOf(proposerBlock)
-	pbtypeS := pbtype.String()
-	platformBlock.ProposerType = &pbtypeS
+	platformBlock.Proposer = models.NewBlockProposal(proposerBlock, nil)
 	return json.Marshal(platformBlock)
 }
 
@@ -301,7 +271,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 	for idx, utxo := range platformGenesis.UTXOs {
 		select {
 		case <-ctx.Done():
-			break
 		default:
 		}
 
@@ -325,7 +294,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 	for _, tx := range append(platformGenesis.Validators, platformGenesis.Chains...) {
 		select {
 		case <-ctx.Done():
-			break
 		default:
 		}
 
@@ -370,39 +338,8 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, proposerblockBytes []byte)
 	}
 
 	blkID := ids.ID(hashing.ComputeHash256Array(blockBytes))
-
-	if proposerBlock != nil {
-		proposerBlkID := ids.ID(hashing.ComputeHash256Array(proposerblockBytes))
-		var pvmProposer *db.PvmProposer
-		switch properBlockDetail := proposerBlock.(type) {
-		case block.SignedBlock:
-			pvmProposer = &db.PvmProposer{
-				ID:            properBlockDetail.ID().String(),
-				ParentID:      properBlockDetail.ParentID().String(),
-				BlkID:         blkID.String(),
-				ProposerBlkID: proposerBlkID.String(),
-				PChainHeight:  properBlockDetail.PChainHeight(),
-				Proposer:      properBlockDetail.Proposer().String(),
-				TimeStamp:     properBlockDetail.Timestamp(),
-				CreatedAt:     ctx.Time(),
-			}
-		default:
-			pvmProposer = &db.PvmProposer{
-				ID:            properBlockDetail.ID().String(),
-				ParentID:      properBlockDetail.ParentID().String(),
-				BlkID:         blkID.String(),
-				ProposerBlkID: proposerBlkID.String(),
-				PChainHeight:  0,
-				Proposer:      "",
-				TimeStamp:     ctx.Time(),
-				CreatedAt:     ctx.Time(),
-			}
-		}
-		err := ctx.Persist().InsertPvmProposer(ctx.Ctx(), ctx.DB(), pvmProposer, cfg.PerformUpdates)
-		if err != nil {
-			return err
-		}
-	}
+	ctxTime := ctx.Time()
+	pvmProposer := models.NewBlockProposal(proposerBlock, &ctxTime)
 
 	errs := wrappers.Errs{}
 
@@ -410,11 +347,11 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, proposerblockBytes []byte)
 	case *platformvm.ProposalBlock:
 		errs.Add(
 			initializeTx(ver, w.codec, blk.Tx),
-			w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, blockBytes),
+			w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, pvmProposer, blockBytes),
 			w.indexTransaction(ctx, blkID, blk.Tx, false),
 		)
 	case *platformvm.StandardBlock:
-		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, blockBytes))
+		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, blockBytes))
 		for _, tx := range blk.Txs {
 			errs.Add(
 				initializeTx(ver, w.codec, *tx),
@@ -424,13 +361,13 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, proposerblockBytes []byte)
 	case *platformvm.AtomicBlock:
 		errs.Add(
 			initializeTx(ver, w.codec, blk.Tx),
-			w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, blockBytes),
+			w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, pvmProposer, blockBytes),
 			w.indexTransaction(ctx, blkID, blk.Tx, false),
 		)
 	case *platformvm.AbortBlock:
-		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, blockBytes))
+		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, pvmProposer, blockBytes))
 	case *platformvm.CommitBlock:
-		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, blockBytes))
+		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, blockBytes))
 	default:
 		return fmt.Errorf("unknown type %s", reflect.TypeOf(pblock))
 	}
@@ -443,6 +380,7 @@ func (w *Writer) indexCommonBlock(
 	blkID ids.ID,
 	blkType models.BlockType,
 	blk platformvm.CommonBlock,
+	proposer *models.BlockProposal,
 	blockBytes []byte,
 ) error {
 	if len(blockBytes) > MaxSerializationLen {
@@ -457,6 +395,8 @@ func (w *Writer) indexCommonBlock(
 		Serialization: blockBytes,
 		CreatedAt:     ctx.Time(),
 		Height:        blk.Height(),
+		Proposer:      proposer.Proposer,
+		ProposerTime:  proposer.TimeStamp,
 	}
 	return ctx.Persist().InsertPvmBlocks(ctx.Ctx(), ctx.DB(), pvmBlocks, cfg.PerformUpdates)
 }

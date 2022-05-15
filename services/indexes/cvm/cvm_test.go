@@ -26,6 +26,7 @@ import (
 	"github.com/chain4travel/caminogo/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/utils"
@@ -91,7 +92,7 @@ func TestInsertTxInternalExport(t *testing.T) {
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
-	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, block)
+	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, &models.BlockProposal{}, block)
 	if err != nil {
 		t.Fatal("insert failed", err)
 	}
@@ -130,7 +131,7 @@ func TestInsertTxInternalImport(t *testing.T) {
 	persist := db.NewPersistMock()
 	session := conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("test_tx"))
 	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
-	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, block)
+	err := writer.indexBlockInternal(cCtx, []*evm.Tx{tx}, &models.BlockProposal{}, block)
 	if err != nil {
 		t.Fatal("insert failed", err)
 	}

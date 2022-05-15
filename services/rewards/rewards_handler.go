@@ -62,7 +62,7 @@ func (r *Handler) runTicker(sc *servicesctrl.Control, conns *utils.Connections) 
 	r.doneCh = make(chan struct{}, 1)
 
 	r.conns = conns
-	r.client = platformvm.NewClient(sc.ServicesCfg.CaminoGO)
+	r.client = platformvm.NewClient(sc.ServicesCfg.CaminoNode)
 	r.perist = db.NewPersist()
 
 	r.avaxAssetID = sc.GenesisContainer.AvaxAssetID

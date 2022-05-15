@@ -3,8 +3,8 @@ module github.com/chain4travel/magellan
 go 1.17
 
 require (
-	github.com/chain4travel/caminoethvm v0.0.0-alpha.5
-	github.com/chain4travel/caminogo v0.1.0
+	github.com/chain4travel/caminoethvm v0.1.0
+	github.com/chain4travel/caminogo v0.2.0
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gocraft/dbr/v2 v2.7.2
@@ -55,7 +55,6 @@ require (
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

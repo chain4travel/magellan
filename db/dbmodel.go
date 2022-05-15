@@ -56,7 +56,6 @@ const (
 	TableKeyValueStore                    = "key_value_store"
 	TableCvmTransactionsReceipts          = "cvm_transactions_receipts"
 	TableNodeIndex                        = "node_index"
-	TablePvmProposer                      = "pvm_proposer"
 )
 
 type Persist interface {
@@ -438,18 +437,6 @@ type Persist interface {
 		context.Context,
 		dbr.SessionRunner,
 		*NodeIndex,
-	) error
-
-	QueryPvmProposer(
-		context.Context,
-		dbr.SessionRunner,
-		*PvmProposer,
-	) (*PvmProposer, error)
-	InsertPvmProposer(
-		context.Context,
-		dbr.SessionRunner,
-		*PvmProposer,
-		bool,
 	) error
 }
 
@@ -1062,6 +1049,8 @@ type CvmBlocks struct {
 	AtomicTx      int16
 	Serialization []byte
 	CreatedAt     time.Time
+	Proposer      string
+	ProposerTime  *time.Time
 }
 
 func (p *persist) QueryCvmBlock(
@@ -1078,6 +1067,8 @@ func (p *persist) QueryCvmBlock(
 		"atomic_tx",
 		"serialization",
 		"created_at",
+		"proposer",
+		"proposer_time",
 	).From(TableCvmBlocks).
 		Where("block="+q.Block).
 		LoadOneContext(ctx, v)
@@ -1091,8 +1082,8 @@ func (p *persist) InsertCvmBlocks(
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmBlocks+" (block,hash,chain_id,evm_tx,atomic_tx,serialization,created_at) values("+v.Block+",?,?,?,?,?,?)",
-			v.Hash, v.ChainID, v.EvmTx, v.AtomicTx, v.Serialization, v.CreatedAt).
+		InsertBySql("insert into "+TableCvmBlocks+" (block,hash,chain_id,evm_tx,atomic_tx,serialization,created_at, proposer,proposer_time) values("+v.Block+",?,?,?,?,?,?,?,?)",
+			v.Hash, v.ChainID, v.EvmTx, v.AtomicTx, v.Serialization, v.CreatedAt, v.Proposer, v.ProposerTime).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmBlocks, false, err)
@@ -1294,6 +1285,8 @@ type PvmBlocks struct {
 	Serialization []byte
 	CreatedAt     time.Time
 	Height        uint64
+	Proposer      string
+	ProposerTime  *time.Time
 }
 
 func (p *persist) QueryPvmBlocks(
@@ -1310,6 +1303,8 @@ func (p *persist) QueryPvmBlocks(
 		"serialization",
 		"created_at",
 		"height",
+		"proposer",
+		"proposer_time",
 	).From(TablePvmBlocks).
 		Where("id=?", q.ID).
 		LoadOneContext(ctx, v)
@@ -1332,6 +1327,8 @@ func (p *persist) InsertPvmBlocks(
 		Pair("created_at", v.CreatedAt).
 		Pair("serialization", v.Serialization).
 		Pair("height", v.Height).
+		Pair("proposer", v.Proposer).
+		Pair("proposer_time", v.ProposerTime).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TablePvmBlocks, false, err)
@@ -1345,6 +1342,8 @@ func (p *persist) InsertPvmBlocks(
 			Set("serialization", v.Serialization).
 			Set("height", v.Height).
 			Set("created_at", v.CreatedAt).
+			Set("proposer", v.Proposer).
+			Set("proposer_time", v.ProposerTime).
 			Where("id = ?", v.ID).
 			ExecContext(ctx)
 		if err != nil {
@@ -2412,77 +2411,5 @@ func (b *CvmLogs) ComputeID() error {
 		return err
 	}
 	b.ID = id.String()
-	return nil
-}
-
-type PvmProposer struct {
-	ID            string
-	ParentID      string
-	BlkID         string
-	ProposerBlkID string
-	PChainHeight  uint64
-	Proposer      string
-	TimeStamp     time.Time
-	CreatedAt     time.Time
-}
-
-func (p *persist) QueryPvmProposer(
-	ctx context.Context,
-	sess dbr.SessionRunner,
-	q *PvmProposer,
-) (*PvmProposer, error) {
-	v := &PvmProposer{}
-	err := sess.Select(
-		"id",
-		"parent_id",
-		"blk_id",
-		"p_chain_height",
-		"proposer",
-		"time_stamp",
-		"created_at",
-		"proposer_blk_id",
-	).From(TablePvmProposer).
-		Where("id=?", q.ID).
-		LoadOneContext(ctx, v)
-	return v, err
-}
-
-func (p *persist) InsertPvmProposer(
-	ctx context.Context,
-	sess dbr.SessionRunner,
-	v *PvmProposer,
-	upd bool,
-) error {
-	var err error
-	_, err = sess.
-		InsertInto(TablePvmProposer).
-		Pair("id", v.ID).
-		Pair("parent_id", v.ParentID).
-		Pair("blk_id", v.BlkID).
-		Pair("p_chain_height", v.PChainHeight).
-		Pair("proposer", v.Proposer).
-		Pair("time_stamp", v.TimeStamp).
-		Pair("created_at", v.CreatedAt).
-		Pair("proposer_blk_id", v.ProposerBlkID).
-		ExecContext(ctx)
-	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
-		return EventErr(TablePvmProposer, false, err)
-	}
-	if upd {
-		_, err = sess.
-			Update(TablePvmProposer).
-			Set("parent_id", v.ParentID).
-			Set("blk_id", v.BlkID).
-			Set("p_chain_height", v.PChainHeight).
-			Set("proposer", v.Proposer).
-			Set("time_stamp", v.TimeStamp).
-			Set("created_at", v.CreatedAt).
-			Set("proposer_blk_id", v.ProposerBlkID).
-			Where("id=?", v.ID).
-			ExecContext(ctx)
-		if err != nil {
-			return EventErr(TablePvmProposer, true, err)
-		}
-	}
 	return nil
 }

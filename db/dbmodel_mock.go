@@ -42,7 +42,6 @@ type MockPersist struct {
 	KeyValueStore                    map[string]*KeyValueStore
 	CvmTransactionsReceipt           map[string]*CvmTransactionsReceipt
 	NodeIndex                        map[string]*NodeIndex
-	PvmProposer                      map[string]*PvmProposer
 }
 
 func NewPersistMock() *MockPersist {
@@ -77,7 +76,6 @@ func NewPersistMock() *MockPersist {
 		KeyValueStore:                    make(map[string]*KeyValueStore),
 		CvmTransactionsReceipt:           make(map[string]*CvmTransactionsReceipt),
 		NodeIndex:                        make(map[string]*NodeIndex),
-		PvmProposer:                      make(map[string]*PvmProposer),
 	}
 }
 
@@ -663,23 +661,5 @@ func (m *MockPersist) UpdateNodeIndex(ctx context.Context, runner dbr.SessionRun
 	if fv, present := m.NodeIndex[v.Topic]; present {
 		fv.Idx = v.Idx
 	}
-	return nil
-}
-
-func (m *MockPersist) QueryPvmProposer(ctx context.Context, runner dbr.SessionRunner, v *PvmProposer) (*PvmProposer, error) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	if v, present := m.PvmProposer[v.ID]; present {
-		return v, nil
-	}
-	return nil, nil
-}
-
-func (m *MockPersist) InsertPvmProposer(ctx context.Context, runner dbr.SessionRunner, v *PvmProposer, _ bool) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	nv := &PvmProposer{}
-	*nv = *v
-	m.PvmProposer[v.ID] = nv
 	return nil
 }
