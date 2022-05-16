@@ -3,7 +3,7 @@ module github.com/chain4travel/magellan
 go 1.17
 
 require (
-	github.com/chain4travel/caminoethvm v0.1.0
+	github.com/chain4travel/caminoethvm v0.1.2-rc1
 	github.com/chain4travel/caminogo v0.2.0
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/go-sql-driver/mysql v1.6.0
