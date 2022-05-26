@@ -6,6 +6,10 @@ package models
 type CChainType uint16
 
 var (
+	AVMName = "avm"
+	PVMName = "pvm"
+	CVMName = "cvm"
+
 	CChainIn     CChainType = 1
 	CchainOut    CChainType = 2
 	CChainImport CChainType = 1

@@ -23,6 +23,7 @@ import (
 	avlancheGoUtils "github.com/chain4travel/caminogo/utils"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
+	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/services/indexes/avm"
 	"github.com/chain4travel/magellan/services/indexes/cvm"
@@ -33,10 +34,6 @@ import (
 )
 
 const (
-	IndexerAVMName = "avm"
-	IndexerPVMName = "pvm"
-	IndexerCVMName = "cvm"
-
 	MaximumRecordsRead = 10000
 	MaxTheads          = 1
 
@@ -47,11 +44,11 @@ type ConsumerFactory func(uint32, string, string, *cfg.Config) (services.Consume
 
 var IndexerConsumer = func(networkID uint32, chainVM string, chainID string, conf *cfg.Config) (indexer services.Consumer, err error) {
 	switch chainVM {
-	case IndexerAVMName:
+	case models.AVMName:
 		indexer, err = avm.NewWriter(networkID, chainID)
-	case IndexerPVMName:
+	case models.PVMName:
 		indexer, err = pvm.NewWriter(networkID, chainID)
-	case IndexerCVMName:
+	case models.CVMName:
 		indexer, err = cvm.NewWriter(networkID, chainID, conf)
 	default:
 		return nil, stream.ErrUnknownVM

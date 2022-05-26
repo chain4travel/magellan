@@ -188,7 +188,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 		}
 	}
 
-	var intervals models.TxfeeAggregatesList
+	intervals := models.TxfeeAggregatesList{}
 
 	// Ensure the interval count requested isn't too large
 	intervalSeconds := int64(params.IntervalSize.Seconds())
@@ -208,7 +208,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 	if len(params.ChainIDs) == 0 {
 		for id, chain := range r.sc.Chains {
 			switch chain.VMType {
-			case "cvm":
+			case models.CVMName:
 				cvmChains = append(cvmChains, id)
 			default:
 				avmChains = append(avmChains, id)
@@ -219,7 +219,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 			chain, exist := r.sc.Chains[id]
 			if exist {
 				switch chain.VMType {
-				case "cvm":
+				case models.CVMName:
 					cvmChains = append(cvmChains, id)
 				default:
 					avmChains = append(avmChains, id)
@@ -238,7 +238,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 
 	if len(avmChains) > 0 {
 		columns := []string{
-			"CAST(SUM(avm_transactions.txfee) AS UNSIGNED) AS txfee",
+			"CAST(COALESCE(SUM(avm_transactions.txfee), 0) AS UNSIGNED) AS txfee",
 		}
 
 		if requestedIntervalCount > 0 {
@@ -273,7 +273,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 
 	if len(cvmChains) > 0 {
 		columns := []string{
-			"CAST(SUM((cvm_transactions_txdata.gas_price / 1000000000) * cvm_transactions_txdata.gas_used) AS UNSIGNED) AS txfee",
+			"CAST(COALESCE(SUM((cvm_transactions_txdata.gas_price / 1000000000) * cvm_transactions_txdata.gas_used), 0) AS UNSIGNED) AS txfee",
 		}
 
 		if requestedIntervalCount > 0 {
@@ -302,7 +302,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 				Where("cvm_blocks.chain_id IN ?", cvmChains)
 		}
 
-		var cvmIntervals models.TxfeeAggregatesList
+		cvmIntervals := models.TxfeeAggregatesList{}
 
 		_, err = builder.LoadContext(ctx, &cvmIntervals)
 		if err != nil {
@@ -312,7 +312,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 		if len(intervals) == 0 {
 			intervals = cvmIntervals
 		} else {
-			intervals.Merge(cvmIntervals)
+			models.MergeAggregates(intervals.MergeList(), cvmIntervals.MergeList())
 		}
 	}
 
@@ -400,7 +400,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 		}
 	}
 
-	var intervals models.AggregatesList
+	intervals := models.AggregatesList{}
 
 	// Ensure the interval count requested isn't too large
 	intervalSeconds := int64(params.IntervalSize.Seconds())
@@ -420,7 +420,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 	if len(params.ChainIDs) == 0 {
 		for id, chain := range r.sc.Chains {
 			switch chain.VMType {
-			case "cvm":
+			case models.CVMName:
 				cvmChains = append(cvmChains, id)
 			default:
 				avmChains = append(avmChains, id)
@@ -431,7 +431,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 			chain, exist := r.sc.Chains[id]
 			if exist {
 				switch chain.VMType {
-				case "cvm":
+				case models.CVMName:
 					cvmChains = append(cvmChains, id)
 				default:
 					avmChains = append(avmChains, id)
@@ -533,7 +533,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 				Limit(uint64(requestedIntervalCount))
 		}
 
-		var cvmIntervals models.AggregatesList
+		cvmIntervals := models.AggregatesList{}
 
 		_, err = builder.LoadContext(ctx, &cvmIntervals)
 		if err != nil {
@@ -543,7 +543,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 		if len(intervals) == 0 {
 			intervals = cvmIntervals
 		} else {
-			intervals.Merge(cvmIntervals)
+			models.MergeAggregates(intervals.MergeList(), cvmIntervals.MergeList())
 		}
 	}
 

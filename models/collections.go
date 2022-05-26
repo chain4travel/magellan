@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/caminogo/utils/math"
 	"github.com/chain4travel/magellan/modelsc"
 )
 
@@ -171,6 +172,7 @@ type TxfeeAggregatesHistogram struct {
 }
 
 type TxfeeAggregates struct {
+	AggregateMerge
 	// IntervalID is used internally when creating a histogram of Aggregates.
 	// It is exported only so it can be written to by dbr.
 	IntervalID int `json:"-"`
@@ -203,6 +205,7 @@ type AggregatesHistogram struct {
 }
 
 type Aggregates struct {
+	AggregateMerge
 	// IntervalID is used internally when creating a histogram of Aggregates.
 	// It is exported only so it can be written to by dbr.
 	IntervalID int `json:"-"`
@@ -233,61 +236,72 @@ type AssetAggregate struct {
 	Aggregate *AggregatesHistogram `json:"aggregate"`
 }
 
-// Merges two TxfeeAggregateList, both have to be sorted by Idx
-func (a *TxfeeAggregatesList) Merge(src TxfeeAggregatesList) {
-	if len(src) == 0 {
-		return
-	}
+/*******************  Merging  ***********************/
 
-	var merged TxfeeAggregatesList
-	srcID := 0
-	for _, dst := range *a {
-		// Insert smallerLists from src
-		for srcID < len(src) && src[srcID].IntervalID < dst.IntervalID {
-			merged = append(merged, src[srcID])
-			srcID++
-		}
-		// Insert dst elem
-		merged = append(merged, dst)
-		// cummulate values if it's the same id
-		if srcID < len(src) && src[srcID].IntervalID == dst.IntervalID {
-			last := len(merged) - 1
-			merged[last].Txfee += src[srcID].Txfee
-			srcID++
-		}
-	}
-	merged = append(merged, src[srcID:]...)
-
-	*a = merged
+type AggregateMerge interface {
+	ID() int
+	Merge(AggregateMerge)
 }
 
-// Merges two AggregateList, both have to be sorted by Idx
-func (a *AggregatesList) Merge(src AggregatesList) {
-	if len(src) == 0 {
+type AggregateMergeList []AggregateMerge
+
+func (a *Aggregates) ID() int { return a.IntervalID }
+
+func (a *Aggregates) Merge(b AggregateMerge) {
+	src := b.(*Aggregates)
+	a.AddressCount += src.AddressCount
+	a.AssetCount = math.Max64(a.AssetCount, src.AssetCount)
+	a.OutputCount += src.OutputCount
+	a.TransactionCount += src.TransactionCount
+	a.TransactionVolume += src.TransactionVolume
+}
+
+func (al AggregatesList) MergeList() *AggregateMergeList {
+	result := make(AggregateMergeList, len(al))
+	for i := range al {
+		result[i] = &al[i]
+	}
+	return &result
+}
+
+func (a *TxfeeAggregates) ID() int { return a.IntervalID }
+
+func (a *TxfeeAggregates) Merge(b AggregateMerge) {
+	src := b.(*TxfeeAggregates)
+	a.Txfee += src.Txfee
+}
+
+func (al TxfeeAggregatesList) MergeList() *AggregateMergeList {
+	result := make(AggregateMergeList, len(al))
+	for i := range al {
+		result[i] = &al[i]
+	}
+	return &result
+}
+
+// Merges two TxfeeAggregateList, both have to be sorted by Idx
+func MergeAggregates(dst, src *AggregateMergeList) {
+	if len(*src) == 0 {
 		return
 	}
 
-	var merged AggregatesList
+	merged := []AggregateMerge{}
 	srcID := 0
-	for _, dst := range *a {
+	for _, dstI := range *dst {
 		// Insert smallerLists from src
-		for srcID < len(src) && src[srcID].IntervalID < dst.IntervalID {
-			merged = append(merged, src[srcID])
+		for srcID < len(*src) && (*src)[srcID].ID() < dstI.ID() {
+			merged = append(merged, (*src)[srcID])
 			srcID++
 		}
 		// Insert dst elem
-		merged = append(merged, dst)
+		merged = append(merged, dstI)
 		// cummulate values if it's the same id
-		if srcID < len(src) && src[srcID].IntervalID == dst.IntervalID {
-			last := len(merged) - 1
-			merged[last].AddressCount += src[srcID].AddressCount
-			merged[last].AssetCount += src[srcID].AssetCount
-			merged[last].TransactionCount += src[srcID].TransactionCount
-			merged[last].TransactionVolume += src[srcID].TransactionVolume
+		if srcID < len(*src) && (*src)[srcID].ID() == dstI.ID() {
+			merged[len(merged)-1].Merge((*src)[srcID])
 			srcID++
 		}
 	}
-	merged = append(merged, src[srcID:]...)
+	merged = append(merged, (*src)[srcID:]...)
 
-	*a = merged
+	*dst = merged
 }

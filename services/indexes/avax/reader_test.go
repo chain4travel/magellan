@@ -171,7 +171,7 @@ func TestAggregateTxfee(t *testing.T) {
 	if err != nil {
 		t.Error("error", err)
 	}
-	if agg.TxfeeAggregates.Txfee != models.TokenAmount("25") {
+	if agg.TxfeeAggregates.Txfee != 25 {
 		t.Error("aggregate tx invalid expected ", agg.TxfeeAggregates.Txfee)
 	}
 	if agg.StartTime != starttime || agg.EndTime != endtime {
@@ -181,7 +181,7 @@ func TestAggregateTxfee(t *testing.T) {
 	p = params.TxfeeAggregateParams{ListParams: params.ListParams{StartTime: tnow.Add(-50 * time.Minute), EndTime: tnow.Add(1 * time.Second)}}
 	agg, _ = reader.TxfeeAggregate(ctx, &p)
 
-	if agg.TxfeeAggregates.Txfee != models.TokenAmount("10") {
+	if agg.TxfeeAggregates.Txfee != 10 {
 		t.Error("aggregate tx invalid expected ", agg.TxfeeAggregates.Txfee)
 	}
 }
