@@ -84,19 +84,20 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			Idx           uint64
 			Status        uint16
 			GasUsed       uint64
+			GasPrice      uint64
 		}
 
 		_, err = dbRunner.Select(
-			db.TableCvmTransactionsTxdata+".serialization",
-			db.TableCvmTransactionsTxdata+".created_at",
+			"serialization",
+			"created_at",
 			"from_addr",
 			"block",
 			"idx",
 			"status",
 			"gas_used",
+			"gas_price",
 		).
 			From(db.TableCvmTransactionsTxdata).
-			LeftJoin(db.TableCvmTransactionsReceipts, db.TableCvmTransactionsTxdata+".hash = "+db.TableCvmTransactionsReceipts+".hash").
 			OrderDesc("block").
 			OrderAsc("idx").
 			Limit(uint64(p.TxLimit)).
@@ -119,6 +120,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			(*dest).From = tx.FromAddr
 			(*dest).Status = fmtHex(uint64(tx.Status))
 			(*dest).GasUsed = fmtHex(tx.GasUsed)
+			(*dest).EffectiveGasPrice = fmtHex(tx.GasPrice)
 		}
 	}
 

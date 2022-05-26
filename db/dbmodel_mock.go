@@ -40,7 +40,6 @@ type MockPersist struct {
 	TransactionsRewardsOwners        map[string]*TransactionsRewardsOwners
 	TxPool                           map[string]*TxPool
 	KeyValueStore                    map[string]*KeyValueStore
-	CvmTransactionsReceipt           map[string]*CvmTransactionsReceipt
 	NodeIndex                        map[string]*NodeIndex
 }
 
@@ -74,7 +73,6 @@ func NewPersistMock() *MockPersist {
 		TransactionsRewardsOwnersOutputs: make(map[string]*TransactionsRewardsOwnersOutputs),
 		TxPool:                           make(map[string]*TxPool),
 		KeyValueStore:                    make(map[string]*KeyValueStore),
-		CvmTransactionsReceipt:           make(map[string]*CvmTransactionsReceipt),
 		NodeIndex:                        make(map[string]*NodeIndex),
 	}
 }
@@ -616,24 +614,6 @@ func (m *MockPersist) InsertKeyValueStore(ctx context.Context, runner dbr.Sessio
 	nv := &KeyValueStore{}
 	*nv = *v
 	m.KeyValueStore[v.K] = nv
-	return nil
-}
-
-func (m *MockPersist) QueryCvmTransactionsReceipt(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsReceipt) (*CvmTransactionsReceipt, error) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	if v, present := m.CvmTransactionsReceipt[v.Hash]; present {
-		return v, nil
-	}
-	return nil, nil
-}
-
-func (m *MockPersist) InsertCvmTransactionsReceipt(ctx context.Context, runner dbr.SessionRunner, v *CvmTransactionsReceipt, _ bool) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	nv := &CvmTransactionsReceipt{}
-	*nv = *v
-	m.CvmTransactionsReceipt[v.Hash] = nv
 	return nil
 }
 

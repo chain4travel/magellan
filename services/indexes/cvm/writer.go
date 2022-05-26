@@ -217,29 +217,6 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		hash := rawtx.Hash().String()
 		toStr := utils.CommonAddressHexRepair(rawtx.To())
 
-		if w.client != nil {
-			receipt, err := w.client.ReadReceipt(hash, time.Millisecond*500)
-			if err != nil {
-				return err
-			}
-			receiptBits, err := json.Marshal(receipt)
-			if err != nil {
-				return err
-			}
-
-			txReceiptService := &db.CvmTransactionsReceipt{
-				Hash:          hash,
-				Status:        uint16(receipt.Status),
-				GasUsed:       receipt.GasUsed,
-				Serialization: receiptBits,
-				CreatedAt:     ctx.Time(),
-			}
-
-			err = ctx.Persist().InsertCvmTransactionsReceipt(ctx.Ctx(), ctx.DB(), txReceiptService, cfg.PerformUpdates)
-			if err != nil {
-				return err
-			}
-		}
 		signer := types.LatestSignerForChainID(rawtx.ChainId())
 		fromAddr, err := signer.Sender(rawtx)
 		if err != nil {
@@ -253,9 +230,27 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 			FromAddr:      utils.CommonAddressHexRepair(&fromAddr),
 			ToAddr:        toStr,
 			Nonce:         rawtx.Nonce(),
+			Amount:        rawtx.Value().Uint64(),
 			Serialization: txdata,
 			CreatedAt:     ctx.Time(),
 		}
+
+		if w.client != nil {
+			receipt, err := w.client.ReadReceipt(hash, time.Millisecond*500)
+			if err != nil {
+				return err
+			}
+			receiptBits, err := json.Marshal(receipt)
+			if err != nil {
+				return err
+			}
+
+			cvmTransactionTxdata.Status = uint16(receipt.Status)
+			cvmTransactionTxdata.GasPrice = receipt.EffectiveGasPrice
+			cvmTransactionTxdata.GasUsed = receipt.GasUsed
+			cvmTransactionTxdata.Receipt = receiptBits
+		}
+
 		err = ctx.Persist().InsertCvmTransactionsTxdata(ctx.Ctx(), ctx.DB(), cvmTransactionTxdata, cfg.PerformUpdates)
 		if err != nil {
 			return err

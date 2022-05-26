@@ -13,13 +13,13 @@ package avax
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"strings"
 
 	"github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
@@ -83,13 +83,10 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 	var dataList []*db.CvmTransactionsTxdata
 
 	sq := dbRunner.Select(
-		"hash",
 		"block",
-		"idx",
 		"from_addr",
-		"to_addr",
-		"nonce",
 		"serialization",
+		"receipt",
 		"created_at",
 	).From(db.TableCvmTransactionsTxdata)
 
@@ -106,14 +103,15 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 		return nil, err
 	}
 
-	trItemsByHash := make(map[string]*models.CTransactionData)
-
 	trItems := make([]*models.CTransactionData, 0, len(dataList))
-	hashes := make([]string, 0, len(dataList))
-
 	for _, txdata := range dataList {
 		var tr types.Transaction
 		err := tr.UnmarshalJSON(txdata.Serialization)
+		if err != nil {
+			return nil, err
+		}
+		receipt := &modelsc.ExtendedReceipt{}
+		err = receipt.UnmarshalJSON(txdata.Receipt)
 		if err != nil {
 			return nil, err
 		}
@@ -121,17 +119,9 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 		ctr.Block = txdata.Block
 		ctr.CreatedAt = txdata.CreatedAt
 		ctr.FromAddr = txdata.FromAddr
+		ctr.Receipt = receipt
 		trItems = append(trItems, ctr)
-
-		trItemsByHash[ctr.Hash] = ctr
-		hashes = append(hashes, ctr.Hash)
 	}
-
-	err = r.getReceipts(ctx, dbRunner, hashes, trItemsByHash)
-	if err != nil {
-		return nil, err
-	}
-
 	listParamsOriginal := p.ListParams
 
 	return &models.CTransactionList{
@@ -203,31 +193,4 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 	}
 
 	blockfilter(sq)
-}
-
-func (r *Reader) getReceipts(ctx context.Context, dbRunner *dbr.Session, hashes []string, trItemsByHash map[string]*models.CTransactionData) error {
-	if len(hashes) == 0 {
-		return nil
-	}
-	var err error
-	var txTransactionReceiptServices []*db.CvmTransactionsReceipt
-	_, err = dbRunner.Select(
-		"hash",
-		"serialization",
-	).From(db.TableCvmTransactionsReceipts).
-		Where("hash in ?", hashes).
-		LoadContext(ctx, &txTransactionReceiptServices)
-	if err != nil {
-		return err
-	}
-
-	for _, txTransactionReceiptService := range txTransactionReceiptServices {
-		txTransactionReceiptModel := &types.Receipt{}
-		err = json.Unmarshal(txTransactionReceiptService.Serialization, txTransactionReceiptModel)
-		if err != nil {
-			return err
-		}
-		trItemsByHash[txTransactionReceiptService.Hash].Receipt = txTransactionReceiptModel
-	}
-	return nil
 }

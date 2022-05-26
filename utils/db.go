@@ -27,7 +27,7 @@ import (
 const (
 	DriverMysql     = "mysql"
 	DriverNone      = ""
-	RequiredVersion = 43
+	RequiredVersion = 44
 )
 
 // Conn is a wrapper around a dbr connection and a health stream

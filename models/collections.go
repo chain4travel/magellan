@@ -16,8 +16,8 @@ package models
 import (
 	"time"
 
-	"github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/magellan/modelsc"
 )
 
 type ListMetadata struct {
@@ -60,7 +60,7 @@ type CTransactionData struct {
 	R *string `json:"r,omitempty"`
 	S *string `json:"s,omitempty"`
 
-	Receipt *types.Receipt `json:"receipt"`
+	Receipt *modelsc.ExtendedReceipt `json:"receipt"`
 }
 
 type CBlockHeaderBase struct {
@@ -94,9 +94,10 @@ type CTransactionDataBase struct {
 	From      string `json:"from"`
 	To        string `json:"to,omitempty"`
 
-	CreatedAt string `json:"timestamp"`
-	Status    string `json:"status"`
-	GasUsed   string `json:"gasUsed"`
+	CreatedAt         string `json:"timestamp"`
+	Status            string `json:"status"`
+	GasUsed           string `json:"gasUsed"`
+	EffectiveGasPrice string `json:"effectiveGasPrice"`
 }
 
 type CBlockList struct {
@@ -170,9 +171,9 @@ type TxfeeAggregatesHistogram struct {
 }
 
 type TxfeeAggregates struct {
-	// Idx is used internally when creating a histogram of Aggregates.
+	// IntervalID is used internally when creating a histogram of Aggregates.
 	// It is exported only so it can be written to by dbr.
-	Idx int `json:"-"`
+	IntervalID int `json:"-"`
 
 	// StartTime is the calculated start time rounded to the nearest
 	// TransactionRoundDuration.
@@ -182,8 +183,10 @@ type TxfeeAggregates struct {
 	// TransactionRoundDuration.
 	EndTime time.Time `json:"endTime"`
 
-	Txfee TokenAmount `json:"txfee"`
+	Txfee uint64 `json:"txfee"`
 }
+
+type TxfeeAggregatesList []TxfeeAggregates
 
 type AggregatesHistogram struct {
 	Aggregates   Aggregates    `json:"aggregates"`
@@ -200,9 +203,9 @@ type AggregatesHistogram struct {
 }
 
 type Aggregates struct {
-	// Idx is used internally when creating a histogram of Aggregates.
+	// IntervalID is used internally when creating a histogram of Aggregates.
 	// It is exported only so it can be written to by dbr.
-	Idx int `json:"-"`
+	IntervalID int `json:"-"`
 
 	// StartTime is the calculated start time rounded to the nearest
 	// TransactionRoundDuration.
@@ -219,6 +222,8 @@ type Aggregates struct {
 	AssetCount        uint64      `json:"assetCount"`
 }
 
+type AggregatesList []Aggregates
+
 type AddressChains struct {
 	AddressChains map[string][]StringID `json:"addressChains"`
 }
@@ -226,4 +231,63 @@ type AddressChains struct {
 type AssetAggregate struct {
 	Asset     ids.ID               `json:"asset"`
 	Aggregate *AggregatesHistogram `json:"aggregate"`
+}
+
+// Merges two TxfeeAggregateList, both have to be sorted by Idx
+func (a *TxfeeAggregatesList) Merge(src TxfeeAggregatesList) {
+	if len(src) == 0 {
+		return
+	}
+
+	var merged TxfeeAggregatesList
+	srcID := 0
+	for _, dst := range *a {
+		// Insert smallerLists from src
+		for srcID < len(src) && src[srcID].IntervalID < dst.IntervalID {
+			merged = append(merged, src[srcID])
+			srcID++
+		}
+		// Insert dst elem
+		merged = append(merged, dst)
+		// cummulate values if it's the same id
+		if srcID < len(src) && src[srcID].IntervalID == dst.IntervalID {
+			last := len(merged) - 1
+			merged[last].Txfee += src[srcID].Txfee
+			srcID++
+		}
+	}
+	merged = append(merged, src[srcID:]...)
+
+	*a = merged
+}
+
+// Merges two AggregateList, both have to be sorted by Idx
+func (a *AggregatesList) Merge(src AggregatesList) {
+	if len(src) == 0 {
+		return
+	}
+
+	var merged AggregatesList
+	srcID := 0
+	for _, dst := range *a {
+		// Insert smallerLists from src
+		for srcID < len(src) && src[srcID].IntervalID < dst.IntervalID {
+			merged = append(merged, src[srcID])
+			srcID++
+		}
+		// Insert dst elem
+		merged = append(merged, dst)
+		// cummulate values if it's the same id
+		if srcID < len(src) && src[srcID].IntervalID == dst.IntervalID {
+			last := len(merged) - 1
+			merged[last].AddressCount += src[srcID].AddressCount
+			merged[last].AssetCount += src[srcID].AssetCount
+			merged[last].TransactionCount += src[srcID].TransactionCount
+			merged[last].TransactionVolume += src[srcID].TransactionVolume
+			srcID++
+		}
+	}
+	merged = append(merged, src[srcID:]...)
+
+	*a = merged
 }

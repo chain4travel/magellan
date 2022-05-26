@@ -12,11 +12,16 @@ package modelsc
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"math/big"
 	"sync"
 	"time"
 
 	"github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminoethvm/rpc"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type Client struct {
@@ -40,14 +45,106 @@ func (c *Client) Close() {
 	c.rpcClient.Close()
 }
 
-func (c *Client) ReadReceipt(txHash string, rpcTimeout time.Duration) (*types.Receipt, error) {
+type ExtendedReceipt struct {
+	// Consensus fields: These fields are defined by the Yellow Paper
+	Type              uint8        `json:"type,omitempty"`
+	PostState         []byte       `json:"root"`
+	Status            uint64       `json:"status"`
+	CumulativeGasUsed uint64       `json:"cumulativeGasUsed" gencodec:"required"`
+	Bloom             types.Bloom  `json:"logsBloom"         gencodec:"required"`
+	Logs              []*types.Log `json:"logs"              gencodec:"required"`
+
+	// Implementation fields: These fields are added by geth when processing a transaction.
+	// They are stored in the chain database.
+	TxHash          common.Hash    `json:"transactionHash" gencodec:"required"`
+	ContractAddress common.Address `json:"contractAddress"`
+	GasUsed         uint64         `json:"gasUsed" gencodec:"required"`
+
+	// Inclusion information: These fields provide information about the inclusion of the
+	// transaction corresponding to this receipt.
+	BlockHash        common.Hash `json:"blockHash,omitempty"`
+	BlockNumber      *big.Int    `json:"blockNumber,omitempty"`
+	TransactionIndex uint        `json:"transactionIndex"`
+
+	EffectiveGasPrice uint64 `json:"effectiveGasPrice"`
+}
+
+// UnmarshalJSON unmarshals from JSON.
+func (r *ExtendedReceipt) UnmarshalJSON(input []byte) error {
+	type Receipt struct {
+		Type              *hexutil.Uint64 `json:"type,omitempty"`
+		PostState         *hexutil.Bytes  `json:"root"`
+		Status            *hexutil.Uint64 `json:"status"`
+		CumulativeGasUsed *hexutil.Uint64 `json:"cumulativeGasUsed" gencodec:"required"`
+		Bloom             *types.Bloom    `json:"logsBloom"         gencodec:"required"`
+		Logs              []*types.Log    `json:"logs"              gencodec:"required"`
+		TxHash            *common.Hash    `json:"transactionHash" gencodec:"required"`
+		ContractAddress   *common.Address `json:"contractAddress"`
+		GasUsed           *hexutil.Uint64 `json:"gasUsed" gencodec:"required"`
+		BlockHash         *common.Hash    `json:"blockHash,omitempty"`
+		BlockNumber       *hexutil.Big    `json:"blockNumber,omitempty"`
+		TransactionIndex  *hexutil.Uint   `json:"transactionIndex"`
+		EffectiveGasPrice *hexutil.Uint64 `json:"effectiveGasPrice"`
+	}
+	var dec Receipt
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	if dec.Type != nil {
+		r.Type = uint8(*dec.Type)
+	}
+	if dec.PostState != nil {
+		r.PostState = *dec.PostState
+	}
+	if dec.Status != nil {
+		r.Status = uint64(*dec.Status)
+	}
+	if dec.CumulativeGasUsed == nil {
+		return errors.New("missing required field 'cumulativeGasUsed' for Receipt")
+	}
+	r.CumulativeGasUsed = uint64(*dec.CumulativeGasUsed)
+	if dec.Bloom == nil {
+		return errors.New("missing required field 'logsBloom' for Receipt")
+	}
+	r.Bloom = *dec.Bloom
+	if dec.Logs == nil {
+		return errors.New("missing required field 'logs' for Receipt")
+	}
+	r.Logs = dec.Logs
+	if dec.TxHash == nil {
+		return errors.New("missing required field 'transactionHash' for Receipt")
+	}
+	r.TxHash = *dec.TxHash
+	if dec.ContractAddress != nil {
+		r.ContractAddress = *dec.ContractAddress
+	}
+	if dec.GasUsed == nil {
+		return errors.New("missing required field 'gasUsed' for Receipt")
+	}
+	r.GasUsed = uint64(*dec.GasUsed)
+	if dec.BlockHash != nil {
+		r.BlockHash = *dec.BlockHash
+	}
+	if dec.BlockNumber != nil {
+		r.BlockNumber = (*big.Int)(dec.BlockNumber)
+	}
+	if dec.TransactionIndex != nil {
+		r.TransactionIndex = uint(*dec.TransactionIndex)
+	}
+	if dec.EffectiveGasPrice != nil {
+		r.EffectiveGasPrice = uint64(*dec.EffectiveGasPrice)
+	}
+	return nil
+}
+
+func (c *Client) ReadReceipt(txHash string, rpcTimeout time.Duration) (*ExtendedReceipt, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	ctx, cancelCTX := context.WithTimeout(context.Background(), rpcTimeout)
 	defer cancelCTX()
 
-	result := &types.Receipt{}
+	result := &ExtendedReceipt{}
 	if err := c.rpcClient.CallContext(ctx, result, "eth_getTransactionReceipt", txHash); err != nil {
 		return nil, err
 	}

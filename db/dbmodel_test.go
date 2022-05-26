@@ -1481,53 +1481,6 @@ func TestKeyValueStore(t *testing.T) {
 	}
 }
 
-func TestCvmTransactionsReceipt(t *testing.T) {
-	p := NewPersist()
-	ctx := context.Background()
-	tm := time.Now().UTC().Truncate(1 * time.Second)
-
-	v := &CvmTransactionsReceipt{}
-	v.Hash = "h1"
-	v.Status = 1
-	v.GasUsed = 123
-	v.Serialization = []byte("bits1")
-	v.CreatedAt = tm
-
-	stream := &dbr.NullEventReceiver{}
-
-	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
-	if err != nil {
-		t.Fatal("db fail", err)
-	}
-	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableCvmTransactionsReceipts).Exec()
-
-	err = p.InsertCvmTransactionsReceipt(ctx, rawDBConn.NewSession(stream), v, true)
-	if err != nil {
-		t.Fatal("insert fail", err)
-	}
-	fv, err := p.QueryCvmTransactionsReceipt(ctx, rawDBConn.NewSession(stream), v)
-	if err != nil {
-		t.Fatal("query fail", err)
-	}
-	if !reflect.DeepEqual(*v, *fv) {
-		t.Fatal("compare fail")
-	}
-
-	v.Serialization = []byte("bits2")
-
-	err = p.InsertCvmTransactionsReceipt(ctx, rawDBConn.NewSession(stream), v, true)
-	if err != nil {
-		t.Fatal("insert fail", err)
-	}
-	fv, err = p.QueryCvmTransactionsReceipt(ctx, rawDBConn.NewSession(stream), v)
-	if err != nil {
-		t.Fatal("query fail", err)
-	}
-	if !reflect.DeepEqual(*v, *fv) {
-		t.Fatal("compare fail")
-	}
-}
-
 func TestNodeIndex(t *testing.T) {
 	p := NewPersist()
 	ctx := context.Background()

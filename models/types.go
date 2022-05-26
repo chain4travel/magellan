@@ -38,6 +38,8 @@ var (
 	TransactionTypePVMExport          TransactionType = 0x12
 	TransactionTypeAdvanceTime        TransactionType = 0x13
 	TransactionTypeRewardValidator    TransactionType = 0x14
+	TransactionTypeAddDaoProposal     TransactionType = 0x15
+	TransactionTypeAddDaoVote         TransactionType = 0x16
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -87,6 +89,10 @@ func (t TransactionType) String() string {
 		return "advance_time"
 	case TransactionTypeRewardValidator:
 		return "reward_validator"
+	case TransactionTypeAddDaoProposal:
+		return "add_dao_proposal"
+	case TransactionTypeAddDaoVote:
+		return "add_dao_vote"
 	default:
 		return TypeUnknown
 	}

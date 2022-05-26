@@ -54,7 +54,6 @@ const (
 	TableTransactionsRewardsOwnersOutputs = "transactions_rewards_owners_outputs"
 	TableTxPool                           = "tx_pool"
 	TableKeyValueStore                    = "key_value_store"
-	TableCvmTransactionsReceipts          = "cvm_transactions_receipts"
 	TableNodeIndex                        = "node_index"
 )
 
@@ -408,18 +407,6 @@ type Persist interface {
 		context.Context,
 		dbr.SessionRunner,
 		*KeyValueStore,
-	) error
-
-	QueryCvmTransactionsReceipt(
-		context.Context,
-		dbr.SessionRunner,
-		*CvmTransactionsReceipt,
-	) (*CvmTransactionsReceipt, error)
-	InsertCvmTransactionsReceipt(
-		context.Context,
-		dbr.SessionRunner,
-		*CvmTransactionsReceipt,
-		bool,
 	) error
 
 	QueryNodeIndex(
@@ -1226,7 +1213,12 @@ type CvmTransactionsTxdata struct {
 	FromAddr      string
 	ToAddr        string
 	Nonce         uint64
+	Amount        uint64
+	Status        uint16
+	GasUsed       uint64
+	GasPrice      uint64
 	Serialization []byte
+	Receipt       []byte
 	CreatedAt     time.Time
 }
 
@@ -1243,7 +1235,12 @@ func (p *persist) QueryCvmTransactionsTxdata(
 		"from_addr",
 		"to_addr",
 		"nonce",
+		"amount",
+		"status",
+		"gas_used",
+		"gas_price",
 		"serialization",
+		"receipt",
 		"created_at",
 	).From(TableCvmTransactionsTxdata).
 		Where("hash=?", q.Hash).
@@ -1259,16 +1256,40 @@ func (p *persist) InsertCvmTransactionsTxdata(
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmTransactionsTxdata+" (hash,block,idx,from_addr,to_addr,nonce,serialization,created_at) values(?,"+v.Block+",?,?,?,?,?,?)",
-			v.Hash, v.Idx, v.FromAddr, v.ToAddr, v.Nonce, v.Serialization, v.CreatedAt).
+		InsertInto(TableCvmTransactionsTxdata).
+		Pair("hash", v.Hash).
+		Pair("block", v.Block).
+		Pair("idx", v.Idx).
+		Pair("from_addr", v.FromAddr).
+		Pair("to_addr", v.ToAddr).
+		Pair("nonce", v.Nonce).
+		Pair("amount", v.Amount).
+		Pair("status", v.Status).
+		Pair("gas_used", v.GasUsed).
+		Pair("gas_price", v.GasPrice).
+		Pair("serialization", v.Serialization).
+		Pair("receipt", v.Receipt).
+		Pair("created_at", v.CreatedAt).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmTransactionsTxdata, false, err)
 	}
 	if upd {
 		_, err = sess.
-			UpdateBySql("update "+TableCvmTransactionsTxdata+" set block="+v.Block+",idx=?,from_addr=?,to_addr=?,nonce=?,serialization=?,created_at=? where hash=?",
-				v.Idx, v.FromAddr, v.ToAddr, v.Nonce, v.Serialization, v.CreatedAt, v.Hash).
+			Update(TableCvmTransactionsTxdata).
+			Set("block", v.Block).
+			Set("idx", v.Idx).
+			Set("from_addr", v.FromAddr).
+			Set("to_addr", v.ToAddr).
+			Set("nonce", v.Nonce).
+			Set("amount", v.Amount).
+			Set("status", v.Status).
+			Set("gas_used", v.GasUsed).
+			Set("gas_price", v.GasPrice).
+			Set("serialization", v.Serialization).
+			Set("receipt", v.Receipt).
+			Set("created_at", v.CreatedAt).
+			Where("hash=?", v.Hash).
 			ExecContext(ctx)
 		if err != nil {
 			return EventErr(TableCvmTransactionsTxdata, true, err)
@@ -2261,66 +2282,6 @@ func (p *persist) InsertKeyValueStore(
 		return EventErr(TableKeyValueStore, false, err)
 	}
 
-	return nil
-}
-
-type CvmTransactionsReceipt struct {
-	Hash          string
-	Status        uint16
-	GasUsed       uint64
-	Serialization []byte
-	CreatedAt     time.Time
-}
-
-func (p *persist) QueryCvmTransactionsReceipt(
-	ctx context.Context,
-	sess dbr.SessionRunner,
-	q *CvmTransactionsReceipt,
-) (*CvmTransactionsReceipt, error) {
-	v := &CvmTransactionsReceipt{}
-	err := sess.Select(
-		"hash",
-		"status",
-		"gas_used",
-		"serialization",
-		"created_at",
-	).From(TableCvmTransactionsReceipts).
-		Where("hash=?", q.Hash).
-		LoadOneContext(ctx, v)
-	return v, err
-}
-
-func (p *persist) InsertCvmTransactionsReceipt(
-	ctx context.Context,
-	sess dbr.SessionRunner,
-	v *CvmTransactionsReceipt,
-	upd bool,
-) error {
-	var err error
-	_, err = sess.
-		InsertInto(TableCvmTransactionsReceipts).
-		Pair("hash", v.Hash).
-		Pair("status", v.Status).
-		Pair("gas_used", v.GasUsed).
-		Pair("serialization", v.Serialization).
-		Pair("created_at", v.CreatedAt).
-		ExecContext(ctx)
-	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
-		return EventErr(TableCvmTransactionsReceipts, false, err)
-	}
-	if upd {
-		_, err = sess.
-			Update(TableCvmTransactionsReceipts).
-			Set("status", v.Status).
-			Set("gas_used", v.GasUsed).
-			Set("serialization", v.Serialization).
-			Set("created_at", v.CreatedAt).
-			Where("hash=?", v.Hash).
-			ExecContext(ctx)
-		if err != nil {
-			return EventErr(TableCvmTransactionsReceipts, true, err)
-		}
-	}
 	return nil
 }
 
