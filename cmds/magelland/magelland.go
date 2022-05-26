@@ -213,7 +213,7 @@ func producerFactories(sc *servicesctrl.Control, cfg *cfg.Config) []utils.Listen
 	var factories []utils.ListenCloser
 	for _, v := range cfg.Chains {
 		switch v.VMType {
-		case consumers.IndexerAVMName:
+		case models.AVMName:
 			p, err := stream.NewProducerChain(sc, *cfg, v.ID, stream.EventTypeDecisions, stream.IndexTypeTransactions, stream.IndexXChain)
 			if err != nil {
 				panic(err)
@@ -224,13 +224,13 @@ func producerFactories(sc *servicesctrl.Control, cfg *cfg.Config) []utils.Listen
 				panic(err)
 			}
 			factories = append(factories, p)
-		case consumers.IndexerPVMName:
+		case models.PVMName:
 			p, err := stream.NewProducerChain(sc, *cfg, v.ID, stream.EventTypeDecisions, stream.IndexTypeBlocks, stream.IndexPChain)
 			if err != nil {
 				panic(err)
 			}
 			factories = append(factories, p)
-		case consumers.IndexerCVMName:
+		case models.CVMName:
 			p, err := stream.NewProducerChain(sc, *cfg, v.ID, stream.EventTypeDecisions, stream.IndexTypeBlocks, stream.IndexCChain)
 			if err != nil {
 				panic(err)

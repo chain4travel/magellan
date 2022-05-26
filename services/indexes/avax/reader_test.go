@@ -197,7 +197,14 @@ func newTestIndex(t *testing.T) (*Reader, func()) {
 		},
 	}
 
-	sc := &servicesctrl.Control{Log: logging.NoLog{}, Services: conf}
+	chains := cfg.Chains{
+		"cid": {
+			ID:     "cid",
+			VMType: models.AVMName,
+		},
+	}
+
+	sc := &servicesctrl.Control{Log: logging.NoLog{}, Services: conf, Chains: chains}
 	conns, err := sc.Database()
 	if err != nil {
 		t.Fatal("Failed to create connections:", err.Error())
