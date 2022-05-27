@@ -236,7 +236,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		}
 
 		if w.client != nil {
-			receipt, err := w.client.ReadReceipt(hash, time.Millisecond*500)
+			receipt, err := w.client.ReadReceipt(hash, time.Second*1)
 			if err != nil {
 				return err
 			}
