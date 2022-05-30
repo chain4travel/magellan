@@ -60,10 +60,10 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		switch {
 		case p.BlockStart != nil:
 			sq = sq.OrderDesc("block").
-				Where("block < ?", p.BlockStart.Uint64())
+				Where("block <= ?", p.BlockStart.Uint64())
 		case p.BlockEnd != nil:
 			sq = sq.OrderAsc("block").
-				Where("block > ?", p.BlockEnd.Uint64())
+				Where("block >= ?", p.BlockEnd.Uint64())
 		default:
 			sq = sq.OrderDesc("block")
 		}
@@ -114,10 +114,10 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		switch {
 		case p.BlockStart != nil:
 			sq = sq.OrderDesc("block_idx").
-				Where("block_idx < ?", p.BlockStart.Uint64()*1000+999-uint64(p.TxID))
+				Where("block_idx <= ?", p.BlockStart.Uint64()*1000+999-uint64(p.TxID))
 		case p.BlockEnd != nil:
 			sq = sq.OrderAsc("block_idx").
-				Where("block_idx > ?", p.BlockEnd.Uint64()*1000+999-uint64(p.TxID))
+				Where("block_idx >= ?", p.BlockEnd.Uint64()*1000+999-uint64(p.TxID))
 		default:
 			sq = sq.OrderDesc("block_idx")
 		}
