@@ -49,16 +49,26 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 	if p.ListParams.Limit > 0 {
 		var blockList []*db.CvmBlocks
 
-		_, err = dbRunner.Select(
+		sq := dbRunner.Select(
 			"evm_tx",
 			"atomic_tx",
 			"serialization",
 		).
 			From(db.TableCvmBlocks).
-			OrderDesc("block").
-			Limit(uint64(p.ListParams.Limit)).
-			Offset(uint64(p.ListParams.Offset)).
-			LoadContext(ctx, &blockList)
+			Limit(uint64(p.ListParams.Limit))
+
+		switch {
+		case p.BlockStart != nil:
+			sq = sq.OrderDesc("block").
+				Where("block <= ?", p.BlockStart.Uint64())
+		case p.BlockEnd != nil:
+			sq = sq.OrderAsc("block").
+				Where("block >= ?", p.BlockEnd.Uint64())
+		default:
+			sq = sq.OrderDesc("block")
+		}
+
+		_, err = sq.LoadContext(ctx, &blockList)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +97,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			GasPrice      uint64
 		}
 
-		_, err = dbRunner.Select(
+		sq := dbRunner.Select(
 			"serialization",
 			"created_at",
 			"from_addr",
@@ -98,11 +108,21 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"gas_price",
 		).
 			From(db.TableCvmTransactionsTxdata).
-			OrderDesc("block").
-			OrderAsc("idx").
-			Limit(uint64(p.TxLimit)).
-			Offset(uint64(p.TxOffset)).
-			LoadContext(ctx, &txList)
+			OrderDesc("block_idx").
+			Limit(uint64(p.TxLimit))
+
+		switch {
+		case p.BlockStart != nil:
+			sq = sq.OrderDesc("block_idx").
+				Where("block_idx <= ?", p.BlockStart.Uint64()*1000+999-uint64(p.TxID))
+		case p.BlockEnd != nil:
+			sq = sq.OrderAsc("block_idx").
+				Where("block_idx >= ?", p.BlockEnd.Uint64()*1000+999-uint64(p.TxID))
+		default:
+			sq = sq.OrderDesc("block_idx")
+		}
+
+		_, err = sq.LoadContext(ctx, &txList)
 		if err != nil {
 			return nil, err
 		}

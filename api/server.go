@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/chain4travel/caminogo/ids"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services"
@@ -73,12 +74,31 @@ func (s *Server) Close() error {
 func newRouter(sc *servicesctrl.Control, conf cfg.Config) (*web.Router, error) {
 	sc.Log.Info("Router chainID %s", sc.GenesisContainer.XChainID.String())
 
-	indexBytes, err := newIndexResponse(conf.NetworkID, sc.GenesisContainer.XChainID, sc.GenesisContainer.AvaxAssetID)
+	var xChainID, cChainID ids.ID
+	for key, chain := range conf.Chains {
+		switch chain.VMType {
+		case models.CVMName:
+			cChainID, _ = ids.FromString(key)
+		case models.AVMName:
+			xChainID, _ = ids.FromString(key)
+		}
+	}
+
+	indexBytes, err := newIndexResponse(
+		conf.NetworkID,
+		xChainID,
+		cChainID,
+		sc.GenesisContainer.AvaxAssetID,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	legacyIndexResponse, err := newLegacyIndexResponse(conf.NetworkID, sc.GenesisContainer.XChainID, sc.GenesisContainer.AvaxAssetID)
+	legacyIndexResponse, err := newLegacyIndexResponse(
+		conf.NetworkID,
+		sc.GenesisContainer.XChainID,
+		sc.GenesisContainer.AvaxAssetID,
+	)
 	if err != nil {
 		return nil, err
 	}

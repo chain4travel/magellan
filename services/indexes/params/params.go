@@ -46,6 +46,7 @@ const (
 	KeyDisableGenesis   = "disableGenesis"
 	KeyOutputOutputType = "outputOutputType"
 	KeyOutputGroupID    = "outputGroupId"
+	KeyTransactionID    = "transactionId"
 
 	PaginationMaxLimit      = 5000
 	PaginationDefaultOffset = 0

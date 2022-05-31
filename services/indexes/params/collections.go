@@ -260,12 +260,7 @@ type ListCTransactionsParams struct {
 }
 
 func (p *ListCTransactionsParams) ForValues(v uint8, q url.Values) error {
-	err := p.ListParams.ForValuesAllowOffset(v, q)
-	if err != nil {
-		return err
-	}
-
-	err = p.ListParams.ForValues(v, q)
+	err := p.ListParams.ForValues(v, q)
 	if err != nil {
 		return err
 	}
@@ -346,6 +341,9 @@ type ListCBlocksParams struct {
 	ListParams ListParams
 	TxLimit    int
 	TxOffset   int
+	BlockStart *big.Int
+	BlockEnd   *big.Int
+	TxID       uint
 }
 
 func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
@@ -362,14 +360,29 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 		}
 	}
 
-	p.TxOffset = 0
-	offsets, ok := q[KeyOffset]
-	if ok && len(offsets) > 1 {
-		if p.TxOffset, err = strconv.Atoi(offsets[1]); err != nil {
-			return err
+	blockStartStr := q[KeyBlockStart]
+	if len(blockStartStr) == 1 {
+		bint := big.NewInt(0)
+		if _, ok := bint.SetString(blockStartStr[0], 10); ok {
+			p.BlockStart = bint
+		}
+	}
+	blockEndStr := q[KeyBlockEnd]
+	if len(blockEndStr) == 1 {
+		bint := big.NewInt(0)
+		if _, ok := bint.SetString(blockEndStr[0], 10); ok {
+			p.BlockStart = bint
 		}
 	}
 
+	txIDs := q[KeyTransactionID]
+	if len(txIDs) == 1 {
+		txID, err := strconv.ParseInt(txIDs[0], 10, 32)
+		if err != nil {
+			return err
+		}
+		p.TxID = uint(txID)
+	}
 	return nil
 }
 
