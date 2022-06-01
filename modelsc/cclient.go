@@ -69,6 +69,8 @@ type ExtendedReceipt struct {
 	BlockNumber *big.Int    `json:"blockNumber,omitempty"`
 
 	EffectiveGasPrice uint64 `json:"effectiveGasPrice"`
+
+	Raw []byte `json:"-"`
 }
 
 // UnmarshalJSON unmarshals from JSON.
@@ -136,6 +138,7 @@ func (r *ExtendedReceipt) UnmarshalJSON(input []byte) error {
 	if dec.EffectiveGasPrice != nil {
 		r.EffectiveGasPrice = uint64(*dec.EffectiveGasPrice)
 	}
+	r.Raw = input
 	return nil
 }
 

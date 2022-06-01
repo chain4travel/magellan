@@ -240,15 +240,11 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 			if err != nil {
 				return err
 			}
-			receiptBits, err := json.Marshal(receipt)
-			if err != nil {
-				return err
-			}
 
 			cvmTransactionTxdata.Status = uint16(receipt.Status)
 			cvmTransactionTxdata.GasPrice = receipt.EffectiveGasPrice
 			cvmTransactionTxdata.GasUsed = receipt.GasUsed
-			cvmTransactionTxdata.Receipt = receiptBits
+			cvmTransactionTxdata.Receipt = receipt.Raw
 		}
 
 		err = ctx.Persist().InsertCvmTransactionsTxdata(ctx.Ctx(), ctx.DB(), cvmTransactionTxdata, cfg.PerformUpdates)
