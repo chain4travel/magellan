@@ -371,7 +371,7 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 	if len(blockEndStr) == 1 {
 		bint := big.NewInt(0)
 		if _, ok := bint.SetString(blockEndStr[0], 10); ok {
-			p.BlockStart = bint
+			p.BlockEnd = bint
 		}
 	}
 
