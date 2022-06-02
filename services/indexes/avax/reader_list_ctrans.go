@@ -34,18 +34,20 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 			res.Hash = "0x" + res.Hash
 		}
 		res.Nonce = t.Nonce()
-		if t.GasPrice() != nil {
+		if t.Type() == 0 && t.GasPrice() != nil {
 			str := t.GasPrice().String()
 			res.GasPrice = &str
 		}
 		res.GasLimit = t.Gas()
-		if t.GasFeeCap() != nil {
-			str := t.GasFeeCap().String()
-			res.GasFeeCap = &str
-		}
-		if t.GasTipCap() != nil {
-			str := t.GasTipCap().String()
-			res.GasTipCap = &str
+		if t.Type() > 0 {
+			if t.GasFeeCap() != nil {
+				str := t.GasFeeCap().String()
+				res.GasFeeCap = &str
+			}
+			if t.GasTipCap() != nil {
+				str := t.GasTipCap().String()
+				res.GasTipCap = &str
+			}
 		}
 		if t.To() != nil {
 			str := utils.CommonAddressHexRepair(t.To())
