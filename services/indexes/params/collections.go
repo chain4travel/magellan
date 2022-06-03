@@ -346,6 +346,7 @@ type ListCBlocksParams struct {
 	ListParams ListParams
 	TxLimit    int
 	TxOffset   int
+	CAddresses []string
 	BlockStart *big.Int
 	BlockEnd   *big.Int
 	TxID       uint
@@ -363,6 +364,14 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 		if p.TxLimit, err = strconv.Atoi(limits[1]); err != nil {
 			return err
 		}
+	}
+
+	addressStrs := q[KeyAddress]
+	for _, addressStr := range addressStrs {
+		if !strings.HasPrefix(addressStr, "0x") {
+			addressStr = "0x" + addressStr
+		}
+		p.CAddresses = append(p.CAddresses, strings.ToLower(addressStr))
 	}
 
 	blockStartStr := q[KeyBlockStart]

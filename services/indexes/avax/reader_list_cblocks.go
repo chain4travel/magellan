@@ -122,6 +122,10 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			sq = sq.OrderDesc("block_idx")
 		}
 
+		if len(p.CAddresses) > 0 {
+			sq = sq.Where("from_addr in ? OR to_addr in ?", p.CAddresses, p.CAddresses)
+		}
+
 		_, err = sq.LoadContext(ctx, &txList)
 		if err != nil {
 			return nil, err
