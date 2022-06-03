@@ -34,18 +34,20 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 			res.Hash = "0x" + res.Hash
 		}
 		res.Nonce = t.Nonce()
-		if t.GasPrice() != nil {
+		if t.Type() == 0 && t.GasPrice() != nil {
 			str := t.GasPrice().String()
 			res.GasPrice = &str
 		}
 		res.GasLimit = t.Gas()
-		if t.GasFeeCap() != nil {
-			str := t.GasFeeCap().String()
-			res.GasFeeCap = &str
-		}
-		if t.GasTipCap() != nil {
-			str := t.GasTipCap().String()
-			res.GasTipCap = &str
+		if t.Type() > 0 {
+			if t.GasFeeCap() != nil {
+				str := t.GasFeeCap().String()
+				res.GasFeeCap = &str
+			}
+			if t.GasTipCap() != nil {
+				str := t.GasTipCap().String()
+				res.GasTipCap = &str
+			}
 		}
 		if t.To() != nil {
 			str := utils.CommonAddressHexRepair(t.To())
@@ -157,8 +159,8 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 
 	if len(p.CAddressesTo) > 0 {
 		subq := createdatefilter(
-			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
-				Where(db.TableCvmTransactionsTxdata+".to_addr in ?", p.CAddressesTo)),
+			blockfilter(dbRunner.Select("hash").From(db.TableCvmTransactionsTxdata).
+				Where("to_addr in ?", p.CAddressesTo)),
 		)
 		sq.
 			Where("hash in ?",
@@ -168,8 +170,8 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 
 	if len(p.CAddressesFrom) > 0 {
 		subq := createdatefilter(
-			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
-				Where(db.TableCvmTransactionsTxdata+".from_addr in ?", p.CAddressesFrom)),
+			blockfilter(dbRunner.Select("hash").From(db.TableCvmTransactionsTxdata).
+				Where("from_addr in ?", p.CAddressesFrom)),
 		)
 		sq.
 			Where("hash in ?",
@@ -179,11 +181,11 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 
 	if len(p.CAddresses) > 0 {
 		subqfrom := createdatefilter(
-			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
-				Where(".from_addr in ?", p.CAddresses)),
+			blockfilter(dbRunner.Select("hash").From(db.TableCvmTransactionsTxdata).
+				Where("from_addr in ?", p.CAddresses)),
 		)
 		subqto := createdatefilter(
-			blockfilter(dbRunner.Select(db.TableCvmTransactionsTxdata+".hash").From(db.TableCvmTransactionsTxdata).
+			blockfilter(dbRunner.Select("hash").From(db.TableCvmTransactionsTxdata).
 				Where("to_addr in ?", p.CAddresses)),
 		)
 		sq.
