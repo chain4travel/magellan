@@ -49,6 +49,8 @@ var (
 	ResultTypeAsset       SearchResultType = "asset"
 	ResultTypeAddress     SearchResultType = "address"
 	ResultTypeOutput      SearchResultType = "output"
+	ResultTypeCBlock      SearchResultType = "cBlock"
+	ResultTypeCTrans      SearchResultType = "cTransaction"
 
 	TypeUnknown = "unknown"
 )
