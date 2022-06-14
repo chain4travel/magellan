@@ -116,12 +116,15 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	}
 
 	var ctrans []models.CResult
+	var caddr []models.CResult
 	// get all 0x based C-Chain results
 	if cblocks == nil && strings.HasPrefix(p.ListParams.Query, "0x") {
 		if len(p.ListParams.Query) == 66 { //bock hash or tx hash
 			cblocks, _ = r.searchCBlockHash(ctx, p.ListParams.Query)
 			ctrans, _ = r.searchCTransHash(ctx, p.ListParams.Query)
-		} // else TODO: address search
+		} else if len(p.ListParams.Query) == 42 {
+			caddr = append(caddr, models.CResult{Hash: p.ListParams.Query})
+		}
 	}
 
 	var assets []*models.Asset
@@ -129,7 +132,7 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	var addresses []*models.AddressInfo
 
 	lenSearchResults := func() int {
-		return len(assets) + len(txs) + len(addresses) + len(cblocks) + len(ctrans)
+		return len(assets) + len(txs) + len(addresses) + len(cblocks) + len(ctrans) + len(caddr)
 	}
 
 	assetsResp, err := r.ListAssets(ctx, &params.ListAssetsParams{ListParams: p.ListParams}, nil)
@@ -138,7 +141,7 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	}
 	assets = assetsResp.Assets
 	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs, cblocks, ctrans)
+		return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 	}
 
 	dbRunner, err := r.conns.DB().NewSession("search", cfg.RequestTimeout)
@@ -154,10 +157,10 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 		return nil, err
 	}
 	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs, cblocks, ctrans)
+		return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 	}
 
-	return collateSearchResults(assets, addresses, txs, cblocks, ctrans)
+	return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 }
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
@@ -954,7 +957,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 	}
 
 	if len(txs) > 0 {
-		return collateSearchResults(nil, nil, txs, nil, nil)
+		return collateSearchResults(nil, nil, txs, nil, nil, nil)
 	}
 
 	if false {
@@ -966,7 +969,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 		}, avaxAssetID); err != nil {
 			return nil, err
 		} else if len(txs.Transactions) > 0 {
-			return collateSearchResults(nil, nil, txs.Transactions, nil, nil)
+			return collateSearchResults(nil, nil, txs.Transactions, nil, nil, nil)
 		}
 	}
 
@@ -979,7 +982,7 @@ func (r *Reader) searchByShortID(ctx context.Context, id ids.ShortID) (*models.S
 	if addrs, err := r.ListAddresses(ctx, &params.ListAddressesParams{ListParams: listParams, Address: &id}); err != nil {
 		return nil, err
 	} else if len(addrs.Addresses) > 0 {
-		return collateSearchResults(nil, addrs.Addresses, nil, nil, nil)
+		return collateSearchResults(nil, addrs.Addresses, nil, nil, nil, nil)
 	}
 
 	return &models.SearchResults{}, nil
@@ -1042,9 +1045,10 @@ func collateSearchResults(
 	transactions []*models.Transaction,
 	cblocks []models.CResult,
 	ctrans []models.CResult,
+	caddr []models.CResult,
 ) (*models.SearchResults, error) {
 	// Build overall SearchResults object from our pieces
-	returnedResultCount := len(assets) + len(addresses) + len(transactions) + len(cblocks) + len(ctrans)
+	returnedResultCount := len(assets) + len(addresses) + len(transactions) + len(cblocks) + len(ctrans) + len(caddr)
 	if returnedResultCount > params.PaginationMaxLimit {
 		returnedResultCount = params.PaginationMaxLimit
 	}
@@ -1090,6 +1094,11 @@ func collateSearchResults(
 	}
 	for _, result := range ctrans {
 		if !appendSR(models.ResultTypeCTrans, result) {
+			break
+		}
+	}
+	for _, result := range caddr {
+		if !appendSR(models.ResultTypeCAddress, result) {
 			break
 		}
 	}

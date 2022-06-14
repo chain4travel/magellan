@@ -51,6 +51,7 @@ var (
 	ResultTypeOutput      SearchResultType = "output"
 	ResultTypeCBlock      SearchResultType = "cBlock"
 	ResultTypeCTrans      SearchResultType = "cTransaction"
+	ResultTypeCAddress    SearchResultType = "cAddress"
 
 	TypeUnknown = "unknown"
 )
