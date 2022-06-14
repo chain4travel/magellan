@@ -119,10 +119,10 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	var caddr []models.CResult
 	// get all 0x based C-Chain results
 	if cblocks == nil && strings.HasPrefix(p.ListParams.Query, "0x") {
-		if len(p.ListParams.Query) == 66 { //bock hash or tx hash
+		if len(p.ListParams.Query) == 66 { // block hash or tx hash
 			cblocks, _ = r.searchCBlockHash(ctx, p.ListParams.Query)
 			ctrans, _ = r.searchCTransHash(ctx, p.ListParams.Query)
-		} else if len(p.ListParams.Query) == 42 {
+		} else if len(p.ListParams.Query) == 42 { // address
 			caddr = append(caddr, models.CResult{Hash: p.ListParams.Query})
 		}
 	}
