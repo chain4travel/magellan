@@ -130,6 +130,11 @@ type AddressList struct {
 	Addresses []*AddressInfo `json:"addresses"`
 }
 
+type CResult struct {
+	Number uint64 `json:"number"`
+	Hash   string `json:"hash"`
+}
+
 // SearchResults represents a set of items returned for a search query.
 type SearchResults struct {
 	// Count is the total number of matching results

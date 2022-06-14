@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -38,7 +40,7 @@ import (
 const (
 	MaxAggregateIntervalCount = 20000
 
-	MinSearchQueryLength = 1
+	MinSearchQueryLength = 3
 )
 
 var (
@@ -95,7 +97,12 @@ func NewReader(networkID uint32, conns *utils.Connections, chainConsumers map[st
 func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID ids.ID) (*models.SearchResults, error) {
 	p.ListParams.DisableCounting = true
 
-	if len(p.ListParams.Query) < MinSearchQueryLength {
+	var cblocks []models.CResult
+	if blockHeight, err := strconv.ParseInt(p.ListParams.Query, 10, 64); err == nil && blockHeight > 0 {
+		cblocks, _ = r.searchCBlockHeight(ctx, uint64(blockHeight))
+	}
+
+	if len(p.ListParams.Query) < MinSearchQueryLength && cblocks == nil {
 		return nil, ErrSearchQueryTooShort
 	}
 
@@ -108,12 +115,24 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 		return r.searchByID(ctx, id, avaxAssetID)
 	}
 
+	var ctrans []models.CResult
+	var caddr []models.CResult
+	// get all 0x based C-Chain results
+	if cblocks == nil && strings.HasPrefix(p.ListParams.Query, "0x") {
+		if len(p.ListParams.Query) == 66 { // block hash or tx hash
+			cblocks, _ = r.searchCBlockHash(ctx, p.ListParams.Query)
+			ctrans, _ = r.searchCTransHash(ctx, p.ListParams.Query)
+		} else if len(p.ListParams.Query) == 42 { // address
+			caddr = append(caddr, models.CResult{Hash: p.ListParams.Query})
+		}
+	}
+
 	var assets []*models.Asset
 	var txs []*models.Transaction
 	var addresses []*models.AddressInfo
 
 	lenSearchResults := func() int {
-		return len(assets) + len(txs) + len(addresses)
+		return len(assets) + len(txs) + len(addresses) + len(cblocks) + len(ctrans) + len(caddr)
 	}
 
 	assetsResp, err := r.ListAssets(ctx, &params.ListAssetsParams{ListParams: p.ListParams}, nil)
@@ -122,20 +141,7 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	}
 	assets = assetsResp.Assets
 	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs)
-	}
-
-	if false {
-		// The query string was not an id/shortid so perform an ID prefix search
-		// against transactions and addresses.
-		transactionsRes, err := r.ListTransactions(ctx, &params.ListTransactionsParams{ListParams: p.ListParams}, avaxAssetID)
-		if err != nil {
-			return nil, err
-		}
-		txs = transactionsRes.Transactions
-		if lenSearchResults() >= p.ListParams.Limit {
-			return collateSearchResults(assets, addresses, txs)
-		}
+		return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 	}
 
 	dbRunner, err := r.conns.DB().NewSession("search", cfg.RequestTimeout)
@@ -151,31 +157,10 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 		return nil, err
 	}
 	if lenSearchResults() >= p.ListParams.Limit {
-		return collateSearchResults(assets, addresses, txs)
+		return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 	}
 
-	/*
-		A regex search on address can't work..
-		And on output_id makes no sense...
-
-		Addresses are stored in the db in 20byte hex, and the query is by address 'fuji.....'
-		There is no way to convert a part of an address into a "few" bytes...
-
-		Future: store the address in the db in the address format 'fuji.....'
-		then a part query could work.
-	*/
-	if false {
-		addressesRes, err := r.ListAddresses(ctx, &params.ListAddressesParams{ListParams: p.ListParams})
-		if err != nil {
-			return nil, err
-		}
-		addresses = addressesRes.Addresses
-		if lenSearchResults() >= p.ListParams.Limit {
-			return collateSearchResults(assets, addresses, txs)
-		}
-	}
-
-	return collateSearchResults(assets, addresses, txs)
+	return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 }
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
@@ -972,7 +957,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 	}
 
 	if len(txs) > 0 {
-		return collateSearchResults(nil, nil, txs)
+		return collateSearchResults(nil, nil, txs, nil, nil, nil)
 	}
 
 	if false {
@@ -984,7 +969,7 @@ func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) 
 		}, avaxAssetID); err != nil {
 			return nil, err
 		} else if len(txs.Transactions) > 0 {
-			return collateSearchResults(nil, nil, txs.Transactions)
+			return collateSearchResults(nil, nil, txs.Transactions, nil, nil, nil)
 		}
 	}
 
@@ -997,15 +982,73 @@ func (r *Reader) searchByShortID(ctx context.Context, id ids.ShortID) (*models.S
 	if addrs, err := r.ListAddresses(ctx, &params.ListAddressesParams{ListParams: listParams, Address: &id}); err != nil {
 		return nil, err
 	} else if len(addrs.Addresses) > 0 {
-		return collateSearchResults(nil, addrs.Addresses, nil)
+		return collateSearchResults(nil, addrs.Addresses, nil, nil, nil, nil)
 	}
 
 	return &models.SearchResults{}, nil
 }
 
-func collateSearchResults(assets []*models.Asset, addresses []*models.AddressInfo, transactions []*models.Transaction) (*models.SearchResults, error) {
+func (r *Reader) searchCBlockHeight(ctx context.Context, height uint64) ([]models.CResult, error) {
+	dbRunner, err := r.conns.DB().NewSession("search_cblock_height", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []models.CResult{}
+
+	if _, err := dbRunner.Select("block as number, hash").
+		From(db.TableCvmBlocks).
+		Where("block=?", height).
+		LoadContext(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (r *Reader) searchCBlockHash(ctx context.Context, hash string) ([]models.CResult, error) {
+	dbRunner, err := r.conns.DB().NewSession("search_cblock_hash", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []models.CResult{}
+
+	if _, err := dbRunner.Select("block as number, hash").
+		From(db.TableCvmBlocks).
+		Where("hash=?", hash).
+		LoadContext(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (r *Reader) searchCTransHash(ctx context.Context, hash string) ([]models.CResult, error) {
+	dbRunner, err := r.conns.DB().NewSession("search_ctrans_hash", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []models.CResult{}
+
+	if _, err := dbRunner.Select("hash").
+		From(db.TableCvmTransactionsTxdata).
+		Where("hash=?", hash).
+		LoadContext(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func collateSearchResults(
+	assets []*models.Asset,
+	addresses []*models.AddressInfo,
+	transactions []*models.Transaction,
+	cblocks []models.CResult,
+	ctrans []models.CResult,
+	caddr []models.CResult,
+) (*models.SearchResults, error) {
 	// Build overall SearchResults object from our pieces
-	returnedResultCount := len(assets) + len(addresses) + len(transactions)
+	returnedResultCount := len(assets) + len(addresses) + len(transactions) + len(cblocks) + len(ctrans) + len(caddr)
 	if returnedResultCount > params.PaginationMaxLimit {
 		returnedResultCount = params.PaginationMaxLimit
 	}
@@ -1017,26 +1060,48 @@ func collateSearchResults(assets []*models.Asset, addresses []*models.AddressInf
 		Results: make([]models.SearchResult, 0, returnedResultCount),
 	}
 
-	// Add each result to the list
-	for _, result := range addresses {
+	appendSR := func(resultType models.SearchResultType, data interface{}) bool {
+		if len(collatedResults.Results) > returnedResultCount {
+			return false
+		}
 		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
-			SearchResultType: models.ResultTypeAddress,
-			Data:             result,
+			SearchResultType: resultType,
+			Data:             data,
 		})
-	}
-	for _, result := range transactions {
-		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
-			SearchResultType: models.ResultTypeTransaction,
-			Data:             result,
-		})
-	}
-	for _, result := range assets {
-		collatedResults.Results = append(collatedResults.Results, models.SearchResult{
-			SearchResultType: models.ResultTypeAsset,
-			Data:             result,
-		})
+		return true
 	}
 
+	// Add each result to the list
+	for _, result := range addresses {
+		if !appendSR(models.ResultTypeAddress, result) {
+			break
+		}
+	}
+	for _, result := range transactions {
+		if !appendSR(models.ResultTypeTransaction, result) {
+			break
+		}
+	}
+	for _, result := range assets {
+		if !appendSR(models.ResultTypeAsset, result) {
+			break
+		}
+	}
+	for _, result := range cblocks {
+		if !appendSR(models.ResultTypeCBlock, result) {
+			break
+		}
+	}
+	for _, result := range ctrans {
+		if !appendSR(models.ResultTypeCTrans, result) {
+			break
+		}
+	}
+	for _, result := range caddr {
+		if !appendSR(models.ResultTypeCAddress, result) {
+			break
+		}
+	}
 	return collatedResults, nil
 }
 

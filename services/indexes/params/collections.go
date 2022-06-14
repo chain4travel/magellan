@@ -401,11 +401,12 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 }
 
 func (p *ListCBlocksParams) CacheKey() []string {
-	k := make([]string, 0, 2)
+	k := make([]string, 0, 3)
 
 	k = append(k,
 		CacheKey(KeyLimit, p.TxLimit),
-		CacheKey(KeyOffset, p.TxOffset),
+		CacheKey(KeyBlockStart, p.BlockStart),
+		CacheKey(KeyBlockEnd, p.BlockEnd),
 	)
 
 	return append(p.ListParams.CacheKey(), k...)

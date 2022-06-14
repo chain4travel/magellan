@@ -31,6 +31,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 	}
 
 	result := models.CBlockList{}
+	// Get count of blocks
 	err = dbRunner.Select("COUNT(block)").
 		From(db.TableCvmBlocks).
 		LoadOneContext(ctx, &result.BlockCount)
@@ -38,9 +39,13 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		return nil, err
 	}
 
-	err = dbRunner.Select("COUNT(hash)").
-		From(db.TableCvmTransactionsTxdata).
-		LoadOneContext(ctx, &result.TransactionCount)
+	// get count of TX
+	sq := dbRunner.Select("COUNT(hash)").
+		From(db.TableCvmTransactionsTxdata)
+	if len(p.CAddresses) > 0 {
+		sq = sq.Where("from_addr in ? OR to_addr in ?", p.CAddresses, p.CAddresses)
+	}
+	err = sq.LoadOneContext(ctx, &result.TransactionCount)
 	if err != nil {
 		return nil, err
 	}
