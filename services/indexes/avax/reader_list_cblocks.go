@@ -20,6 +20,7 @@ import (
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/gocraft/dbr/v2"
 )
 
 func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (*models.CBlockList, error) {
@@ -40,10 +41,14 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 	}
 
 	// get count of TX
-	sq := dbRunner.Select("COUNT(hash)").
-		From(db.TableCvmTransactionsTxdata)
+	var sq *dbr.SelectStmt
 	if len(p.CAddresses) > 0 {
-		sq = sq.Where("from_addr in ? OR to_addr in ?", p.CAddresses, p.CAddresses)
+		sq = dbRunner.Select("tx_count").
+			From(db.TableCvmAccounts).
+			Where("address in ?", p.CAddresses)
+	} else {
+		sq = dbRunner.Select("COUNT(block_idx)").
+			From(db.TableCvmTransactionsTxdata)
 	}
 	err = sq.LoadOneContext(ctx, &result.TransactionCount)
 	if err != nil {
@@ -105,7 +110,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		sq := dbRunner.Select(
 			"serialization",
 			"created_at",
-			"from_addr",
+			"F.address AS from_addr",
 			"block",
 			"idx",
 			"status",
@@ -113,7 +118,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"gas_price",
 		).
 			From(db.TableCvmTransactionsTxdata).
-			OrderDesc("block_idx").
+			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = id").
 			Limit(uint64(p.TxLimit))
 
 		switch {
@@ -124,11 +129,13 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			sq = sq.OrderAsc("block_idx").
 				Where("block_idx >= ?", p.BlockEnd.Uint64()*1000+999-uint64(p.TxID))
 		default:
-			sq = sq.OrderDesc("block_idx")
+			sq = sq.OrderDesc("block_idx").
+				Where("block_idx IS NOT NULL")
 		}
 
 		if len(p.CAddresses) > 0 {
-			sq = sq.Where("from_addr in ? OR to_addr in ?", p.CAddresses, p.CAddresses)
+			subSel := dbr.Select("id").From(db.TableCvmAccounts).Where("address in ?", p.CAddresses)
+			sq = sq.Where("id_from_addr in ? OR id_to_addr in ?", subSel, subSel)
 		}
 
 		_, err = sq.LoadContext(ctx, &txList)

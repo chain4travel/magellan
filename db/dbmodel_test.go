@@ -724,6 +724,10 @@ func TestCvmTransactionsTxdata(t *testing.T) {
 	}
 	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableCvmTransactionsTxdata).Exec()
 
+	err = p.InsertCvmAccount(ctx, rawDBConn.NewSession(stream), &CvmAccount{}, true)
+	if err != nil {
+		t.Fatal("insert fail", err)
+	}
 	err = p.InsertCvmTransactionsTxdata(ctx, rawDBConn.NewSession(stream), v, true)
 	if err != nil {
 		t.Fatal("insert fail", err)
