@@ -57,9 +57,9 @@ type ExtendedReceipt struct {
 
 	// Implementation fields: These fields are added by geth when processing a transaction.
 	// They are stored in the chain database.
-	TxHash           common.Hash    `json:"transactionHash" gencodec:"required"`
-	ContractAddress  common.Address `json:"contractAddress"`
-	TransactionIndex uint           `json:"transactionIndex"`
+	TxHash           common.Hash     `json:"transactionHash" gencodec:"required"`
+	ContractAddress  *common.Address `json:"contractAddress"`
+	TransactionIndex uint            `json:"transactionIndex"`
 
 	GasUsed uint64 `json:"gasUsed" gencodec:"required"`
 
@@ -119,9 +119,7 @@ func (r *ExtendedReceipt) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'transactionHash' for Receipt")
 	}
 	r.TxHash = *dec.TxHash
-	if dec.ContractAddress != nil {
-		r.ContractAddress = *dec.ContractAddress
-	}
+	r.ContractAddress = dec.ContractAddress
 	if dec.GasUsed == nil {
 		return errors.New("missing required field 'gasUsed' for Receipt")
 	}

@@ -17,6 +17,7 @@ type MockPersist struct {
 	OutputsRedeeming                 map[string]*OutputsRedeeming
 	CvmTransactionsAtomic            map[string]*CvmTransactionsAtomic
 	CvmTransactionsTxdata            map[string]*CvmTransactionsTxdata
+	CvmAccounts                      map[string]*CvmAccount
 	CvmBlocks                        map[string]*CvmBlocks
 	CvmAddresses                     map[string]*CvmAddresses
 	TransactionsValidator            map[string]*TransactionsValidator
@@ -50,6 +51,7 @@ func NewPersistMock() *MockPersist {
 		OutputsRedeeming:                 make(map[string]*OutputsRedeeming),
 		CvmTransactionsAtomic:            make(map[string]*CvmTransactionsAtomic),
 		CvmTransactionsTxdata:            make(map[string]*CvmTransactionsTxdata),
+		CvmAccounts:                      make(map[string]*CvmAccount),
 		CvmBlocks:                        make(map[string]*CvmBlocks),
 		CvmAddresses:                     make(map[string]*CvmAddresses),
 		TransactionsValidator:            make(map[string]*TransactionsValidator),
@@ -299,6 +301,24 @@ func (m *MockPersist) InsertCvmTransactionsTxdata(ctx context.Context, runner db
 	nv := &CvmTransactionsTxdata{}
 	*nv = *v
 	m.CvmTransactionsTxdata[v.Hash] = nv
+	return nil
+}
+
+func (m *MockPersist) QueryCvmAccount(ctx context.Context, runner dbr.SessionRunner, v *CvmAccount) (*CvmAccount, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	if v, present := m.CvmAccounts[v.Address]; present {
+		return v, nil
+	}
+	return nil, nil
+}
+
+func (m *MockPersist) InsertCvmAccount(ctx context.Context, runner dbr.SessionRunner, v *CvmAccount, b bool) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	nv := &CvmAccount{}
+	*nv = *v
+	m.CvmAccounts[v.Address] = nv
 	return nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/hex"
 	"strings"
+	"time"
 
 	"github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/magellan/cfg"
@@ -82,15 +83,24 @@ func (r *Reader) ListCTransactions(ctx context.Context, p *params.ListCTransacti
 		return nil, err
 	}
 
-	var dataList []*db.CvmTransactionsTxdata
+	type TxData struct {
+		Block         string
+		FromAddr      string
+		Serialization []byte
+		Receipt       []byte
+		CreatedAt     time.Time
+	}
+
+	var dataList []*TxData
 
 	sq := dbRunner.Select(
 		"block",
-		"from_addr",
+		"F.address AS from_addr",
 		"serialization",
 		"receipt",
 		"created_at",
-	).From(db.TableCvmTransactionsTxdata)
+	).From(db.TableCvmTransactionsTxdata).
+		LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr=id")
 
 	r.listCTransFilter(p, dbRunner, sq)
 	if len(p.Hashes) > 0 {

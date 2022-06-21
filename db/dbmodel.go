@@ -38,6 +38,7 @@ const (
 	TableCvmBlocks                        = "cvm_blocks"
 	TableCvmTransactionsAtomic            = "cvm_transactions_atomic"
 	TableCvmTransactionsTxdata            = "cvm_transactions_txdata"
+	TableCvmAccounts                      = "cvm_accounts"
 	TablePvmBlocks                        = "pvm_blocks"
 	TableRewards                          = "rewards"
 	TableTransactionsValidator            = "transactions_validator"
@@ -205,6 +206,19 @@ type Persist interface {
 		dbr.SessionRunner,
 		*CvmTransactionsTxdata,
 		bool,
+	) error
+
+	QueryCvmAccount(
+		ctx context.Context,
+		sess dbr.SessionRunner,
+		q *CvmAccount,
+	) (*CvmAccount, error)
+
+	InsertCvmAccount(
+		ctx context.Context,
+		sess dbr.SessionRunner,
+		v *CvmAccount,
+		upd bool,
 	) error
 
 	QueryPvmBlocks(
@@ -440,6 +454,14 @@ func EventErr(t string, upd bool, err error) error {
 		updmsg = " upd"
 	}
 	return fmt.Errorf("%w (%s%s)", err, t, updmsg)
+}
+
+func PrintDbr(d *dbr.SelectStmt) *dbr.SelectStmt {
+	buffer := dbr.NewBuffer()
+	if err := d.Build(d.Dialect, buffer); err == nil {
+		fmt.Println(buffer.String())
+	}
+	return d
 }
 
 type Transactions struct {
@@ -1232,8 +1254,8 @@ func (p *persist) QueryCvmTransactionsTxdata(
 		"hash",
 		"block",
 		"idx",
-		"from_addr",
-		"to_addr",
+		"F.address",
+		"T.address",
 		"nonce",
 		"amount",
 		"status",
@@ -1243,6 +1265,8 @@ func (p *persist) QueryCvmTransactionsTxdata(
 		"receipt",
 		"created_at",
 	).From(TableCvmTransactionsTxdata).
+		Join(dbr.I(TableCvmAccounts).As("F"), "F.id=id_from_addr").
+		Join(dbr.I(TableCvmAccounts).As("T"), "T.id=id_to_addr").
 		Where("hash=?", q.Hash).
 		LoadOneContext(ctx, v)
 	return v, err
@@ -1260,8 +1284,8 @@ func (p *persist) InsertCvmTransactionsTxdata(
 		Pair("hash", v.Hash).
 		Pair("block", v.Block).
 		Pair("idx", v.Idx).
-		Pair("from_addr", v.FromAddr).
-		Pair("to_addr", v.ToAddr).
+		Pair("id_from_addr", dbr.Select("id").From(TableCvmAccounts).Where("address=?", v.FromAddr)).
+		Pair("id_to_addr", dbr.Select("id").From(TableCvmAccounts).Where("address=?", v.ToAddr)).
 		Pair("nonce", v.Nonce).
 		Pair("amount", v.Amount).
 		Pair("status", v.Status).
@@ -1279,8 +1303,8 @@ func (p *persist) InsertCvmTransactionsTxdata(
 			Update(TableCvmTransactionsTxdata).
 			Set("block", v.Block).
 			Set("idx", v.Idx).
-			Set("from_addr", v.FromAddr).
-			Set("to_addr", v.ToAddr).
+			Set("id_from_addr", dbr.Select("id").From(TableCvmAccounts).Where("address=?", v.FromAddr)).
+			Set("id_to_addr", dbr.Select("id").From(TableCvmAccounts).Where("address=?", v.ToAddr)).
 			Set("nonce", v.Nonce).
 			Set("amount", v.Amount).
 			Set("status", v.Status).
@@ -1294,6 +1318,58 @@ func (p *persist) InsertCvmTransactionsTxdata(
 		if err != nil {
 			return EventErr(TableCvmTransactionsTxdata, true, err)
 		}
+	}
+	return nil
+}
+
+type CvmAccount struct {
+	ID         uint64
+	Address    string
+	TxCount    uint64
+	CreationTx *string
+}
+
+func (p *persist) QueryCvmAccount(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	q *CvmAccount,
+) (*CvmAccount, error) {
+	v := &CvmAccount{}
+	err := sess.Select(
+		"id",
+		"tx_count",
+		"creation_tx",
+	).From(TableCvmAccounts).
+		Where("address=?", q.Address).
+		LoadOneContext(ctx, v)
+	return v, err
+}
+
+func (p *persist) InsertCvmAccount(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	v *CvmAccount,
+	upd bool,
+) error {
+	var err error
+	_, err = sess.
+		InsertInto(TableCvmAccounts).
+		Pair("address", v.Address).
+		Pair("tx_count", v.TxCount).
+		Pair("creation_tx", v.CreationTx).
+		ExecContext(ctx)
+	if err == nil {
+		return nil
+	} else if !upd || !utils.ErrIsDuplicateEntryError(err) {
+		return EventErr(TableCvmAccounts, false, err)
+	}
+	_, err = sess.
+		Update(TableCvmAccounts).
+		IncrBy("tx_count", v.TxCount).
+		Where("address=?", v.Address).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableCvmAccounts, true, err)
 	}
 	return nil
 }

@@ -222,13 +222,14 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		if err != nil {
 			return err
 		}
+		fromStr := utils.CommonAddressHexRepair(&fromAddr)
 
 		cvmTransactionTxdata := &db.CvmTransactionsTxdata{
 			Hash:          hash,
 			Block:         block.Header().Number.String(),
-			Idx:           uint64(ipos),
-			FromAddr:      utils.CommonAddressHexRepair(&fromAddr),
+			FromAddr:      fromStr,
 			ToAddr:        toStr,
+			Idx:           uint64(ipos),
 			Nonce:         rawtx.Nonce(),
 			Amount:        rawtx.Value().Uint64(),
 			Serialization: txdata,
@@ -245,6 +246,30 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 			cvmTransactionTxdata.GasPrice = receipt.EffectiveGasPrice
 			cvmTransactionTxdata.GasUsed = receipt.GasUsed
 			cvmTransactionTxdata.Receipt = receipt.Raw
+
+			if receipt.ContractAddress != nil {
+				account := &db.CvmAccount{
+					ID:         0,
+					Address:    utils.CommonAddressHexRepair(receipt.ContractAddress),
+					TxCount:    0,
+					CreationTx: &hash,
+				}
+				if err = ctx.Persist().InsertCvmAccount(ctx.Ctx(), ctx.DB(), account, true); err != nil {
+					return err
+				}
+			}
+		}
+
+		account := &db.CvmAccount{Address: fromStr, TxCount: 1}
+		if err = ctx.Persist().InsertCvmAccount(ctx.Ctx(), ctx.DB(), account, true); err != nil {
+			return err
+		}
+
+		if toStr != fromStr {
+			account.Address = toStr
+			if err = ctx.Persist().InsertCvmAccount(ctx.Ctx(), ctx.DB(), account, true); err != nil {
+				return err
+			}
 		}
 
 		err = ctx.Persist().InsertCvmTransactionsTxdata(ctx.Ctx(), ctx.DB(), cvmTransactionTxdata, cfg.PerformUpdates)

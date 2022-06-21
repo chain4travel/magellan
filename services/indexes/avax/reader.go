@@ -123,7 +123,7 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 			cblocks, _ = r.searchCBlockHash(ctx, p.ListParams.Query)
 			ctrans, _ = r.searchCTransHash(ctx, p.ListParams.Query)
 		} else if len(p.ListParams.Query) == 42 { // address
-			caddr = append(caddr, models.CResult{Hash: p.ListParams.Query})
+			caddr, _ = r.searchCAddress(ctx, p.ListParams.Query)
 		}
 	}
 
@@ -487,7 +487,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 		columns := []string{
 			"COALESCE(SUM(cvm_transactions_txdata.amount), 0) AS transaction_volume",
 			"COUNT(cvm_transactions_txdata.hash) AS transaction_count",
-			"COUNT(DISTINCT(cvm_transactions_txdata.from_addr)) AS address_count",
+			"COUNT(DISTINCT(cvm_transactions_txdata.id_from_addr)) AS address_count",
 			"1 AS asset_count",
 			"0 AS output_count",
 		}
@@ -1033,6 +1033,23 @@ func (r *Reader) searchCTransHash(ctx context.Context, hash string) ([]models.CR
 	if _, err := dbRunner.Select("hash").
 		From(db.TableCvmTransactionsTxdata).
 		Where("hash=?", hash).
+		LoadContext(ctx, &results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (r *Reader) searchCAddress(ctx context.Context, address string) ([]models.CResult, error) {
+	dbRunner, err := r.conns.DB().NewSession("search_cblock_hash", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	results := []models.CResult{}
+
+	if _, err := dbRunner.Select("creation_tx IS NOT NULL AS number, address AS hash").
+		From(db.TableCvmAccounts).
+		Where("address=?", strings.ToLower(address)).
 		LoadContext(ctx, &results); err != nil {
 		return nil, err
 	}
