@@ -105,7 +105,7 @@ func execute() error {
 
 				if *runMysqlMigration {
 					dbConfig := c.Services.DB
-					migrationErr := migrate_mysql(fmt.Sprintf("%s://%s", dbConfig.Driver, dbConfig.DSN), *mysqlMigrationPath)
+					migrationErr := migrateMysql(fmt.Sprintf("%s://%s", dbConfig.Driver, dbConfig.DSN), *mysqlMigrationPath)
 					if migrationErr != nil {
 						log.Fatalf("Failed to run migration: %v", migrationErr)
 					}
@@ -400,7 +400,7 @@ func (m *MysqlLogger) Print(v ...interface{}) {
 	m.Log.Warn("[mysql]: %s", s)
 }
 
-func migrate_mysql(mysqlDSN, migrationsPath string) error {
+func migrateMysql(mysqlDSN, migrationsPath string) error {
 
 	migrationSource := fmt.Sprintf("file://%v", migrationsPath)
 	migrater, migraterErr := migrate.New(migrationSource, mysqlDSN)
