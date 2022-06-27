@@ -32,6 +32,11 @@ import (
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 const (
@@ -52,6 +57,14 @@ const (
 
 	defaultReplayQueueSize    = int(2000)
 	defaultReplayQueueThreads = int(4)
+
+	mysqlMigrationFlag          = "run-mysql-migration"
+	mysqlMigrationFlagShorthand = "m"
+	mysqlMigrationFlagDesc      = "Executes migration scripts for the configured mysql database. This might change the schema, use with caution. For more info on migration have a look at the migrations folder in services/db/migrations/ and check the latest commits"
+
+	mysqlMigrationPathFlag          = "mysql-migration-path"
+	mysqlMigrationPathFlagShorthand = "p"
+	mysqlMigrationPathDefault       = "services/db/migrations"
 )
 
 func main() {
@@ -68,6 +81,8 @@ func execute() error {
 		runErr             error
 		config             = &cfg.Config{}
 		serviceControl     = &servicesctrl.Control{}
+		runMysqlMigration  = func() *bool { s := false; return &s }()
+		mysqlMigrationPath = func() *string { s := mysqlMigrationPathDefault; return &s }()
 		configFile         = func() *string { s := ""; return &s }()
 		replayqueuesize    = func() *int { i := defaultReplayQueueSize; return &i }()
 		replayqueuethreads = func() *int { i := defaultReplayQueueThreads; return &i }()
@@ -87,6 +102,14 @@ func execute() error {
 					Log: alog,
 				}
 				_ = mysql.SetLogger(mysqllogger)
+
+				if *runMysqlMigration {
+					dbConfig := c.Services.DB
+					migrationErr := migrate_mysql(fmt.Sprintf("%s://%s", dbConfig.Driver, dbConfig.DSN), *mysqlMigrationPath)
+					if migrationErr != nil {
+						log.Fatalf("Failed to run migration: %v", migrationErr)
+					}
+				}
 
 				models.SetBech32HRP(c.NetworkID)
 
@@ -142,6 +165,10 @@ func execute() error {
 	cmd.PersistentFlags().StringVarP(configFile, "config", "c", "config.json", "config file")
 	cmd.PersistentFlags().IntVarP(replayqueuesize, "replayqueuesize", "", defaultReplayQueueSize, fmt.Sprintf("replay queue size default %d", defaultReplayQueueSize))
 	cmd.PersistentFlags().IntVarP(replayqueuethreads, "replayqueuethreads", "", defaultReplayQueueThreads, fmt.Sprintf("replay queue size threads default %d", defaultReplayQueueThreads))
+
+	// migration specific flags
+	cmd.PersistentFlags().BoolVarP(runMysqlMigration, mysqlMigrationFlag, mysqlMigrationFlagShorthand, false, mysqlMigrationFlagDesc)
+	cmd.PersistentFlags().StringVarP(mysqlMigrationPath, mysqlMigrationPathFlag, mysqlMigrationPathFlagShorthand, mysqlMigrationPathDefault, "path for mysql migrations")
 
 	cmd.AddCommand(
 		createStreamCmds(serviceControl, config, &runErr),
@@ -370,5 +397,23 @@ type MysqlLogger struct {
 
 func (m *MysqlLogger) Print(v ...interface{}) {
 	s := fmt.Sprint(v...)
-	m.Log.Warn("mysql %s", s)
+	m.Log.Warn("[mysql]: %s", s)
+}
+
+func migrate_mysql(mysqlDSN, migrationsPath string) error {
+
+	migrationSource := fmt.Sprintf("file://%v", migrationsPath)
+	migrater, migraterErr := migrate.New(migrationSource, mysqlDSN)
+	if migraterErr != nil {
+		return migraterErr
+	}
+
+	if err := migrater.Up(); err != nil {
+		if err != migrate.ErrNoChange {
+			return err
+		}
+		log.Println("[mysql]: no new migrations to execute")
+	}
+
+	return nil
 }
