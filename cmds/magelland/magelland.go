@@ -401,7 +401,6 @@ func (m *MysqlLogger) Print(v ...interface{}) {
 }
 
 func migrateMysql(mysqlDSN, migrationsPath string) error {
-
 	migrationSource := fmt.Sprintf("file://%v", migrationsPath)
 	migrater, migraterErr := migrate.New(migrationSource, mysqlDSN)
 	if migraterErr != nil {
