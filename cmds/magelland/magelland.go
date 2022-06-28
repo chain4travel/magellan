@@ -30,6 +30,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
@@ -404,7 +405,7 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 	migrationSource := fmt.Sprintf("file://%v", migrationsPath)
 	migrater, migraterErr := migrate.New(migrationSource, mysqlDSN)
 	if migraterErr != nil {
-		return migraterErr
+		return errors.Wrap(migraterErr, "Failed to create migration context")
 	}
 
 	if err := migrater.Up(); err != nil {
