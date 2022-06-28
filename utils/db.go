@@ -54,7 +54,7 @@ func New(eventer *EventRcvr, conf cfg.DB, ro bool) (*Conn, error) {
 
 	var version int64
 	if err := session.QueryRow("SELECT version FROM schema_migrations").Scan(&version); err == nil && version < RequiredVersion {
-		return nil, fmt.Errorf("migration required")
+		return nil, fmt.Errorf("schema outdated! current version (%d) < required version (%d) - (consider updating the migration files)", version, RequiredVersion)
 	}
 	return result, nil
 }

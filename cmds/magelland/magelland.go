@@ -410,7 +410,7 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 
 	if err := migrater.Up(); err != nil {
 		if err != migrate.ErrNoChange {
-			return err
+			return errors.Wrap(err, "up migration failed")
 		}
 		log.Println("[mysql]: no new migrations to execute")
 	}
