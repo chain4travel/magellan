@@ -1257,9 +1257,8 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 	idInt, ok := big.NewInt(0).SetString(p.ID, 10)
 	if !ok {
 		err = dbRunner.
-			Select("MAX(id)").
+			Select("MAX(block)").
 			From(db.TableCvmBlocks).
-			Where("block="+idInt.String()).
 			Limit(1).
 			LoadOneContext(ctx, &idInt)
 		if err != nil {

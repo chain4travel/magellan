@@ -13,6 +13,7 @@ package avax
 import (
 	"context"
 	"encoding/hex"
+	"math/big"
 	"strings"
 	"time"
 
@@ -159,10 +160,13 @@ func (r *Reader) listCTransFilter(p *params.ListCTransactionsParams, dbRunner *d
 			return b
 		}
 		if p.BlockStart != nil {
-			b.Where(db.TableCvmTransactionsTxdata + ".block >= " + p.BlockStart.String())
+			blockStart := new(big.Int).Mul(p.BlockStart, big.NewInt(1000))
+			b.Where(db.TableCvmTransactionsTxdata + ".block_idx >= " + blockStart.String())
 		}
 		if p.BlockEnd != nil {
-			b.Where(db.TableCvmTransactionsTxdata + ".block <= " + p.BlockEnd.String())
+			blockEnd := new(big.Int).Add(p.BlockEnd, big.NewInt(1))
+			blockEnd.Mul(blockEnd, big.NewInt(1000))
+			b.Where(db.TableCvmTransactionsTxdata + ".block_idx < " + blockEnd.String())
 		}
 		return b
 	}
