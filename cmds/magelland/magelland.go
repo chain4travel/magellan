@@ -34,7 +34,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
-	oreliusRpc "github.com/chain4travel/magellan/rpc"
+	magellanRpc "github.com/chain4travel/magellan/rpc"
 	_ "github.com/golang-migrate/migrate/v4/database"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -147,7 +147,7 @@ func execute() error {
 					codec := json2.NewCodec()
 					rpcServer.RegisterCodec(codec, "application/json")
 					rpcServer.RegisterCodec(codec, "application/json;charset=UTF-8")
-					api := oreliusRpc.NewAPI(alog)
+					api := magellanRpc.NewAPI(alog)
 					if err := rpcServer.RegisterService(api, "api"); err != nil {
 						log.Fatalln("Failed to start admin listener", err.Error())
 					}
