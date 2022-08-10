@@ -54,7 +54,6 @@ func (ac *aggregatesCache) GetAggregateFeesMap() map[string]map[string]uint64 {
 func (ac *aggregatesCache) InitCacheStorage(chains cfg.Chains) {
 	aggregateTransMap := ac.aggregateTransactionsMap
 	aggregateFeesMap := ac.aggregateFeesMap
-
 	for id := range chains {
 		aggregateTransMap[id] = map[string]uint64{}
 		aggregateFeesMap[id] = map[string]uint64{}
