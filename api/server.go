@@ -19,13 +19,13 @@ import (
 	"time"
 
 	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/services/indexes/avax"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/stream/consumers"
-	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/web"
 )
 
@@ -109,8 +109,8 @@ func newRouter(sc *servicesctrl.Control, conf cfg.Config) (*web.Router, error) {
 		return nil, err
 	}
 
-	cache := utils.NewCache()
-	delayCache := utils.NewDelayCache(cache)
+	cache := caching.NewCache()
+	delayCache := caching.NewDelayCache(cache)
 
 	consumersmap := make(map[string]services.Consumer)
 	for chid, chain := range conf.Chains {

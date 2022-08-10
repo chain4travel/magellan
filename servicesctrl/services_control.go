@@ -16,11 +16,13 @@ package servicesctrl
 import (
 	"time"
 
-	avlancheGoUtils "github.com/chain4travel/caminogo/utils"
 	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/utils"
+
+	avlancheGoUtils "github.com/chain4travel/caminogo/utils"
 )
 
 const (
@@ -54,6 +56,7 @@ type Control struct {
 	IsAggregateCache           bool
 	IndexedList                utils.IndexedList
 	LocalTxPool                chan *LocalTxPoolJob
+	AggregatesCache            caching.AggregatesCache
 }
 
 func (s *Control) Logger() logging.Logger {
@@ -61,6 +64,7 @@ func (s *Control) Logger() logging.Logger {
 }
 
 func (s *Control) Init(networkID uint32) error {
+	s.AggregatesCache.InitCacheStorage(s.Chains)
 	s.IndexedList = utils.NewIndexedList(cfg.MaxSizedList)
 	s.LocalTxPool = make(chan *LocalTxPoolJob, cfg.MaxTxPoolSize)
 
@@ -86,6 +90,58 @@ func (s *Control) Init(networkID uint32) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Control) StartCacheScheduler(config *cfg.Config) error {
+	// create new database connection
+	connections, err := s.DatabaseRO()
+	if err != nil {
+		return err
+	}
+
+	MyTimer := time.NewTimer(time.Duration(config.CacheUpdateInterval) * time.Second)
+
+	for range MyTimer.C {
+		MyTimer.Stop()
+		toDate := time.Now()
+		yesterdayDateTime := time.Now().AddDate(0, 0, -1)
+		prevWeekDateTime := time.Now().AddDate(0, 0, -7)
+		prevMonthDateTime := time.Now().AddDate(0, -1, 0)
+
+		// update cache for all chains
+		for id := range config.Chains {
+			// previous day aggregate number
+			err := s.AggregatesCache.GetAggregatesAndUpdate(s.Chains, connections, id, yesterdayDateTime, toDate, "day")
+			if err != nil {
+				return err
+			}
+			err = s.AggregatesCache.GetAggregatesFeesAndUpdate(s.Chains, connections, id, yesterdayDateTime, toDate, "day")
+			if err != nil {
+				return err
+			}
+			// previous week aggregate number
+			err = s.AggregatesCache.GetAggregatesAndUpdate(s.Chains, connections, id, prevWeekDateTime, toDate, "week")
+			if err != nil {
+				return err
+			}
+			err = s.AggregatesCache.GetAggregatesFeesAndUpdate(s.Chains, connections, id, prevWeekDateTime, toDate, "week")
+			if err != nil {
+				return err
+			}
+			// previous month aggregate number
+			err = s.AggregatesCache.GetAggregatesAndUpdate(s.Chains, connections, id, prevMonthDateTime, toDate, "month")
+			if err != nil {
+				return err
+			}
+			err = s.AggregatesCache.GetAggregatesFeesAndUpdate(s.Chains, connections, id, prevMonthDateTime, toDate, "month")
+			if err != nil {
+				return err
+			}
+		}
+
+		MyTimer.Reset(time.Duration(config.CacheUpdateInterval) * time.Second)
+	}
 	return nil
 }
 
