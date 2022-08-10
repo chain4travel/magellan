@@ -6,11 +6,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -68,6 +70,11 @@ const (
 )
 
 func main() {
+	//init cache key values
+	initCacheStorage()
+
+	//init cache scheduler
+	go initCacheScheduler()
 	if err := execute(); err != nil {
 		log.Fatalln("Failed to run:", err.Error())
 	}
@@ -415,4 +422,76 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 	}
 
 	return nil
+}
+
+//initialize scheduler-timer for cache
+func initCacheScheduler() {
+	//we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
+	time.Sleep(10 * time.Second)
+	toDate := time.Now()
+	yesterdayDateTime := time.Now().AddDate(0, 0, -1)
+	prevWeekDateTime := time.Now().AddDate(0, 0, -7)
+	prevMonthDateTime := time.Now().AddDate(0, -1, 0)
+
+	//convert to specific date format
+	toDateStr := convertToMagellanDateFormat(toDate)
+	yesterdayDateTimeStr := convertToMagellanDateFormat(yesterdayDateTime)
+	prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
+	prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
+
+	MyTimer := time.NewTimer(3 * time.Second)
+
+	for _ = range MyTimer.C {
+		MyTimer.Stop()
+		//get previous day aggregate number
+		fmt.Printf("Transaction Count 1 Day:" + getAggregatesAndUpdate(yesterdayDateTimeStr, toDateStr, "day") + "\n")
+		//get previous week aggregate number
+		fmt.Printf("Transaction Count 1 Week:" + getAggregatesAndUpdate(prevWeekDateTimeStr, toDateStr, "week") + "\n")
+		//get previous month aggregate number
+		fmt.Printf("Transaction Count 1 Month:" + getAggregatesAndUpdate(prevMonthDateTimeStr, toDateStr, "month") + "\n")
+		MyTimer.Reset(3 * time.Second)
+	}
+}
+
+func initCacheStorage() {
+	cfg.GetAggregateTransactionsMap()["day"] = 0
+	cfg.GetAggregateTransactionsMap()["week"] = 0
+	cfg.GetAggregateTransactionsMap()["month"] = 0
+	cfg.GetAggregateFeesMap()["day"] = 0
+	cfg.GetAggregateFeesMap()["week"] = 0
+	cfg.GetAggregateFeesMap()["month"] = 0
+}
+
+func getAggregatesAndUpdate(startTime string, endTime string, rangeKeyType string) string {
+	//get previous day aggregate number
+	serverPort := 8080
+	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID=G52TJLLbDSxYXsijNMpKFB6kAyDVRd9DGWVWYBh86Z8sEXm1i&startTime="+startTime+"&endTime="+endTime, serverPort)
+
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+	}
+
+	if res != nil {
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Printf("client: could not read response body: %s\n", err)
+		}
+		var aggregatesMain cfg.AggregatesMain
+		aggregatesMainJson := resBody
+		json.Unmarshal([]byte(aggregatesMainJson), &aggregatesMain)
+		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
+		cfg.GetAggregateTransactionsMap()[rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
+		return strconv.FormatUint(aggregatesMain.Aggregates.TransactionCount, 10)
+	}
+	return ""
+}
+
+func convertToMagellanDateFormat(pDateTime time.Time) string {
+	//we need to convert to format e.g 2022-07-01T10:21:16.808Z
+	return strconv.Itoa(pDateTime.Year()) + "-" + lpadDatePart(int(pDateTime.Month())) + "-" + lpadDatePart(pDateTime.Day()) + "T" + lpadDatePart(pDateTime.Hour()) + ":" + lpadDatePart(pDateTime.Minute()) + ":" + lpadDatePart(pDateTime.Second()) + "." + "000Z"
+}
+
+func lpadDatePart(datepart int) string {
+	return fmt.Sprintf("%02d", datepart)
 }

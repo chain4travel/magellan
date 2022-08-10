@@ -23,6 +23,9 @@ import (
 
 const appName = "magellan"
 
+var aggregateTransactionsMap = make(map[string]uint64)
+var aggregateFeesMap = make(map[string]uint64)
+
 var (
 	ErrChainsConfigMustBeStringMap = errors.New("Chain config must a string map")
 	ErrChainsConfigIDEmpty         = errors.New("Chain config ID is empty")
@@ -32,6 +35,22 @@ var (
 	ErrChainsConfigVMNotString     = errors.New("Chain config vm type is not a string")
 )
 
+type Aggregates struct {
+	AggregateMerge    uint64 `json:"AggregateMerge"`
+	StartTime         string `json:"startTime"`
+	EndTime           string `json:"endTime"`
+	TransactionVolume uint64 `json:"transactionVolume"`
+	TransactionCount  uint64 `json:"transactionCount"`
+	AddressCount      uint64 `json:"addressCount"`
+	OutputCount       uint64 `json:"outputCount"`
+	AssetCount        uint64 `json:"assetCount"`
+}
+
+type AggregatesMain struct {
+	Aggregates Aggregates `json:"aggregates,omitempty"`
+	StartTime  string     `json:"startTime"`
+	EndTime    string     `json:"endTime"`
+}
 type Config struct {
 	NetworkID         uint32 `json:"networkID"`
 	Chains            `json:"chains"`
@@ -137,4 +156,12 @@ func NewFromFile(filePath string) (*Config, error) {
 		NodeInstance:  v.GetString(keysStreamProducerNodeInstance),
 		AP5Activation: uint64(ap5Activation),
 	}, nil
+}
+
+func GetAggregateTransactionsMap() map[string]uint64 {
+	return aggregateTransactionsMap
+}
+
+func GetAggregateFeesMap() map[string]uint64 {
+	return aggregateFeesMap
 }

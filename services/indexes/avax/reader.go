@@ -376,6 +376,27 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 }
 
 func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, conns *utils.Connections) (*models.AggregatesHistogram, error) {
+	if !params.ListParams.Values.Has("cacheUpd") {
+
+		//if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
+		//if params.ListParams.Values["cacheUpd"][0] != "true" {
+		cache := models.AggregatesList{}
+		var temp = models.Aggregates{}
+		//based on the date interval we are going to retrieve the relevant part from our cache
+		temp.TransactionCount = cfg.GetAggregateTransactionsMap()["month"]
+		//temp.StartTime = time.Now()
+		//temp.EndTime = time.Now()
+
+		cache = append(cache, temp)
+		cache[0].StartTime = params.ListParams.StartTime
+		cache[0].EndTime = params.ListParams.EndTime
+		return &models.AggregatesHistogram{
+			Aggregates: cache[0],
+			StartTime:  params.ListParams.StartTime,
+			EndTime:    params.ListParams.EndTime,
+		}, nil
+
+	}
 	// Validate params and set defaults if necessary
 	if params.ListParams.StartTime.IsZero() {
 		var err error
