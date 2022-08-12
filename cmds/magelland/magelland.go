@@ -70,9 +70,6 @@ const (
 )
 
 func main() {
-	//init cache key values
-	//initCacheStorage()
-
 	if err := execute(); err != nil {
 		log.Fatalln("Failed to run:", err.Error())
 	}
@@ -428,23 +425,22 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 func initCacheScheduler(config *cfg.Config) {
 	//we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
 	time.Sleep(10 * time.Second)
-	toDate := time.Now()
-	yesterdayDateTime := time.Now().AddDate(0, 0, -1)
-	prevWeekDateTime := time.Now().AddDate(0, 0, -7)
-	prevMonthDateTime := time.Now().AddDate(0, -1, 0)
-
-	//convert to specific date format
-	toDateStr := convertToMagellanDateFormat(toDate)
-	yesterdayDateTimeStr := convertToMagellanDateFormat(yesterdayDateTime)
-	prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
-	prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
-
 	initCacheStorage(config.Chains)
 
 	MyTimer := time.NewTimer(3 * time.Second)
 
 	for _ = range MyTimer.C {
 		MyTimer.Stop()
+		toDate := time.Now()
+		yesterdayDateTime := time.Now().AddDate(0, 0, -1)
+		prevWeekDateTime := time.Now().AddDate(0, 0, -7)
+		prevMonthDateTime := time.Now().AddDate(0, -1, 0)
+
+		//convert to specific date format
+		toDateStr := convertToMagellanDateFormat(toDate)
+		yesterdayDateTimeStr := convertToMagellanDateFormat(yesterdayDateTime)
+		prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
+		prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
 
 		//update cache for all chains
 		for id := range config.Chains {

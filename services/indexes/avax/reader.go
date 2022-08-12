@@ -164,15 +164,11 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 }
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
+	//if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
 	if !params.ListParams.Values.Has("cacheUpd") {
-
-		//if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
-		//if params.ListParams.Values["cacheUpd"][0] != "true" {
 		cache := models.TxfeeAggregatesList{}
 		var temp = models.TxfeeAggregates{}
 		//based on the date interval we are going to retrieve the relevant part from our cache
-
-		//############
 		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
 		temp.Txfee = cfg.GetAggregateFeesMap()[params.ChainIDs[0]][keyDatePartValue]
 
@@ -400,14 +396,10 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 
 func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, conns *utils.Connections) (*models.AggregatesHistogram, error) {
 	if !params.ListParams.Values.Has("cacheUpd") {
-
 		//if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
-		//if params.ListParams.Values["cacheUpd"][0] != "true" {
 		cache := models.AggregatesList{}
 		var temp = models.Aggregates{}
 		//based on the date interval we are going to retrieve the relevant part from our cache
-
-		//############
 		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
 		temp.TransactionCount = cfg.GetAggregateTransactionsMap()[params.ChainIDs[0]][keyDatePartValue]
 
