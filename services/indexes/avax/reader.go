@@ -164,6 +164,29 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 }
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
+	if !params.ListParams.Values.Has("cacheUpd") {
+
+		//if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
+		//if params.ListParams.Values["cacheUpd"][0] != "true" {
+		cache := models.TxfeeAggregatesList{}
+		var temp = models.TxfeeAggregates{}
+		//based on the date interval we are going to retrieve the relevant part from our cache
+
+		//############
+		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
+		temp.Txfee = cfg.GetAggregateFeesMap()[params.ChainIDs[0]][keyDatePartValue]
+
+		cache = append(cache, temp)
+		cache[0].StartTime = params.ListParams.StartTime
+		cache[0].EndTime = params.ListParams.EndTime
+		return &models.TxfeeAggregatesHistogram{
+			TxfeeAggregates: cache[0],
+			StartTime:       params.ListParams.StartTime,
+			EndTime:         params.ListParams.EndTime,
+		}, nil
+
+	}
+
 	// Validate params and set defaults if necessary
 	if params.ListParams.StartTime.IsZero() {
 		var err error

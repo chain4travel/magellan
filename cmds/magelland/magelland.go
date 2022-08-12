@@ -452,10 +452,13 @@ func initCacheScheduler(config *cfg.Config) {
 			fmt.Println(id)
 			//get previous day aggregate number
 			fmt.Printf("Transaction Count 1 Day:" + getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day") + "\n")
+			fmt.Printf("Fees Count 1 Day:" + getAggregatesFeesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day") + "\n")
 			//get previous week aggregate number
 			fmt.Printf("Transaction Count 1 Week:" + getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week") + "\n")
+			fmt.Printf("Fees Count 1 Week:" + getAggregatesFeesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week") + "\n")
 			//get previous month aggregate number
 			fmt.Printf("Transaction Count 1 Month:" + getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month") + "\n")
+			fmt.Printf("Fees Count 1 Month:" + getAggregatesFeesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month") + "\n")
 
 		}
 
@@ -483,7 +486,6 @@ func initCacheStorage(pchains cfg.Chains) {
 }
 
 func getAggregatesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) string {
-	//get previous day aggregate number
 	serverPort := 8080
 	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
 
@@ -503,6 +505,30 @@ func getAggregatesAndUpdate(chainid string, startTime string, endTime string, ra
 		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
 		cfg.GetAggregateTransactionsMap()[chainid][rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
 		return strconv.FormatUint(aggregatesMain.Aggregates.TransactionCount, 10)
+	}
+	return ""
+}
+
+func getAggregatesFeesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) string {
+	serverPort := 8080
+	requestURL := fmt.Sprintf("http://localhost:%d/v2/txfeeAggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
+
+	res, err := http.Get(requestURL)
+	if err != nil {
+		fmt.Printf("error making http request: %s\n", err)
+	}
+
+	if res != nil {
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			fmt.Printf("client: could not read response body: %s\n", err)
+		}
+		var aggregatesFeesMain cfg.AggregatesFeesMain
+		aggregatesFeesMainJson := resBody
+		json.Unmarshal([]byte(aggregatesFeesMainJson), &aggregatesFeesMain)
+		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
+		cfg.GetAggregateFeesMap()[chainid][rangeKeyType] = aggregatesFeesMain.Aggregates.Txfee
+		return strconv.FormatUint(aggregatesFeesMain.Aggregates.Txfee, 10)
 	}
 	return ""
 }

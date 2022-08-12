@@ -51,6 +51,20 @@ type AggregatesMain struct {
 	StartTime  string     `json:"startTime"`
 	EndTime    string     `json:"endTime"`
 }
+
+type AggregatesFees struct {
+	AggregateMerge uint64 `json:"AggregateMerge"`
+	StartTime      string `json:"startTime"`
+	EndTime        string `json:"endTime"`
+	Txfee          uint64 `json:"txfee"`
+}
+
+type AggregatesFeesMain struct {
+	Aggregates AggregatesFees `json:"aggregates,omitempty"`
+	StartTime  string         `json:"startTime"`
+	EndTime    string         `json:"endTime"`
+}
+
 type Config struct {
 	NetworkID         uint32 `json:"networkID"`
 	Chains            `json:"chains"`
