@@ -71,10 +71,8 @@ const (
 
 func main() {
 	//init cache key values
-	initCacheStorage()
+	//initCacheStorage()
 
-	//init cache scheduler
-	go initCacheScheduler()
 	if err := execute(); err != nil {
 		log.Fatalln("Failed to run:", err.Error())
 	}
@@ -182,6 +180,8 @@ func execute() error {
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
 
+	//init cache scheduler
+	go initCacheScheduler(config)
 	// Execute the command and return the runErr to the caller
 	if err := cmd.Execute(); err != nil {
 		return err
@@ -425,7 +425,8 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 }
 
 //initialize scheduler-timer for cache
-func initCacheScheduler() {
+func initCacheScheduler(config *cfg.Config) {
+	//cfg.Config.Chains
 	//we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
 	time.Sleep(10 * time.Second)
 	toDate := time.Now()
@@ -439,33 +440,52 @@ func initCacheScheduler() {
 	prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
 	prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
 
+	initCacheStorage(config.Chains)
+
 	MyTimer := time.NewTimer(3 * time.Second)
 
 	for _ = range MyTimer.C {
 		MyTimer.Stop()
-		//get previous day aggregate number
-		fmt.Printf("Transaction Count 1 Day:" + getAggregatesAndUpdate(yesterdayDateTimeStr, toDateStr, "day") + "\n")
-		//get previous week aggregate number
-		fmt.Printf("Transaction Count 1 Week:" + getAggregatesAndUpdate(prevWeekDateTimeStr, toDateStr, "week") + "\n")
-		//get previous month aggregate number
-		fmt.Printf("Transaction Count 1 Month:" + getAggregatesAndUpdate(prevMonthDateTimeStr, toDateStr, "month") + "\n")
+
+		//update cache for all chains
+		for id := range config.Chains {
+			fmt.Println(id)
+			//get previous day aggregate number
+			fmt.Printf("Transaction Count 1 Day:" + getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day") + "\n")
+			//get previous week aggregate number
+			fmt.Printf("Transaction Count 1 Week:" + getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week") + "\n")
+			//get previous month aggregate number
+			fmt.Printf("Transaction Count 1 Month:" + getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month") + "\n")
+
+		}
+
 		MyTimer.Reset(3 * time.Second)
 	}
 }
 
-func initCacheStorage() {
-	cfg.GetAggregateTransactionsMap()["day"] = 0
-	cfg.GetAggregateTransactionsMap()["week"] = 0
-	cfg.GetAggregateTransactionsMap()["month"] = 0
-	cfg.GetAggregateFeesMap()["day"] = 0
-	cfg.GetAggregateFeesMap()["week"] = 0
-	cfg.GetAggregateFeesMap()["month"] = 0
+func initCacheStorage(pchains cfg.Chains) {
+	var aggregateTransMap = cfg.GetAggregateTransactionsMap()
+	var aggregateFeesMap = cfg.GetAggregateFeesMap()
+	for id := range pchains {
+		aggregateTransMap[id] = map[string]uint64{}
+		aggregateFeesMap[id] = map[string]uint64{}
+
+		//we initialize the value for all 3 chains
+		aggregateTransMap[id]["day"] = 0
+		aggregateTransMap[id]["week"] = 0
+		aggregateTransMap[id]["month"] = 0
+
+		//we initialize the value for all 3 chains also here
+		aggregateFeesMap[id]["day"] = 0
+		aggregateFeesMap[id]["week"] = 0
+		aggregateFeesMap[id]["month"] = 0
+	}
 }
 
-func getAggregatesAndUpdate(startTime string, endTime string, rangeKeyType string) string {
+func getAggregatesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) string {
 	//get previous day aggregate number
 	serverPort := 8080
-	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID=G52TJLLbDSxYXsijNMpKFB6kAyDVRd9DGWVWYBh86Z8sEXm1i&startTime="+startTime+"&endTime="+endTime, serverPort)
+	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
 
 	res, err := http.Get(requestURL)
 	if err != nil {
@@ -481,7 +501,7 @@ func getAggregatesAndUpdate(startTime string, endTime string, rangeKeyType strin
 		aggregatesMainJson := resBody
 		json.Unmarshal([]byte(aggregatesMainJson), &aggregatesMain)
 		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
-		cfg.GetAggregateTransactionsMap()[rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
+		cfg.GetAggregateTransactionsMap()[chainid][rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
 		return strconv.FormatUint(aggregatesMain.Aggregates.TransactionCount, 10)
 	}
 	return ""

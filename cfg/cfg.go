@@ -23,8 +23,8 @@ import (
 
 const appName = "magellan"
 
-var aggregateTransactionsMap = make(map[string]uint64)
-var aggregateFeesMap = make(map[string]uint64)
+var aggregateTransactionsMap = make(map[string]map[string]uint64)
+var aggregateFeesMap = make(map[string]map[string]uint64)
 
 var (
 	ErrChainsConfigMustBeStringMap = errors.New("Chain config must a string map")
@@ -158,10 +158,10 @@ func NewFromFile(filePath string) (*Config, error) {
 	}, nil
 }
 
-func GetAggregateTransactionsMap() map[string]uint64 {
+func GetAggregateTransactionsMap() map[string]map[string]uint64 {
 	return aggregateTransactionsMap
 }
 
-func GetAggregateFeesMap() map[string]uint64 {
+func GetAggregateFeesMap() map[string]map[string]uint64 {
 	return aggregateFeesMap
 }

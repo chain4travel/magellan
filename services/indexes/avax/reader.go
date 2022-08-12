@@ -383,8 +383,10 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 		cache := models.AggregatesList{}
 		var temp = models.Aggregates{}
 		//based on the date interval we are going to retrieve the relevant part from our cache
+
+		//############
 		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
-		temp.TransactionCount = cfg.GetAggregateTransactionsMap()[keyDatePartValue]
+		temp.TransactionCount = cfg.GetAggregateTransactionsMap()[params.ChainIDs[0]][keyDatePartValue]
 
 		cache = append(cache, temp)
 		cache[0].StartTime = params.ListParams.StartTime
