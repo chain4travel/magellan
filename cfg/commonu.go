@@ -5,14 +5,11 @@
 package cfg
 
 import (
-	"fmt"
 	"time"
 )
 
 func GetDatepartBasedOnDateParams(pStartTime time.Time, pEndTime time.Time) string {
 	differenceInDays := int64(pEndTime.Sub(pStartTime).Hours() / 24)
-	fmt.Print("diff in days:")
-	fmt.Println(differenceInDays)
 
 	if differenceInDays <= 1 {
 		return "day"

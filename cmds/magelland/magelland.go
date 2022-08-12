@@ -426,7 +426,6 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 
 //initialize scheduler-timer for cache
 func initCacheScheduler(config *cfg.Config) {
-	//cfg.Config.Chains
 	//we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
 	time.Sleep(10 * time.Second)
 	toDate := time.Now()
@@ -449,17 +448,16 @@ func initCacheScheduler(config *cfg.Config) {
 
 		//update cache for all chains
 		for id := range config.Chains {
-			fmt.Println(id)
-			//get previous day aggregate number
-			fmt.Printf("Transaction Count 1 Day:" + getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day") + "\n")
-			fmt.Printf("Fees Count 1 Day:" + getAggregatesFeesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day") + "\n")
-			//get previous week aggregate number
-			fmt.Printf("Transaction Count 1 Week:" + getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week") + "\n")
-			fmt.Printf("Fees Count 1 Week:" + getAggregatesFeesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week") + "\n")
-			//get previous month aggregate number
-			fmt.Printf("Transaction Count 1 Month:" + getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month") + "\n")
-			fmt.Printf("Fees Count 1 Month:" + getAggregatesFeesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month") + "\n")
-
+			//fmt.Println(id)
+			//previous day aggregate number
+			getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
+			getAggregatesFeesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
+			//previous week aggregate number
+			getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
+			getAggregatesFeesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
+			//previous month aggregate number
+			getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
+			getAggregatesFeesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
 		}
 
 		MyTimer.Reset(3 * time.Second)
