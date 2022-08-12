@@ -11,13 +11,14 @@ import (
 func GetDatepartBasedOnDateParams(pStartTime time.Time, pEndTime time.Time) string {
 	differenceInDays := int64(pEndTime.Sub(pStartTime).Hours() / 24)
 
-	if differenceInDays <= 1 {
+	switch {
+	case differenceInDays <= 1:
 		return "day"
-	} else if differenceInDays > 1 && differenceInDays <= 7 {
+	case differenceInDays > 1 && differenceInDays <= 7:
 		return "week"
-	} else if differenceInDays > 7 { //we leave that boundary open
+	case differenceInDays > 7:
 		return "month"
+	default:
+		return ""
 	}
-
-	return ""
 }

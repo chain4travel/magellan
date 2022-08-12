@@ -177,7 +177,7 @@ func execute() error {
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
 
-	//init cache scheduler
+	// init cache scheduler
 	go initCacheScheduler(config)
 	// Execute the command and return the runErr to the caller
 	if err := cmd.Execute(); err != nil {
@@ -421,37 +421,36 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 	return nil
 }
 
-//initialize scheduler-timer for cache
+// initialize scheduler-timer for cache
 func initCacheScheduler(config *cfg.Config) {
-	//we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
+	// we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
 	time.Sleep(10 * time.Second)
 	initCacheStorage(config.Chains)
 
 	MyTimer := time.NewTimer(3 * time.Second)
 
-	for _ = range MyTimer.C {
+	for range MyTimer.C {
 		MyTimer.Stop()
 		toDate := time.Now()
 		yesterdayDateTime := time.Now().AddDate(0, 0, -1)
 		prevWeekDateTime := time.Now().AddDate(0, 0, -7)
 		prevMonthDateTime := time.Now().AddDate(0, -1, 0)
 
-		//convert to specific date format
+		// convert to specific date format
 		toDateStr := convertToMagellanDateFormat(toDate)
 		yesterdayDateTimeStr := convertToMagellanDateFormat(yesterdayDateTime)
 		prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
 		prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
 
-		//update cache for all chains
+		// update cache for all chains
 		for id := range config.Chains {
-			//fmt.Println(id)
-			//previous day aggregate number
+			// previous day aggregate number
 			getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
 			getAggregatesFeesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
-			//previous week aggregate number
+			// previous week aggregate number
 			getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
 			getAggregatesFeesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
-			//previous month aggregate number
+			// previous month aggregate number
 			getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
 			getAggregatesFeesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
 		}
@@ -467,23 +466,23 @@ func initCacheStorage(pchains cfg.Chains) {
 		aggregateTransMap[id] = map[string]uint64{}
 		aggregateFeesMap[id] = map[string]uint64{}
 
-		//we initialize the value for all 3 chains
+		// we initialize the value for all 3 chains
 		aggregateTransMap[id]["day"] = 0
 		aggregateTransMap[id]["week"] = 0
 		aggregateTransMap[id]["month"] = 0
 
-		//we initialize the value for all 3 chains also here
+		// we initialize the value for all 3 chains also here
 		aggregateFeesMap[id]["day"] = 0
 		aggregateFeesMap[id]["week"] = 0
 		aggregateFeesMap[id]["month"] = 0
 	}
 }
 
-func getAggregatesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) string {
+func getAggregatesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) {
 	serverPort := 8080
 	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
 
-	res, err := http.Get(requestURL)
+	res, err := http.Get(requestURL) //nolint
 	if err != nil {
 		fmt.Printf("error making http request: %s\n", err)
 	}
@@ -494,20 +493,20 @@ func getAggregatesAndUpdate(chainid string, startTime string, endTime string, ra
 			fmt.Printf("client: could not read response body: %s\n", err)
 		}
 		var aggregatesMain cfg.AggregatesMain
-		aggregatesMainJson := resBody
-		json.Unmarshal([]byte(aggregatesMainJson), &aggregatesMain)
-		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
-		cfg.GetAggregateTransactionsMap()[chainid][rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
-		return strconv.FormatUint(aggregatesMain.Aggregates.TransactionCount, 10)
+		aggregatesMainJSON := resBody
+		err = json.Unmarshal(aggregatesMainJSON, &aggregatesMain)
+		if err != nil {
+			// based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
+			cfg.GetAggregateTransactionsMap()[chainid][rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
+		}
 	}
-	return ""
 }
 
-func getAggregatesFeesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) string {
+func getAggregatesFeesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) {
 	serverPort := 8080
 	requestURL := fmt.Sprintf("http://localhost:%d/v2/txfeeAggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
 
-	res, err := http.Get(requestURL)
+	res, err := http.Get(requestURL) //nolint
 	if err != nil {
 		fmt.Printf("error making http request: %s\n", err)
 	}
@@ -518,17 +517,17 @@ func getAggregatesFeesAndUpdate(chainid string, startTime string, endTime string
 			fmt.Printf("client: could not read response body: %s\n", err)
 		}
 		var aggregatesFeesMain cfg.AggregatesFeesMain
-		aggregatesFeesMainJson := resBody
-		json.Unmarshal([]byte(aggregatesFeesMainJson), &aggregatesFeesMain)
-		//based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
-		cfg.GetAggregateFeesMap()[chainid][rangeKeyType] = aggregatesFeesMain.Aggregates.Txfee
-		return strconv.FormatUint(aggregatesFeesMain.Aggregates.Txfee, 10)
+		aggregatesFeesMainJSON := resBody
+		err = json.Unmarshal(aggregatesFeesMainJSON, &aggregatesFeesMain)
+		if err != nil {
+			// based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
+			cfg.GetAggregateFeesMap()[chainid][rangeKeyType] = aggregatesFeesMain.Aggregates.Txfee
+		}
 	}
-	return ""
 }
 
 func convertToMagellanDateFormat(pDateTime time.Time) string {
-	//we need to convert to format e.g 2022-07-01T10:21:16.808Z
+	// we need to convert to format e.g 2022-07-01T10:21:16.808Z
 	return strconv.Itoa(pDateTime.Year()) + "-" + lpadDatePart(int(pDateTime.Month())) + "-" + lpadDatePart(pDateTime.Day()) + "T" + lpadDatePart(pDateTime.Hour()) + ":" + lpadDatePart(pDateTime.Minute()) + ":" + lpadDatePart(pDateTime.Second()) + "." + "000Z"
 }
 
