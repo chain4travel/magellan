@@ -18,7 +18,7 @@ func GetDatepartBasedOnDateParams(pStartTime time.Time, pEndTime time.Time) stri
 		return "day"
 	} else if differenceInDays > 1 && differenceInDays <= 7 {
 		return "week"
-	} else if differenceInDays > 7 && differenceInDays <= 31 {
+	} else if differenceInDays > 7 { //we leave that boundary open
 		return "month"
 	}
 
