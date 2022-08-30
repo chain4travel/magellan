@@ -163,7 +163,6 @@ func execute() error {
 				// init cache scheduler only when magellan starts as an api service
 				if strings.Compare(cmd.Use, apiCmdUse) == 0 {
 					go initCacheScheduler(config)
-
 				}
 			},
 		}
