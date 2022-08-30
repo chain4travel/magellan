@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -159,6 +160,11 @@ func execute() error {
 						}
 					}()
 				}
+				// init cache scheduler only when magellan starts as an api service
+				if strings.Compare(cmd.Use, apiCmdUse) == 0 {
+					go initCacheScheduler(config)
+
+				}
 			},
 		}
 	)
@@ -177,8 +183,6 @@ func execute() error {
 		createAPICmds(serviceControl, config, &runErr),
 		createEnvCmds(config, &runErr))
 
-	// init cache scheduler
-	go initCacheScheduler(config)
 	// Execute the command and return the runErr to the caller
 	if err := cmd.Execute(); err != nil {
 		return err
