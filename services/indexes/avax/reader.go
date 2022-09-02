@@ -165,12 +165,14 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 
 func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
 	// if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
-	if !params.ListParams.Values.Has("cacheUpd") {
+	var aggregateFeesMap = cfg.GetAggregateFeesMap()
+	if !params.ListParams.Values.Has("cacheUpd") && len(aggregateFeesMap) != 0 {
 		cache := models.TxfeeAggregatesList{}
 		var temp = models.TxfeeAggregates{}
+
 		// based on the date interval we are going to retrieve the relevant part from our cache
 		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
-		temp.Txfee = cfg.GetAggregateFeesMap()[params.ChainIDs[0]][keyDatePartValue]
+		temp.Txfee = aggregateFeesMap[params.ChainIDs[0]][keyDatePartValue]
 
 		cache = append(cache, temp)
 		cache[0].StartTime = params.ListParams.StartTime
@@ -394,13 +396,14 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 }
 
 func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, conns *utils.Connections) (*models.AggregatesHistogram, error) {
-	if !params.ListParams.Values.Has("cacheUpd") {
+	var aggregateTransactionMap = cfg.GetAggregateTransactionsMap()
+	if !params.ListParams.Values.Has("cacheUpd") && len(aggregateTransactionMap) != 0 {
 		// if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
 		cache := models.AggregatesList{}
 		var temp = models.Aggregates{}
 		// based on the date interval we are going to retrieve the relevant part from our cache
 		var keyDatePartValue = cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
-		temp.TransactionCount = cfg.GetAggregateTransactionsMap()[params.ChainIDs[0]][keyDatePartValue]
+		temp.TransactionCount = aggregateTransactionMap[params.ChainIDs[0]][keyDatePartValue]
 
 		cache = append(cache, temp)
 		cache[0].StartTime = params.ListParams.StartTime
@@ -411,6 +414,7 @@ func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, 
 			EndTime:    params.ListParams.EndTime,
 		}, nil
 	}
+
 	// Validate params and set defaults if necessary
 	if params.ListParams.StartTime.IsZero() {
 		var err error
