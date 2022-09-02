@@ -395,6 +395,7 @@ func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggrega
 	return aggs, nil
 }
 
+//gocyclo:ignore
 func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, conns *utils.Connections) (*models.AggregatesHistogram, error) {
 	var aggregateTransactionMap = cfg.GetAggregateTransactionsMap()
 	if !params.ListParams.Values.Has("cacheUpd") && len(aggregateTransactionMap) != 0 {
