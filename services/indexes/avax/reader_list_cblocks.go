@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chain4travel/magellan/cfg"
@@ -118,7 +119,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"gas_price",
 		).
 			From(db.TableCvmTransactionsTxdata).
-			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = id").
+			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = F.id").
 			Limit(uint64(p.TxLimit))
 
 		switch {
@@ -134,8 +135,10 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		}
 
 		if len(p.CAddresses) > 0 {
-			subSel := dbr.Select("id").From(db.TableCvmAccounts).Where("address in ?", p.CAddresses)
-			sq = sq.Where("id_from_addr in ? OR id_to_addr in ?", subSel, subSel)
+			addressesSQL := strings.Join(p.CAddresses, "','")
+			addressesSQL = "'" + addressesSQL + "'"
+			sq = sq.From("(select id from cvm_accounts where address in (" + addressesSQL + ") ) sub,cvm_transactions_txdata")
+			sq = sq.Where("(id_from_addr=sub.id  OR id_to_addr=sub.id)")
 		}
 
 		_, err = sq.LoadContext(ctx, &txList)
