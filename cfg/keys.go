@@ -37,4 +37,6 @@ const (
 	keysStreamProducerNodeInstance = "nodeInstance"
 
 	keysStreamProducerCchainID = "cchainID"
+
+	keysCacheUpdateInterval = "cacheUpdateInterval"
 )

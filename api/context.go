@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/services/indexes/avax"
 	"github.com/chain4travel/magellan/services/indexes/params"
@@ -30,11 +31,9 @@ import (
 	"github.com/gocraft/web"
 )
 
-var (
-	// ErrCacheableFnFailed is returned when the execution of a CacheableFn
-	// fails.
-	ErrCacheableFnFailed = errors.New("failed to load resource")
-)
+// ErrCacheableFnFailed is returned when the execution of a CacheableFn
+// fails.
+var ErrCacheableFnFailed = errors.New("failed to load resource")
 
 // Context is the base context for APIs in the magellan systems
 type Context struct {
@@ -43,7 +42,7 @@ type Context struct {
 	networkID   uint32
 	avaxAssetID ids.ID
 
-	delayCache  *utils.DelayCache
+	delayCache  *caching.DelayCache
 	avaxReader  *avax.Reader
 	connections *utils.Connections
 }
@@ -60,7 +59,7 @@ func (c *Context) cacheGet(key string) ([]byte, error) {
 	return c.delayCache.Cache.Get(ctxget, key)
 }
 
-func (c *Context) cacheRun(reqTime time.Duration, cacheable utils.Cacheable) (interface{}, error) {
+func (c *Context) cacheRun(reqTime time.Duration, cacheable caching.Cacheable) (interface{}, error) {
 	ctxreq, cancelFnReq := context.WithTimeout(context.Background(), reqTime)
 	defer cancelFnReq()
 
@@ -69,8 +68,8 @@ func (c *Context) cacheRun(reqTime time.Duration, cacheable utils.Cacheable) (in
 
 // WriteCacheable writes to the http response the output of the given Cacheable's
 // function, either from the cache or from a new execution of the function
-func (c *Context) WriteCacheable(w http.ResponseWriter, cacheable utils.Cacheable) {
-	key := utils.CacheKey(c.NetworkID(), cacheable.Key...)
+func (c *Context) WriteCacheable(w http.ResponseWriter, cacheable caching.Cacheable) {
+	key := caching.CacheKey(c.NetworkID(), cacheable.Key...)
 
 	// Get from cache or, if there is a cache miss, from the cacheablefn
 	resp, err := c.cacheGet(key)
@@ -82,7 +81,7 @@ func (c *Context) WriteCacheable(w http.ResponseWriter, cacheable utils.Cacheabl
 		if err == nil {
 			resp, err = json.Marshal(obj)
 			if err == nil {
-				c.delayCache.Worker.TryEnque(&utils.CacheJob{Key: key, Body: &resp, TTL: cacheable.TTL})
+				c.delayCache.Worker.TryEnque(&caching.CacheJob{Key: key, Body: &resp, TTL: cacheable.TTL})
 			}
 		}
 	}
@@ -135,7 +134,7 @@ func (c *Context) cacheKeyForParams(name string, p params.Param) []string {
 	return append([]string{"avax", name}, p.CacheKey()...)
 }
 
-func newContextSetter(sc *servicesctrl.Control, networkID uint32, connections *utils.Connections, delayCache *utils.DelayCache) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
+func newContextSetter(sc *servicesctrl.Control, networkID uint32, connections *utils.Connections, delayCache *caching.DelayCache) func(*Context, web.ResponseWriter, *web.Request, web.NextMiddlewareFunc) {
 	return func(c *Context, w web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
 		c.sc = sc
 		c.connections = connections

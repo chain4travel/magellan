@@ -6,14 +6,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -21,22 +18,23 @@ import (
 	"github.com/chain4travel/caminogo/utils/logging"
 	"github.com/chain4travel/magellan/api"
 	"github.com/chain4travel/magellan/balance"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
-	oreliusRpc "github.com/chain4travel/magellan/rpc"
 	"github.com/chain4travel/magellan/services/rewards"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/stream"
 	"github.com/chain4travel/magellan/stream/consumers"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/go-sql-driver/mysql"
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
-	"github.com/golang-migrate/migrate/v4"
+	oreliusRpc "github.com/chain4travel/magellan/rpc"
 	_ "github.com/golang-migrate/migrate/v4/database"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -89,7 +87,8 @@ func execute() error {
 		configFile         = func() *string { s := ""; return &s }()
 		replayqueuesize    = func() *int { i := defaultReplayQueueSize; return &i }()
 		replayqueuethreads = func() *int { i := defaultReplayQueueThreads; return &i }()
-		cmd                = &cobra.Command{Use: rootCmdUse, Short: rootCmdDesc, Long: rootCmdDesc,
+		cmd                = &cobra.Command{
+			Use: rootCmdUse, Short: rootCmdDesc, Long: rootCmdDesc,
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
 				c, err := cfg.NewFromFile(*configFile)
 				if err != nil {
@@ -124,6 +123,7 @@ func execute() error {
 				serviceControl.Features = c.Features
 				persist := db.NewPersist()
 				serviceControl.BalanceManager = balance.NewManager(persist, serviceControl)
+				serviceControl.AggregatesCache = caching.NewAggregatesCache()
 				err = serviceControl.Init(c.NetworkID)
 				if err != nil {
 					log.Fatalln("Failed to create service control", ":", err.Error())
@@ -160,10 +160,6 @@ func execute() error {
 						}
 					}()
 				}
-				// init cache scheduler only when magellan starts as an api service
-				if strings.Compare(cmd.Use, apiCmdUse) == 0 {
-					go initCacheScheduler(config)
-				}
 			},
 		}
 	)
@@ -196,6 +192,12 @@ func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) 
 		Short: apiCmdDesc,
 		Long:  apiCmdDesc,
 		Run: func(cmd *cobra.Command, args []string) {
+			go func() {
+				err := sc.StartCacheScheduler(config)
+				if err != nil {
+					return
+				}
+			}()
 			lc, err := api.NewServer(sc, *config)
 			if err != nil {
 				*runErr = err
@@ -422,118 +424,4 @@ func migrateMysql(mysqlDSN, migrationsPath string) error {
 	}
 
 	return nil
-}
-
-// initialize scheduler-timer for cache
-func initCacheScheduler(config *cfg.Config) {
-	// we give a threshold of 10 seconds in order for the api server to fireup (since the caching mechanism is running as a separate thread)
-	time.Sleep(10 * time.Second)
-	initCacheStorage(config.Chains)
-
-	MyTimer := time.NewTimer(3 * time.Second)
-
-	for range MyTimer.C {
-		MyTimer.Stop()
-		toDate := time.Now()
-		yesterdayDateTime := time.Now().AddDate(0, 0, -1)
-		prevWeekDateTime := time.Now().AddDate(0, 0, -7)
-		prevMonthDateTime := time.Now().AddDate(0, -1, 0)
-
-		// convert to specific date format
-		toDateStr := convertToMagellanDateFormat(toDate)
-		yesterdayDateTimeStr := convertToMagellanDateFormat(yesterdayDateTime)
-		prevWeekDateTimeStr := convertToMagellanDateFormat(prevWeekDateTime)
-		prevMonthDateTimeStr := convertToMagellanDateFormat(prevMonthDateTime)
-
-		// update cache for all chains
-		for id := range config.Chains {
-			// previous day aggregate number
-			getAggregatesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
-			getAggregatesFeesAndUpdate(id, yesterdayDateTimeStr, toDateStr, "day")
-			// previous week aggregate number
-			getAggregatesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
-			getAggregatesFeesAndUpdate(id, prevWeekDateTimeStr, toDateStr, "week")
-			// previous month aggregate number
-			getAggregatesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
-			getAggregatesFeesAndUpdate(id, prevMonthDateTimeStr, toDateStr, "month")
-		}
-
-		MyTimer.Reset(3 * time.Second)
-	}
-}
-
-func initCacheStorage(pchains cfg.Chains) {
-	var aggregateTransMap = cfg.GetAggregateTransactionsMap()
-	var aggregateFeesMap = cfg.GetAggregateFeesMap()
-	for id := range pchains {
-		aggregateTransMap[id] = map[string]uint64{}
-		aggregateFeesMap[id] = map[string]uint64{}
-
-		// we initialize the value for all 3 chains
-		aggregateTransMap[id]["day"] = 0
-		aggregateTransMap[id]["week"] = 0
-		aggregateTransMap[id]["month"] = 0
-
-		// we initialize the value for all 3 chains also here
-		aggregateFeesMap[id]["day"] = 0
-		aggregateFeesMap[id]["week"] = 0
-		aggregateFeesMap[id]["month"] = 0
-	}
-}
-
-func getAggregatesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) {
-	serverPort := 8080
-	requestURL := fmt.Sprintf("http://localhost:%d/v2/aggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
-
-	res, err := http.Get(requestURL) //nolint
-	if err != nil {
-		fmt.Printf("error making http request: %s\n", err)
-	}
-
-	if res != nil {
-		resBody, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			fmt.Printf("client: could not read response body: %s\n", err)
-		}
-		var aggregatesMain cfg.AggregatesMain
-		aggregatesMainJSON := resBody
-		err = json.Unmarshal(aggregatesMainJSON, &aggregatesMain)
-		if err != nil {
-			// based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
-			cfg.GetAggregateTransactionsMap()[chainid][rangeKeyType] = aggregatesMain.Aggregates.TransactionCount
-		}
-	}
-}
-
-func getAggregatesFeesAndUpdate(chainid string, startTime string, endTime string, rangeKeyType string) {
-	serverPort := 8080
-	requestURL := fmt.Sprintf("http://localhost:%d/v2/txfeeAggregates?cacheUpd=true&chainID="+chainid+"&startTime="+startTime+"&endTime="+endTime, serverPort)
-
-	res, err := http.Get(requestURL) //nolint
-	if err != nil {
-		fmt.Printf("error making http request: %s\n", err)
-	}
-
-	if res != nil {
-		resBody, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			fmt.Printf("client: could not read response body: %s\n", err)
-		}
-		var aggregatesFeesMain cfg.AggregatesFeesMain
-		aggregatesFeesMainJSON := resBody
-		err = json.Unmarshal(aggregatesFeesMainJSON, &aggregatesFeesMain)
-		if err != nil {
-			// based on the rangeKeyType we update the relevant part of our map - cache (we could imply that from the diff endTime - startTime but for simplicity we added this switch)
-			cfg.GetAggregateFeesMap()[chainid][rangeKeyType] = aggregatesFeesMain.Aggregates.Txfee
-		}
-	}
-}
-
-func convertToMagellanDateFormat(pDateTime time.Time) string {
-	// we need to convert to format e.g 2022-07-01T10:21:16.808Z
-	return strconv.Itoa(pDateTime.Year()) + "-" + lpadDatePart(int(pDateTime.Month())) + "-" + lpadDatePart(pDateTime.Day()) + "T" + lpadDatePart(pDateTime.Hour()) + ":" + lpadDatePart(pDateTime.Minute()) + ":" + lpadDatePart(pDateTime.Second()) + "." + "000Z"
-}
-
-func lpadDatePart(datepart int) string {
-	return fmt.Sprintf("%02d", datepart)
 }

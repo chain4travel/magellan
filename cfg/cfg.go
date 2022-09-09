@@ -23,9 +23,6 @@ import (
 
 const appName = "magellan"
 
-var aggregateTransactionsMap = make(map[string]map[string]uint64)
-var aggregateFeesMap = make(map[string]map[string]uint64)
-
 var (
 	ErrChainsConfigMustBeStringMap = errors.New("Chain config must a string map")
 	ErrChainsConfigIDEmpty         = errors.New("Chain config ID is empty")
@@ -66,16 +63,17 @@ type AggregatesFeesMain struct {
 }
 
 type Config struct {
-	NetworkID         uint32 `json:"networkID"`
-	Chains            `json:"chains"`
-	Services          `json:"services"`
-	MetricsListenAddr string `json:"metricsListenAddr"`
-	AdminListenAddr   string `json:"adminListenAddr"`
-	Features          map[string]struct{}
-	CchainID          string `json:"cchainId"`
-	CaminoNode        string `json:"caminoNode"`
-	NodeInstance      string `json:"nodeInstance"`
-	AP5Activation     uint64
+	NetworkID           uint32 `json:"networkID"`
+	Chains              `json:"chains"`
+	Services            `json:"services"`
+	MetricsListenAddr   string `json:"metricsListenAddr"`
+	AdminListenAddr     string `json:"adminListenAddr"`
+	Features            map[string]struct{}
+	CchainID            string `json:"cchainId"`
+	CaminoNode          string `json:"caminoNode"`
+	NodeInstance        string `json:"nodeInstance"`
+	CacheUpdateInterval uint64 `json:"cacheUpdateInterval"`
+	AP5Activation       uint64
 }
 
 type Chain struct {
@@ -165,17 +163,10 @@ func NewFromFile(filePath string) (*Config, error) {
 				RODSN:  dbrodsn,
 			},
 		},
-		CchainID:      v.GetString(keysStreamProducerCchainID),
-		CaminoNode:    v.GetString(keysStreamProducerCaminoNode),
-		NodeInstance:  v.GetString(keysStreamProducerNodeInstance),
-		AP5Activation: uint64(ap5Activation),
+		CchainID:            v.GetString(keysStreamProducerCchainID),
+		CaminoNode:          v.GetString(keysStreamProducerCaminoNode),
+		NodeInstance:        v.GetString(keysStreamProducerNodeInstance),
+		CacheUpdateInterval: uint64(v.GetInt(keysCacheUpdateInterval)),
+		AP5Activation:       uint64(ap5Activation),
 	}, nil
-}
-
-func GetAggregateTransactionsMap() map[string]map[string]uint64 {
-	return aggregateTransactionsMap
-}
-
-func GetAggregateFeesMap() map[string]map[string]uint64 {
-	return aggregateFeesMap
 }
