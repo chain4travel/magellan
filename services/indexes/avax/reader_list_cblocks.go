@@ -117,6 +117,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"status",
 			"gas_used",
 			"gas_price",
+			"block_idx",
 		).
 			From(db.TableCvmTransactionsTxdata).
 			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = F.id").
@@ -135,6 +136,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		}
 
 		if len(p.CAddresses) > 0 {
+			sq = sq.Distinct()
 			addressesSQL := strings.Join(p.CAddresses, "','")
 			addressesSQL = "'" + addressesSQL + "'"
 			sq = sq.From("(select id from cvm_accounts where address in (" + addressesSQL + ") ) sub,cvm_transactions_txdata")
