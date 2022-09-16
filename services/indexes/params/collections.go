@@ -366,6 +366,14 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 		}
 	}
 
+	p.TxOffset = 0
+	offsets, ok := q[KeyOffset]
+	if ok && len(offsets) > 1 {
+		if p.TxOffset, err = strconv.Atoi(offsets[1]); err != nil {
+			return err
+		}
+	}
+
 	addressStrs := q[KeyAddress]
 	for _, addressStr := range addressStrs {
 		if !strings.HasPrefix(addressStr, "0x") {
