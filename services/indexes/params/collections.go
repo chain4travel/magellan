@@ -345,7 +345,6 @@ func (p *ListCTransactionsParams) Apply(b *dbr.SelectBuilder) *dbr.SelectBuilder
 type ListCBlocksParams struct {
 	ListParams ListParams
 	TxLimit    int
-	TxOffset   int
 	CAddresses []string
 	BlockStart *big.Int
 	BlockEnd   *big.Int
@@ -353,7 +352,7 @@ type ListCBlocksParams struct {
 }
 
 func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
-	err = p.ListParams.ForValuesAllowOffset(version, q)
+	err = p.ListParams.ForValues(version, q)
 	if err != nil {
 		return err
 	}
@@ -362,14 +361,6 @@ func (p *ListCBlocksParams) ForValues(version uint8, q url.Values) (err error) {
 	limits, ok := q[KeyLimit]
 	if ok && len(limits) > 1 {
 		if p.TxLimit, err = strconv.Atoi(limits[1]); err != nil {
-			return err
-		}
-	}
-
-	p.TxOffset = 0
-	offsets, ok := q[KeyOffset]
-	if ok && len(offsets) > 1 {
-		if p.TxOffset, err = strconv.Atoi(offsets[1]); err != nil {
 			return err
 		}
 	}

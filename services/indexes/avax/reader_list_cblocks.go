@@ -32,43 +32,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		return nil, err
 	}
 
-	var sq *dbr.SelectStmt
 	result := models.CBlockList{}
-	// Get count of blocks
-	sq = dbRunner.Select("COUNT(block)").
-		From(db.TableCvmBlocks)
-
-	if p.ListParams.StartTimeProvided {
-		sq = sq.Where("created_at >= ?", p.ListParams.StartTime)
-	}
-	if p.ListParams.EndTimeProvided {
-		sq = sq.Where("created_at < ?", p.ListParams.EndTime)
-	}
-
-	err = sq.LoadOneContext(ctx, &result.BlockCount)
-	if err != nil {
-		return nil, err
-	}
-
-	// get count of TX
-	if len(p.CAddresses) > 0 && !p.ListParams.StartTimeProvided && !p.ListParams.EndTimeProvided {
-		sq = dbRunner.Select("tx_count").
-			From(db.TableCvmAccounts).
-			Where("address in ?", p.CAddresses)
-	} else {
-		sq = dbRunner.Select("COUNT(block_idx)").
-			From(db.TableCvmTransactionsTxdata)
-		if p.ListParams.StartTimeProvided {
-			sq = sq.Where("created_at >= ?", p.ListParams.StartTime)
-		}
-		if p.ListParams.EndTimeProvided {
-			sq = sq.Where("created_at < ?", p.ListParams.EndTime)
-		}
-	}
-	err = sq.LoadOneContext(ctx, &result.TransactionCount)
-	if err != nil {
-		return nil, err
-	}
 
 	// Step 1 get Block headers
 	if p.ListParams.Limit > 0 {
@@ -99,7 +63,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			sq = sq.OrderDesc("block")
 		}
 
-		sq = sq.Paginate(uint64(p.ListParams.Offset), uint64(p.ListParams.Limit))
+		sq = sq.Limit(uint64(p.ListParams.Limit))
 		_, err = sq.LoadContext(ctx, &blockList)
 		if err != nil {
 			return nil, err
@@ -170,7 +134,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			sq = sq.Where("(id_from_addr=sub.id  OR id_to_addr=sub.id)")
 		}
 
-		sq = sq.Paginate(uint64(p.TxOffset), uint64(p.TxLimit))
+		sq = sq.Limit(uint64(p.TxLimit))
 		_, err = sq.LoadContext(ctx, &txList)
 		if err != nil {
 			return nil, err

@@ -26,8 +26,10 @@ import (
 	"github.com/gocraft/web"
 )
 
-const DefaultLimit = 1000
-const DefaultOffsetLimit = 10000
+const (
+	DefaultLimit       = 1000
+	DefaultOffsetLimit = 10000
+)
 
 type V2Context struct {
 	*Context
@@ -35,23 +37,27 @@ type V2Context struct {
 	chainID *ids.ID
 }
 
-const MetricCount = "api_count"
-const MetricMillis = "api_millis"
+const (
+	MetricCount  = "api_count"
+	MetricMillis = "api_millis"
+)
 
-const MetricTransactionsCount = "api_transactions_count"
-const MetricTransactionsMillis = "api_transactions_millis"
-const MetricCTransactionsCount = "api_ctransactions_count"
-const MetricCTransactionsMillis = "api_ctransactions_millis"
-const MetricAddressesCount = "api_addresses_count"
-const MetricAddressesMillis = "api_addresses_millis"
-const MetricAddressChainsCount = "api_address_chains_count"
-const MetricAddressChainsMillis = "api_address_chains_millis"
-const MetricAggregateCount = "api_aggregate_count"
-const MetricAggregateMillis = "api_aggregate_millis"
-const MetricAssetCount = "api_asset_count"
-const MetricAssetMillis = "api_asset_millis"
-const MetricSearchCount = "api_search_count"
-const MetricSearchMillis = "api_search_millis"
+const (
+	MetricTransactionsCount   = "api_transactions_count"
+	MetricTransactionsMillis  = "api_transactions_millis"
+	MetricCTransactionsCount  = "api_ctransactions_count"
+	MetricCTransactionsMillis = "api_ctransactions_millis"
+	MetricAddressesCount      = "api_addresses_count"
+	MetricAddressesMillis     = "api_addresses_millis"
+	MetricAddressChainsCount  = "api_address_chains_count"
+	MetricAddressChainsMillis = "api_address_chains_millis"
+	MetricAggregateCount      = "api_aggregate_count"
+	MetricAggregateMillis     = "api_aggregate_millis"
+	MetricAssetCount          = "api_asset_count"
+	MetricAssetMillis         = "api_asset_millis"
+	MetricSearchCount         = "api_search_count"
+	MetricSearchMillis        = "api_search_millis"
+)
 
 // AddV2Routes mounts a V2 API router at the given path, displaying the given
 // indexBytes at the root. If chainID is not nil the handlers run in v1
@@ -366,11 +372,6 @@ func (c *V2Context) ListCBlocks(w web.ResponseWriter, r *web.Request) {
 
 	if p.ListParams.Offset > DefaultOffsetLimit {
 		c.WriteErr(w, 400, fmt.Errorf("invalid block offset"))
-		return
-	}
-
-	if p.TxOffset > DefaultOffsetLimit {
-		c.WriteErr(w, 400, fmt.Errorf("invalid tx offset"))
 		return
 	}
 

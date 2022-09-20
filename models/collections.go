@@ -102,9 +102,6 @@ type CTransactionDataBase struct {
 }
 
 type CBlockList struct {
-	BlockCount       uint64 `json:"blockCount"`
-	TransactionCount uint64 `json:"transactionCount"`
-
 	Blocks       []*CBlockHeaderBase     `json:"blocks"`
 	Transactions []*CTransactionDataBase `json:"transactions"`
 }
