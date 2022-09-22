@@ -376,11 +376,6 @@ func (c *V2Context) ListCBlocks(w web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	if p.TxOffset > DefaultOffsetLimit {
-		c.WriteErr(w, 400, fmt.Errorf("invalid tx offset"))
-		return
-	}
-
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 5 * time.Second,
 		Key: c.cacheKeyForParams("list_cblocks", p),

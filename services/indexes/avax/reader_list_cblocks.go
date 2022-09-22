@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/chain4travel/magellan/cfg"
@@ -32,30 +33,8 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 	}
 
 	result := models.CBlockList{}
-	// Get count of blocks
-	err = dbRunner.Select("COUNT(block)").
-		From(db.TableCvmBlocks).
-		LoadOneContext(ctx, &result.BlockCount)
-	if err != nil {
-		return nil, err
-	}
 
-	// get count of TX
-	var sq *dbr.SelectStmt
-	if len(p.CAddresses) > 0 {
-		sq = dbRunner.Select("tx_count").
-			From(db.TableCvmAccounts).
-			Where("address in ?", p.CAddresses)
-	} else {
-		sq = dbRunner.Select("COUNT(block_idx)").
-			From(db.TableCvmTransactionsTxdata)
-	}
-	err = sq.LoadOneContext(ctx, &result.TransactionCount)
-	if err != nil {
-		return nil, err
-	}
-
-	// Setp 1 get Block headers
+	// Step 1 get Block headers
 	if p.ListParams.Limit > 0 {
 		var blockList []*db.CvmBlocks
 
@@ -64,8 +43,14 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"atomic_tx",
 			"serialization",
 		).
-			From(db.TableCvmBlocks).
-			Limit(uint64(p.ListParams.Limit))
+			From(db.TableCvmBlocks)
+
+		if p.ListParams.StartTimeProvided {
+			sq = sq.Where("created_at >= ?", p.ListParams.StartTime)
+		}
+		if p.ListParams.EndTimeProvided {
+			sq = sq.Where("created_at < ?", p.ListParams.EndTime)
+		}
 
 		switch {
 		case p.BlockStart != nil:
@@ -78,6 +63,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			sq = sq.OrderDesc("block")
 		}
 
+		sq = sq.Limit(uint64(p.ListParams.Limit))
 		_, err = sq.LoadContext(ctx, &blockList)
 		if err != nil {
 			return nil, err
@@ -94,7 +80,7 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		}
 	}
 
-	// Setp 2 get Transactions
+	// Step 2 get Transactions
 	if p.TxLimit > 0 {
 		var txList []*struct {
 			Serialization []byte
@@ -116,10 +102,17 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			"status",
 			"gas_used",
 			"gas_price",
+			"block_idx",
 		).
 			From(db.TableCvmTransactionsTxdata).
-			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = id").
-			Limit(uint64(p.TxLimit))
+			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = F.id")
+
+		if p.ListParams.StartTimeProvided {
+			sq = sq.Where("created_at >= ?", p.ListParams.StartTime)
+		}
+		if p.ListParams.EndTimeProvided {
+			sq = sq.Where("created_at < ?", p.ListParams.EndTime)
+		}
 
 		switch {
 		case p.BlockStart != nil:
@@ -134,10 +127,14 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 		}
 
 		if len(p.CAddresses) > 0 {
-			subSel := dbr.Select("id").From(db.TableCvmAccounts).Where("address in ?", p.CAddresses)
-			sq = sq.Where("id_from_addr in ? OR id_to_addr in ?", subSel, subSel)
+			sq = sq.Distinct()
+			addressesSQL := strings.Join(p.CAddresses, "','")
+			addressesSQL = "'" + addressesSQL + "'"
+			sq = sq.From("(select id from cvm_accounts where address in (" + addressesSQL + ") ) sub,cvm_transactions_txdata")
+			sq = sq.Where("(id_from_addr=sub.id  OR id_to_addr=sub.id)")
 		}
 
+		sq = sq.Limit(uint64(p.TxLimit))
 		_, err = sq.LoadContext(ctx, &txList)
 		if err != nil {
 			return nil, err
