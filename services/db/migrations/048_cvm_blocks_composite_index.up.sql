@@ -1,0 +1,1 @@
+CREATE INDEX cvm_blocks_composite_idx  ON cvm_blocks(block,chain_id);
