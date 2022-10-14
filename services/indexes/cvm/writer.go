@@ -309,6 +309,26 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		ProposerTime:  proposer.TimeStamp,
 	}
 	err = ctx.Persist().InsertCvmBlocks(ctx.Ctx(), ctx.DB(), cvmBlocks)
+
+	if err != nil {
+		return err
+	}
+
+	// we update the last block cache table
+	newLastBlockCache := &db.CamLastBlockCache{
+		CurrentBlock: cvmBlocks.Block,
+		ChainID:      ctx.ChainID(),
+	}
+
+	camLastBlockCacheRes, _ := ctx.Persist().QueryCountLastBlockCache(ctx.Ctx(), ctx.DB(), newLastBlockCache)
+
+	// if a record already exists update the currentBlock
+	if camLastBlockCacheRes.Cnt > 0 {
+		err = ctx.Persist().InsertCamLastBlockCache(ctx.Ctx(), ctx.DB(), newLastBlockCache, true)
+	} else {
+		err = ctx.Persist().InsertCamLastBlockCache(ctx.Ctx(), ctx.DB(), newLastBlockCache, false)
+	}
+
 	if err != nil {
 		return err
 	}

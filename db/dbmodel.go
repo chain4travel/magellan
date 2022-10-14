@@ -56,6 +56,7 @@ const (
 	TableTxPool                           = "tx_pool"
 	TableKeyValueStore                    = "key_value_store"
 	TableNodeIndex                        = "node_index"
+	TableCamLastBlockCache                = "cam_last_block_cache"
 )
 
 type Persist interface {
@@ -170,6 +171,23 @@ type Persist interface {
 		context.Context,
 		dbr.SessionRunner,
 		*CvmBlocks,
+	) error
+
+	QueryCountLastBlockCache(
+		context.Context,
+		dbr.SessionRunner,
+		*CamLastBlockCache,
+	) (*CountLastBlockCache, error)
+	QueryCamLastBlockCache(
+		context.Context,
+		dbr.SessionRunner,
+		*CamLastBlockCache,
+	) (*CamLastBlockCache, error)
+	InsertCamLastBlockCache(
+		context.Context,
+		dbr.SessionRunner,
+		*CamLastBlockCache,
+		bool,
 	) error
 
 	QueryCvmAddresses(
@@ -1096,6 +1114,72 @@ func (p *persist) InsertCvmBlocks(
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmBlocks, false, err)
+	}
+	return nil
+}
+
+type CamLastBlockCache struct {
+	CurrentBlock string
+	ChainID      string
+}
+
+type CountLastBlockCache struct {
+	Cnt uint64
+}
+
+func (p *persist) QueryCountLastBlockCache(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	q *CamLastBlockCache,
+) (*CountLastBlockCache, error) {
+	v := &CountLastBlockCache{}
+	err := sess.Select(
+		"count(*) as cnt",
+	).From(TableCamLastBlockCache).
+		Where("chainid=?", q.ChainID).
+		LoadOneContext(ctx, v)
+	return v, err
+}
+
+func (p *persist) QueryCamLastBlockCache(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	q *CamLastBlockCache,
+) (*CamLastBlockCache, error) {
+	v := &CamLastBlockCache{}
+	err := sess.Select(
+		"current_block",
+		"chainid",
+	).From(TableCamLastBlockCache).
+		Where("chainid=?", q.ChainID).
+		LoadOneContext(ctx, v)
+	return v, err
+}
+
+func (p *persist) InsertCamLastBlockCache(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	v *CamLastBlockCache,
+	upd bool,
+) error {
+	var err error
+	if upd {
+		_, err = sess.
+			Update(TableCamLastBlockCache).
+			Set("current_block", v.CurrentBlock).
+			Where("chainid = ?", v.ChainID).
+			ExecContext(ctx)
+		if err != nil {
+			return EventErr(TableCamLastBlockCache, true, err)
+		}
+	} else {
+		_, err = sess.
+			InsertBySql("insert into "+TableCamLastBlockCache+" (current_block,chainid) values("+v.CurrentBlock+",?)",
+				v.ChainID).
+			ExecContext(ctx)
+		if err != nil && !utils.ErrIsDuplicateEntryError(err) {
+			return EventErr(TableCamLastBlockCache, false, err)
+		}
 	}
 	return nil
 }
