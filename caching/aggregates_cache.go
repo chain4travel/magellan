@@ -228,6 +228,11 @@ func (ac *aggregatesCache) GetAggregatesAndUpdate(chains map[string]cfg.Chain, c
 			lastBlockValue.Block = firstBlockValue.Block
 		}
 
+		// handle edge case in case we do not have a transaction block during this range
+		if firstBlockValue.Block <= 0 {
+			lastBlockValue.Block = firstBlockValue.Block
+		}
+
 		// 3rd step: we obtain the count of the transactions based on the block range we acquired from the previous steps
 		// we will construct based on the block numbers the relevant block_idx filters since this is our main index in the cvm_transactions_txdata table
 		builder = dbRunner.
@@ -398,6 +403,11 @@ func (ac *aggregatesCache) GetAggregatesFeesAndUpdate(chains map[string]cfg.Chai
 		}
 
 		if lastBlockValue.Block <= firstBlockValue.Block {
+			lastBlockValue.Block = firstBlockValue.Block
+		}
+
+		// handle edge case in case we do not have a transaction block during this range
+		if firstBlockValue.Block <= 0 {
 			lastBlockValue.Block = firstBlockValue.Block
 		}
 
