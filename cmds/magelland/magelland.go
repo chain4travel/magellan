@@ -18,22 +18,23 @@ import (
 	"github.com/chain4travel/caminogo/utils/logging"
 	"github.com/chain4travel/magellan/api"
 	"github.com/chain4travel/magellan/balance"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
-	oreliusRpc "github.com/chain4travel/magellan/rpc"
 	"github.com/chain4travel/magellan/services/rewards"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/stream"
 	"github.com/chain4travel/magellan/stream/consumers"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/go-sql-driver/mysql"
+	"github.com/golang-migrate/migrate/v4"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 
-	"github.com/golang-migrate/migrate/v4"
+	magellanRpc "github.com/chain4travel/magellan/rpc"
 	_ "github.com/golang-migrate/migrate/v4/database"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -86,7 +87,8 @@ func execute() error {
 		configFile         = func() *string { s := ""; return &s }()
 		replayqueuesize    = func() *int { i := defaultReplayQueueSize; return &i }()
 		replayqueuethreads = func() *int { i := defaultReplayQueueThreads; return &i }()
-		cmd                = &cobra.Command{Use: rootCmdUse, Short: rootCmdDesc, Long: rootCmdDesc,
+		cmd                = &cobra.Command{
+			Use: rootCmdUse, Short: rootCmdDesc, Long: rootCmdDesc,
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
 				c, err := cfg.NewFromFile(*configFile)
 				if err != nil {
@@ -121,6 +123,7 @@ func execute() error {
 				serviceControl.Features = c.Features
 				persist := db.NewPersist()
 				serviceControl.BalanceManager = balance.NewManager(persist, serviceControl)
+				serviceControl.AggregatesCache = caching.NewAggregatesCache()
 				err = serviceControl.Init(c.NetworkID)
 				if err != nil {
 					log.Fatalln("Failed to create service control", ":", err.Error())
@@ -144,7 +147,7 @@ func execute() error {
 					codec := json2.NewCodec()
 					rpcServer.RegisterCodec(codec, "application/json")
 					rpcServer.RegisterCodec(codec, "application/json;charset=UTF-8")
-					api := oreliusRpc.NewAPI(alog)
+					api := magellanRpc.NewAPI(alog)
 					if err := rpcServer.RegisterService(api, "api"); err != nil {
 						log.Fatalln("Failed to start admin listener", err.Error())
 					}
@@ -189,6 +192,12 @@ func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) 
 		Short: apiCmdDesc,
 		Long:  apiCmdDesc,
 		Run: func(cmd *cobra.Command, args []string) {
+			go func() {
+				err := sc.StartCacheScheduler(config)
+				if err != nil {
+					return
+				}
+			}()
 			lc, err := api.NewServer(sc, *config)
 			if err != nil {
 				*runErr = err

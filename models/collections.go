@@ -229,6 +229,10 @@ type Aggregates struct {
 
 type AggregatesList []Aggregates
 
+type BlockValue struct {
+	Block uint64 `json:"block"`
+}
+
 type AddressChains struct {
 	AddressChains map[string][]StringID `json:"addressChains"`
 }

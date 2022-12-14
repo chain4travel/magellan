@@ -18,15 +18,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	corethType "github.com/chain4travel/caminoethvm/core/types"
 	"github.com/chain4travel/caminogo/ids"
+	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
@@ -35,18 +34,16 @@ import (
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
+
+	corethType "github.com/chain4travel/caminoethvm/core/types"
 )
 
 const (
-	MaxAggregateIntervalCount = 20000
-
 	MinSearchQueryLength = 3
 )
 
 var (
-	ErrAggregateIntervalCountTooLarge = errors.New("requesting too many intervals")
-	ErrFailedToParseStringAsBigInt    = errors.New("failed to parse string to big.Int")
-	ErrSearchQueryTooShort            = errors.New("search query too short")
+	ErrSearchQueryTooShort = errors.New("search query too short")
 
 	outputSelectColumns = []string{
 		"avm_outputs.id",
@@ -163,461 +160,59 @@ func (r *Reader) Search(ctx context.Context, p *params.SearchParams, avaxAssetID
 	return collateSearchResults(assets, addresses, txs, cblocks, ctrans, caddr)
 }
 
-func (r *Reader) TxfeeAggregate(ctx context.Context, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
-	// Validate params and set defaults if necessary
-	if params.ListParams.StartTime.IsZero() {
-		var err error
-		params.ListParams.StartTime, err = r.getFirstTransactionTime(ctx, params.ChainIDs)
-		if err != nil {
-			return nil, err
-		}
-	}
+func (r *Reader) TxfeeAggregate(aggregateCache caching.AggregatesCache, params *params.TxfeeAggregateParams) (*models.TxfeeAggregatesHistogram, error) {
+	// if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
+	aggregateFeesMap := aggregateCache.GetAggregateFeesMap()
+	if len(aggregateFeesMap) != 0 {
+		cache := models.TxfeeAggregatesList{}
+		temp := models.TxfeeAggregates{}
 
-	intervals := models.TxfeeAggregatesList{}
+		// based on the date interval we are going to retrieve the relevant part from our cache
+		keyDatePartValue := cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
+		temp.Txfee = aggregateFeesMap[params.ChainIDs[0]][keyDatePartValue]
 
-	// Ensure the interval count requested isn't too large
-	intervalSeconds := int64(params.IntervalSize.Seconds())
-	requestedIntervalCount := 0
-	if intervalSeconds != 0 {
-		requestedIntervalCount = int(math.Ceil(params.ListParams.EndTime.Sub(params.ListParams.StartTime).Seconds() / params.IntervalSize.Seconds()))
-		if requestedIntervalCount > MaxAggregateIntervalCount {
-			return nil, ErrAggregateIntervalCountTooLarge
-		}
-		if requestedIntervalCount < 1 {
-			requestedIntervalCount = 1
-		}
-	}
-
-	// Split chains
-	var avmChains, cvmChains []string
-	if len(params.ChainIDs) == 0 {
-		for id, chain := range r.sc.Chains {
-			switch chain.VMType {
-			case models.CVMName:
-				cvmChains = append(cvmChains, id)
-			default:
-				avmChains = append(avmChains, id)
-			}
-		}
-	} else {
-		for _, id := range params.ChainIDs {
-			chain, exist := r.sc.Chains[id]
-			if exist {
-				switch chain.VMType {
-				case models.CVMName:
-					cvmChains = append(cvmChains, id)
-				default:
-					avmChains = append(avmChains, id)
-				}
-			}
-		}
-	}
-
-	// Build the query and load the base data
-	dbRunner, err := r.conns.DB().NewSession("get_txfee_aggregates_histogram", cfg.RequestTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	var builder *dbr.SelectStmt
-
-	if len(avmChains) > 0 {
-		columns := []string{
-			"CAST(COALESCE(SUM(avm_transactions.txfee), 0) AS UNSIGNED) AS txfee",
-		}
-
-		if requestedIntervalCount > 0 {
-			columns = append(columns, fmt.Sprintf(
-				"FLOOR((UNIX_TIMESTAMP(avm_transactions.created_at)-%d) / %d) AS interval_id",
-				params.ListParams.StartTime.Unix(),
-				intervalSeconds))
-		}
-
-		builder = dbRunner.
-			Select(columns...).
-			From("avm_transactions").
-			Where("avm_transactions.created_at >= ?", params.ListParams.StartTime).
-			Where("avm_transactions.created_at < ?", params.ListParams.EndTime)
-
-		if requestedIntervalCount > 0 {
-			builder.
-				GroupBy("interval_id").
-				OrderAsc("interval_id").
-				Limit(uint64(requestedIntervalCount))
-		}
-
-		if len(params.ChainIDs) != 0 {
-			builder.Where("avm_transactions.chain_id IN ?", params.ChainIDs)
-		}
-
-		_, err = builder.LoadContext(ctx, &intervals)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(cvmChains) > 0 {
-		columns := []string{
-			"CAST(COALESCE(SUM((cvm_transactions_txdata.gas_price / 1000000000) * cvm_transactions_txdata.gas_used), 0) AS UNSIGNED) AS txfee",
-		}
-
-		if requestedIntervalCount > 0 {
-			columns = append(columns, fmt.Sprintf(
-				"FLOOR((UNIX_TIMESTAMP(cvm_transactions_txdata.created_at)-%d) / %d) AS interval_id",
-				params.ListParams.StartTime.Unix(),
-				intervalSeconds))
-		}
-
-		builder = dbRunner.
-			Select(columns...).
-			From("cvm_transactions_txdata").
-			Where("cvm_transactions_txdata.created_at >= ?", params.ListParams.StartTime).
-			Where("cvm_transactions_txdata.created_at < ?", params.ListParams.EndTime)
-
-		if requestedIntervalCount > 0 {
-			builder.
-				GroupBy("interval_id").
-				OrderAsc("interval_id").
-				Limit(uint64(requestedIntervalCount))
-		}
-
-		if len(params.ChainIDs) != 0 {
-			builder.
-				Join("cvm_blocks", "cvm_blocks.block = cvm_transactions_txdata.block").
-				Where("cvm_blocks.chain_id IN ?", cvmChains)
-		}
-
-		cvmIntervals := models.TxfeeAggregatesList{}
-
-		_, err = builder.LoadContext(ctx, &cvmIntervals)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(intervals) == 0 {
-			intervals = cvmIntervals
-		} else {
-			models.MergeAggregates(intervals.MergeList(), cvmIntervals.MergeList())
-		}
-	}
-
-	// If no intervals were requested then the total aggregate is equal to the
-	// first (and only) interval, and we're done
-	if requestedIntervalCount == 0 {
-		// This check should never fail if the SQL query is correct, but added for
-		// robustness to prevent panics if the invariant does not hold.
-		if len(intervals) > 0 {
-			intervals[0].StartTime = params.ListParams.StartTime
-			intervals[0].EndTime = params.ListParams.EndTime
-			return &models.TxfeeAggregatesHistogram{
-				TxfeeAggregates: intervals[0],
-				StartTime:       params.ListParams.StartTime,
-				EndTime:         params.ListParams.EndTime,
-			}, nil
-		}
+		cache = append(cache, temp)
+		cache[0].StartTime = params.ListParams.StartTime
+		cache[0].EndTime = params.ListParams.EndTime
 		return &models.TxfeeAggregatesHistogram{
-			StartTime: params.ListParams.StartTime,
-			EndTime:   params.ListParams.EndTime,
+			TxfeeAggregates: cache[0],
+			StartTime:       params.ListParams.StartTime,
+			EndTime:         params.ListParams.EndTime,
 		}, nil
 	}
 
-	// We need to return multiple intervals so build them now.
-	// Intervals without any data will not return anything so we pad our results
-	// with empty aggregates.
-	//
-	// We also add the start and end times of each interval to that interval
-	aggs := &models.TxfeeAggregatesHistogram{IntervalSize: params.IntervalSize}
-
-	var startTS int64
-	timesForInterval := func(intervalIdx int) (time.Time, time.Time) {
-		startTS = params.ListParams.StartTime.Unix() + (int64(intervalIdx) * intervalSeconds)
-		return time.Unix(startTS, 0).UTC(),
-			time.Unix(startTS+intervalSeconds-1, 0).UTC()
-	}
-
-	padTo := func(slice []models.TxfeeAggregates, to int) []models.TxfeeAggregates {
-		for i := len(slice); i < to; i = len(slice) {
-			slice = append(slice, models.TxfeeAggregates{IntervalID: i})
-			slice[i].StartTime, slice[i].EndTime = timesForInterval(i)
-		}
-		return slice
-	}
-
-	// Collect the overall counts and pad the intervals to include empty intervals
-	// which are not returned by the db
-	aggs.TxfeeAggregates = models.TxfeeAggregates{StartTime: params.ListParams.StartTime, EndTime: params.ListParams.EndTime}
-	var totalVolume uint64 = 0
-
-	// Add each interval, but first pad up to that interval's index
-	aggs.Intervals = make([]models.TxfeeAggregates, 0, requestedIntervalCount)
-	for _, interval := range intervals {
-		// Pad up to this interval's position
-		aggs.Intervals = padTo(aggs.Intervals, interval.IntervalID)
-
-		// Format this interval
-		interval.StartTime, interval.EndTime = timesForInterval(interval.IntervalID)
-
-		// Add to the overall aggregates counts
-		totalVolume += interval.Txfee
-
-		// Add to the list of intervals
-		aggs.Intervals = append(aggs.Intervals, interval)
-	}
-	// Add total aggregated token amounts
-	aggs.TxfeeAggregates.Txfee = totalVolume
-
-	// Add any missing trailing intervals
-	aggs.Intervals = padTo(aggs.Intervals, requestedIntervalCount)
-
-	aggs.StartTime = params.ListParams.StartTime
-	aggs.EndTime = params.ListParams.EndTime
-
-	return aggs, nil
+	return &models.TxfeeAggregatesHistogram{
+		TxfeeAggregates: models.TxfeeAggregates{},
+		StartTime:       params.ListParams.StartTime,
+		EndTime:         params.ListParams.EndTime,
+	}, nil
 }
 
-func (r *Reader) Aggregate(ctx context.Context, params *params.AggregateParams, conns *utils.Connections) (*models.AggregatesHistogram, error) {
-	// Validate params and set defaults if necessary
-	if params.ListParams.StartTime.IsZero() {
-		var err error
-		params.ListParams.StartTime, err = r.getFirstTransactionTime(ctx, params.ChainIDs)
-		if err != nil {
-			return nil, err
-		}
-	}
+//gocyclo:ignore
+func (r *Reader) Aggregate(aggregateCache caching.AggregatesCache, params *params.AggregateParams) (*models.AggregatesHistogram, error) {
+	aggregateTransactionMap := aggregateCache.GetAggregateTransactionsMap()
+	if len(aggregateTransactionMap) != 0 {
+		// if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
+		cache := models.AggregatesList{}
+		temp := models.Aggregates{}
+		// based on the date interval we are going to retrieve the relevant part from our cache
+		keyDatePartValue := cfg.GetDatepartBasedOnDateParams(params.ListParams.StartTime, params.ListParams.EndTime)
+		temp.TransactionCount = aggregateTransactionMap[params.ChainIDs[0]][keyDatePartValue]
 
-	intervals := models.AggregatesList{}
-
-	// Ensure the interval count requested isn't too large
-	intervalSeconds := int64(params.IntervalSize.Seconds())
-	requestedIntervalCount := 0
-	if intervalSeconds != 0 {
-		requestedIntervalCount = int(math.Ceil(params.ListParams.EndTime.Sub(params.ListParams.StartTime).Seconds() / params.IntervalSize.Seconds()))
-		if requestedIntervalCount > MaxAggregateIntervalCount {
-			return nil, ErrAggregateIntervalCountTooLarge
-		}
-		if requestedIntervalCount < 1 {
-			requestedIntervalCount = 1
-		}
-	}
-
-	// Split chains
-	var avmChains, cvmChains []string
-	if len(params.ChainIDs) == 0 {
-		for id, chain := range r.sc.Chains {
-			switch chain.VMType {
-			case models.CVMName:
-				cvmChains = append(cvmChains, id)
-			default:
-				avmChains = append(avmChains, id)
-			}
-		}
-	} else {
-		for _, id := range params.ChainIDs {
-			chain, exist := r.sc.Chains[id]
-			if exist {
-				switch chain.VMType {
-				case models.CVMName:
-					cvmChains = append(cvmChains, id)
-				default:
-					avmChains = append(avmChains, id)
-				}
-			}
-		}
-	}
-
-	var dbRunner *dbr.Session
-	var err error
-
-	if conns != nil {
-		dbRunner = conns.DB().NewSessionForEventReceiver(conns.Stream().NewJob("get_transaction_aggregates_histogram"))
-	} else {
-		dbRunner, err = r.conns.DB().NewSession("get_transaction_aggregates_histogram", cfg.RequestTimeout)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var builder *dbr.SelectStmt
-
-	if len(avmChains) > 0 {
-		columns := []string{
-			"COALESCE(SUM(avm_outputs.amount), 0) AS transaction_volume",
-			"COUNT(DISTINCT(avm_outputs.transaction_id)) AS transaction_count",
-			"COUNT(DISTINCT(avm_output_addresses.address)) AS address_count",
-			"COUNT(DISTINCT(avm_outputs.asset_id)) AS asset_count",
-			"COUNT(avm_outputs.id) AS output_count",
-		}
-
-		if requestedIntervalCount > 0 {
-			columns = append(columns, fmt.Sprintf(
-				"FLOOR((UNIX_TIMESTAMP(avm_outputs.created_at)-%d) / %d) AS interval_id",
-				params.ListParams.StartTime.Unix(),
-				intervalSeconds))
-		}
-
-		builder = dbRunner.
-			Select(columns...).
-			From("avm_outputs").
-			LeftJoin("avm_output_addresses", "avm_output_addresses.output_id = avm_outputs.id").
-			Where("avm_outputs.created_at >= ?", params.ListParams.StartTime).
-			Where("avm_outputs.created_at < ?", params.ListParams.EndTime)
-
-		if len(params.ChainIDs) != 0 {
-			builder.Where("avm_outputs.chain_id IN ?", avmChains)
-		}
-
-		if params.AssetID != nil {
-			builder.Where("avm_outputs.asset_id = ?", params.AssetID.String())
-		}
-
-		if requestedIntervalCount > 0 {
-			builder.
-				GroupBy("interval_id").
-				OrderAsc("interval_id").
-				Limit(uint64(requestedIntervalCount))
-		}
-
-		_, err = builder.LoadContext(ctx, &intervals)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if len(cvmChains) > 0 {
-		columns := []string{
-			"COALESCE(SUM(cvm_transactions_txdata.amount), 0) AS transaction_volume",
-			"COUNT(cvm_transactions_txdata.hash) AS transaction_count",
-			"COUNT(DISTINCT(cvm_transactions_txdata.id_from_addr)) AS address_count",
-			"1 AS asset_count",
-			"0 AS output_count",
-		}
-
-		if requestedIntervalCount > 0 {
-			columns = append(columns, fmt.Sprintf(
-				"FLOOR((UNIX_TIMESTAMP(cvm_transactions_txdata.created_at)-%d) / %d) AS interval_id",
-				params.ListParams.StartTime.Unix(),
-				intervalSeconds))
-		}
-
-		builder = dbRunner.
-			Select(columns...).
-			From("cvm_transactions_txdata")
-
-		if len(params.ChainIDs) != 0 {
-			builder.Join("cvm_blocks", "cvm_blocks.block = cvm_transactions_txdata.block").
-				Where("cvm_blocks.chain_id IN ?", cvmChains)
-		}
-
-		builder.Where("cvm_transactions_txdata.created_at >= ?", params.ListParams.StartTime).
-			Where("cvm_transactions_txdata.created_at < ?", params.ListParams.EndTime)
-
-		if requestedIntervalCount > 0 {
-			builder.
-				GroupBy("interval_id").
-				OrderAsc("interval_id").
-				Limit(uint64(requestedIntervalCount))
-		}
-
-		cvmIntervals := models.AggregatesList{}
-
-		_, err = builder.LoadContext(ctx, &cvmIntervals)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(intervals) == 0 {
-			intervals = cvmIntervals
-		} else {
-			models.MergeAggregates(intervals.MergeList(), cvmIntervals.MergeList())
-		}
-	}
-
-	// If no intervals were requested then the total aggregate is equal to the
-	// first (and only) interval, and we're done
-	if requestedIntervalCount == 0 {
-		// This check should never fail if the SQL query is correct, but added for
-		// robustness to prevent panics if the invariant does not hold.
-		if len(intervals) > 0 {
-			intervals[0].StartTime = params.ListParams.StartTime
-			intervals[0].EndTime = params.ListParams.EndTime
-			return &models.AggregatesHistogram{
-				Aggregates: intervals[0],
-				StartTime:  params.ListParams.StartTime,
-				EndTime:    params.ListParams.EndTime,
-			}, nil
-		}
+		cache = append(cache, temp)
+		cache[0].StartTime = params.ListParams.StartTime
+		cache[0].EndTime = params.ListParams.EndTime
 		return &models.AggregatesHistogram{
-			StartTime: params.ListParams.StartTime,
-			EndTime:   params.ListParams.EndTime,
+			Aggregates: cache[0],
+			StartTime:  params.ListParams.StartTime,
+			EndTime:    params.ListParams.EndTime,
 		}, nil
 	}
-
-	// We need to return multiple intervals so build them now.
-	// Intervals without any data will not return anything so we pad our results
-	// with empty aggregates.
-	//
-	// We also add the start and end times of each interval to that interval
-	aggs := &models.AggregatesHistogram{IntervalSize: params.IntervalSize}
-
-	var startTS int64
-	timesForInterval := func(intervalIdx int) (time.Time, time.Time) {
-		startTS = params.ListParams.StartTime.Unix() + (int64(intervalIdx) * intervalSeconds)
-		return time.Unix(startTS, 0).UTC(),
-			time.Unix(startTS+intervalSeconds-1, 0).UTC()
-	}
-
-	padTo := func(slice []models.Aggregates, to int) []models.Aggregates {
-		for i := len(slice); i < to; i = len(slice) {
-			slice = append(slice, models.Aggregates{IntervalID: i})
-			slice[i].StartTime, slice[i].EndTime = timesForInterval(i)
-		}
-		return slice
-	}
-
-	// Collect the overall counts and pad the intervals to include empty intervals
-	// which are not returned by the db
-	aggs.Aggregates = models.Aggregates{StartTime: params.ListParams.StartTime, EndTime: params.ListParams.EndTime}
-	var (
-		bigIntFromStringOK bool
-		totalVolume        = big.NewInt(0)
-		intervalVolume     = big.NewInt(0)
-	)
-
-	// Add each interval, but first pad up to that interval's index
-	aggs.Intervals = make([]models.Aggregates, 0, requestedIntervalCount)
-	for _, interval := range intervals {
-		// Pad up to this interval's position
-		aggs.Intervals = padTo(aggs.Intervals, interval.IntervalID)
-
-		// Format this interval
-		interval.StartTime, interval.EndTime = timesForInterval(interval.IntervalID)
-
-		// Parse volume into a big.Int
-		_, bigIntFromStringOK = intervalVolume.SetString(string(interval.TransactionVolume), 10)
-		if !bigIntFromStringOK {
-			return nil, ErrFailedToParseStringAsBigInt
-		}
-
-		// Add to the overall aggregates counts
-		totalVolume.Add(totalVolume, intervalVolume)
-		aggs.Aggregates.TransactionCount += interval.TransactionCount
-		aggs.Aggregates.OutputCount += interval.OutputCount
-		aggs.Aggregates.AddressCount += interval.AddressCount
-		aggs.Aggregates.AssetCount += interval.AssetCount
-
-		// Add to the list of intervals
-		aggs.Intervals = append(aggs.Intervals, interval)
-	}
-	// Add total aggregated token amounts
-	aggs.Aggregates.TransactionVolume = models.TokenAmount(totalVolume.String())
-
-	// Add any missing trailing intervals
-	aggs.Intervals = padTo(aggs.Intervals, requestedIntervalCount)
-
-	aggs.StartTime = params.ListParams.StartTime
-	aggs.EndTime = params.ListParams.EndTime
-
-	return aggs, nil
+	return &models.AggregatesHistogram{
+		Aggregates: models.Aggregates{},
+		StartTime:  params.ListParams.StartTime,
+		EndTime:    params.ListParams.EndTime,
+	}, nil
 }
 
 func (r *Reader) ListAddresses(ctx context.Context, p *params.ListAddressesParams) (*models.AddressList, error) {
@@ -919,28 +514,6 @@ func (r *Reader) AddressChains(ctx context.Context, p *params.AddressChainsParam
 	}
 
 	return &resp, nil
-}
-
-func (r *Reader) getFirstTransactionTime(ctx context.Context, chainIDs []string) (time.Time, error) {
-	dbRunner, err := r.conns.DB().NewSession("get_first_transaction_time", cfg.RequestTimeout)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	var ts float64
-	builder := dbRunner.
-		Select("COALESCE(UNIX_TIMESTAMP(MIN(created_at)), 0)").
-		From("avm_transactions")
-
-	if len(chainIDs) > 0 {
-		builder.Where("avm_transactions.chain_id IN ?", chainIDs)
-	}
-
-	err = builder.LoadOneContext(ctx, &ts)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return time.Unix(int64(math.Floor(ts)), 0).UTC(), nil
 }
 
 func (r *Reader) searchByID(ctx context.Context, id ids.ID, avaxAssetID ids.ID) (*models.SearchResults, error) {

@@ -28,9 +28,7 @@ import (
 	"github.com/chain4travel/magellan/utils"
 )
 
-var (
-	testXChainID = ids.ID([32]byte{7, 193, 50, 215, 59, 55, 159, 112, 106, 206, 236, 110, 229, 14, 139, 125, 14, 101, 138, 65, 208, 44, 163, 38, 115, 182, 177, 179, 244, 34, 195, 120})
-)
+var testXChainID = ids.ID([32]byte{7, 193, 50, 215, 59, 55, 159, 112, 106, 206, 236, 110, 229, 14, 139, 125, 14, 101, 138, 65, 208, 44, 163, 38, 115, 182, 177, 179, 244, 34, 195, 120})
 
 func TestBootstrap(t *testing.T) {
 	conns, w, r, closeFn := newTestIndex(t, 12345, ChainID)

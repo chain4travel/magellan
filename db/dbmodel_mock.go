@@ -19,6 +19,8 @@ type MockPersist struct {
 	CvmTransactionsTxdata            map[string]*CvmTransactionsTxdata
 	CvmAccounts                      map[string]*CvmAccount
 	CvmBlocks                        map[string]*CvmBlocks
+	CamLastBlockCache                map[string]*CamLastBlockCache
+	CountLastBlockCache              map[string]*CountLastBlockCache
 	CvmAddresses                     map[string]*CvmAddresses
 	TransactionsValidator            map[string]*TransactionsValidator
 	TransactionsBlock                map[string]*TransactionsBlock
@@ -53,6 +55,7 @@ func NewPersistMock() *MockPersist {
 		CvmTransactionsTxdata:            make(map[string]*CvmTransactionsTxdata),
 		CvmAccounts:                      make(map[string]*CvmAccount),
 		CvmBlocks:                        make(map[string]*CvmBlocks),
+		CamLastBlockCache:                make(map[string]*CamLastBlockCache),
 		CvmAddresses:                     make(map[string]*CvmAddresses),
 		TransactionsValidator:            make(map[string]*TransactionsValidator),
 		TransactionsBlock:                make(map[string]*TransactionsBlock),
@@ -247,6 +250,38 @@ func (m *MockPersist) InsertCvmBlocks(ctx context.Context, runner dbr.SessionRun
 	nv := &CvmBlocks{}
 	*nv = *v
 	m.CvmBlocks[v.Block] = nv
+	return nil
+}
+
+// this mock needs to be enriched
+func (m *MockPersist) QueryCountLastBlockCache(ctx context.Context, runner dbr.SessionRunner, v *CamLastBlockCache) (*CountLastBlockCache, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	if _, present := m.CamLastBlockCache[v.ChainID]; present {
+		cnt := &CountLastBlockCache{
+			Cnt: 1,
+		}
+		return cnt, nil
+	}
+	return &CountLastBlockCache{}, nil
+}
+
+func (m *MockPersist) QueryCamLastBlockCache(ctx context.Context, runner dbr.SessionRunner, v *CamLastBlockCache) (*CamLastBlockCache, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	if v, present := m.CamLastBlockCache[v.ChainID]; present {
+		return v, nil
+	}
+	return nil, nil
+}
+
+func (m *MockPersist) InsertCamLastBlockCache(ctx context.Context, runner dbr.SessionRunner, v *CamLastBlockCache, flag bool) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	nv := &CamLastBlockCache{}
+	*nv = *v
+	m.CamLastBlockCache[v.CurrentBlock] = nv
 	return nil
 }
 
