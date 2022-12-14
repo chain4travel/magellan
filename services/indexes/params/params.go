@@ -19,7 +19,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/gocraft/dbr/v2"
 )
 

@@ -14,8 +14,8 @@
 package avm
 
 import (
-	"github.com/chain4travel/caminogo/codec"
-	"github.com/chain4travel/caminogo/vms/avm"
+	"github.com/ava-labs/avalanchego/codec"
+	"github.com/ava-labs/avalanchego/vms/avm"
 )
 
 func parseTx(c codec.Manager, bytes []byte) (*avm.Tx, error) {

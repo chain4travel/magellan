@@ -16,7 +16,7 @@ package avax
 import (
 	"context"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"

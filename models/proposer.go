@@ -6,7 +6,7 @@ package models
 import (
 	"time"
 
-	"github.com/chain4travel/caminogo/vms/proposervm/block"
+	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 )
 
 // Proposal information P/C

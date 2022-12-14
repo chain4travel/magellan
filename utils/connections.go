@@ -17,7 +17,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/chain4travel/caminogo/utils/wrappers"
+	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/chain4travel/magellan/cfg"
 )
 

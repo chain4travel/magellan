@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"

@@ -16,8 +16,8 @@ package models
 import (
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/math"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/chain4travel/magellan/modelsc"
 )
 

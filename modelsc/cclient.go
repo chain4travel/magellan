@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chain4travel/caminoethvm/core/types"
-	"github.com/chain4travel/caminoethvm/rpc"
+	"github.com/ava-labs/coreth/core/types"
+	"github.com/ava-labs/coreth/rpc"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )

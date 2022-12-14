@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/services/indexes/avax"

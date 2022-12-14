@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/hashing"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"

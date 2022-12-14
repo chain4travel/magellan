@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/chain4travel/caminoethvm/core/types"
+	"github.com/ava-labs/coreth/core/types"
 )
 
 func TestCollectInsAndOuts(t *testing.T) {

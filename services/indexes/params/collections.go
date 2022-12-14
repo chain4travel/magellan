@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/gocraft/dbr/v2"

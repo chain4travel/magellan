@@ -14,10 +14,10 @@
 package utils
 
 import (
-	"github.com/chain4travel/caminogo/genesis"
-	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/constants"
-	"github.com/chain4travel/caminogo/vms/platformvm"
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
 type GenesisContainer struct {

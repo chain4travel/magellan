@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
@@ -35,7 +35,7 @@ import (
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 
-	corethType "github.com/chain4travel/caminoethvm/core/types"
+	corethType "github.com/ava-labs/coreth/core/types"
 )
 
 const (

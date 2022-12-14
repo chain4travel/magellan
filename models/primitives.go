@@ -17,9 +17,9 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/constants"
-	"github.com/chain4travel/caminogo/utils/formatting"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting"
 )
 
 // Bech32HRP is the human-readable part of bech32 addresses. It needs to be

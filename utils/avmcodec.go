@@ -16,13 +16,13 @@ package utils
 import (
 	"errors"
 
-	"github.com/chain4travel/caminogo/codec"
-	"github.com/chain4travel/caminogo/genesis"
-	"github.com/chain4travel/caminogo/utils/constants"
-	"github.com/chain4travel/caminogo/vms/avm"
-	"github.com/chain4travel/caminogo/vms/nftfx"
-	"github.com/chain4travel/caminogo/vms/platformvm"
-	"github.com/chain4travel/caminogo/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/codec"
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/vms/avm"
+	"github.com/ava-labs/avalanchego/vms/nftfx"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
 var (

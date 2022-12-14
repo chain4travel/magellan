@@ -17,8 +17,8 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/chain4travel/caminogo/utils/logging"
-	"github.com/chain4travel/caminogo/version"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/version"
 )
 
 const appName = "magellan"

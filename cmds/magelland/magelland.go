@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/chain4travel/magellan/api"
 	"github.com/chain4travel/magellan/balance"
 	"github.com/chain4travel/magellan/caching"

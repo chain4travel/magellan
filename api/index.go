@@ -16,7 +16,7 @@ package api
 import (
 	"encoding/json"
 
-	"github.com/chain4travel/caminogo/ids"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/models"
 )
 

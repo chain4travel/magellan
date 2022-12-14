@@ -17,7 +17,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/chain4travel/caminogo/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 type SuccessResponse struct {

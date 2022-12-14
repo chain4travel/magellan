@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chain4travel/caminoethvm/core/types"
+	"github.com/ava-labs/coreth/core/types"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"

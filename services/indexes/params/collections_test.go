@@ -13,8 +13,8 @@ package params
 import (
 	"testing"
 
-	"github.com/chain4travel/caminogo/ids"
-	"github.com/chain4travel/caminogo/utils/hashing"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/hashing"
 )
 
 func TestForValueChainID(t *testing.T) {

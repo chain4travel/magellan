@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	avlancheGoUtils "github.com/chain4travel/caminogo/utils"
+	avlancheGoUtils "github.com/ava-labs/avalanchego/utils"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
