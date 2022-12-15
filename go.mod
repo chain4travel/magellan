@@ -15,6 +15,8 @@ require (
 	github.com/prometheus/client_golang v1.13.0
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.12.0
+	go.uber.org/zap v1.23.0
+
 )
 
 require (

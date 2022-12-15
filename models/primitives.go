@@ -17,9 +17,10 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 )
 
 // Bech32HRP is the human-readable part of bech32 addresses. It needs to be
@@ -75,7 +76,7 @@ func (addr Address) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 
-	bech32Addr, err := formatting.FormatBech32(Bech32HRP, id.Bytes())
+	bech32Addr, err := address.FormatBech32(Bech32HRP, id.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func (addr Address) MarshalString() ([]byte, error) {
 		return nil, err
 	}
 
-	bech32Addr, err := formatting.FormatBech32(Bech32HRP, id.Bytes())
+	bech32Addr, err := address.FormatBech32(Bech32HRP, id.Bytes())
 	if err != nil {
 		return nil, err
 	}

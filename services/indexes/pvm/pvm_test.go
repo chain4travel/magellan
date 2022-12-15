@@ -15,9 +15,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
@@ -56,8 +59,10 @@ func TestBootstrap(t *testing.T) {
 }
 
 func newTestIndex(t *testing.T, networkID uint32, chainID ids.ID) (*utils.Connections, *Writer, *avax.Reader, func()) {
-	logConf := logging.DefaultConfig
-
+	logConf := logging.Config{
+		DisplayLevel: logging.Info,
+		LogLevel:     logging.Debug,
+	}
 	conf := cfg.Services{
 		Logging: logConf,
 		DB: &cfg.DB{
@@ -90,9 +95,9 @@ func TestInsertTxInternal(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := platformvm.Tx{}
-	validatorTx := &platformvm.UnsignedAddValidatorTx{}
-	tx.UnsignedTx = validatorTx
+	tx := txs.Tx{}
+	validatorTx := &txs.AddValidatorTx{}
+	tx.Unsigned = validatorTx
 
 	persist := db.NewPersistMock()
 	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
@@ -117,9 +122,9 @@ func TestInsertTxInternalRewards(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := platformvm.Tx{}
-	validatorTx := &platformvm.UnsignedRewardValidatorTx{}
-	tx.UnsignedTx = validatorTx
+	tx := txs.Tx{}
+	validatorTx := &txs.RewardValidatorTx{}
+	tx.Unsigned = validatorTx
 
 	persist := db.NewPersistMock()
 	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
@@ -147,7 +152,7 @@ func TestCommonBlock(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := platformvm.CommonBlock{}
+	tx := blocks.CommonBlock{}
 	blkid := ids.ID{}
 
 	persist := db.NewPersistMock()

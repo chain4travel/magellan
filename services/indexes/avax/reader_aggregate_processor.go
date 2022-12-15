@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
@@ -285,14 +287,18 @@ func (r *Reader) processorTxAscFetch(conns *utils.Connections) {
 		}()
 
 		if _, err := builder.LoadContext(ctx, &txsAsc); err != nil {
-			r.sc.Log.Warn("ascending tx query fail %v", err)
+			r.sc.Log.Warn("ascending tx query failed",
+				zap.Error(err),
+			)
 			txsAsc = nil
 			return
 		}
 
 		err := dressTransactions(ctx, sess, txsAsc, r.sc.GenesisContainer.AvaxAssetID, nil, false)
 		if err != nil {
-			r.sc.Log.Warn("ascending tx dress tx fail %v", err)
+			r.sc.Log.Warn("ascending tx dress tx failed",
+				zap.Error(err),
+			)
 			txsAsc = nil
 			return
 		}
@@ -322,7 +328,9 @@ func (r *Reader) addressCounts(ctx context.Context, sess *dbr.Session) {
 		GroupBy("chain_id").
 		LoadContext(ctx, &addressCountl)
 	if err != nil {
-		r.sc.Log.Warn("Aggregate address counts %v", err)
+		r.sc.Log.Warn("address counts failed",
+			zap.Error(err),
+		)
 		return
 	}
 
@@ -349,7 +357,9 @@ func (r *Reader) txCounts(ctx context.Context, sess *dbr.Session) {
 		GroupBy("chain_id").
 		LoadContext(ctx, &txCountl)
 	if err != nil {
-		r.sc.Log.Warn("Aggregate tx counts %v", err)
+		r.sc.Log.Warn("tx counts failed",
+			zap.Error(err),
+		)
 		return
 	}
 
@@ -426,7 +436,10 @@ func (r *Reader) aggregateProcessorAssetAggr(conns *utils.Connections) {
 
 		assets, addlAssetsFound, err := r.fetchAssets(ctx, sess, runTm, runDuration)
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.String("operation", "fetching assets"),
+				zap.Error(err),
+			)
 			return
 		}
 
@@ -438,7 +451,10 @@ func (r *Reader) aggregateProcessorAssetAggr(conns *utils.Connections) {
 			urlv := url.Values{}
 			err = p.ForValues(1, urlv)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "applying url values"),
+					zap.Error(err),
+				)
 				return
 			}
 			p.ListParams.EndTime = runTm
@@ -446,21 +462,36 @@ func (r *Reader) aggregateProcessorAssetAggr(conns *utils.Connections) {
 			p.ChainIDs = append(p.ChainIDs, r.sc.GenesisContainer.XChainID.String())
 			id, err := ids.FromString(asset)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "parsing assetID"),
+					zap.String("asset", asset),
+					zap.Error(err),
+				)
 				return
 			}
+			r.sc.Log.Info("running aggregation",
+				zap.Stringer("assetID", id),
+				zap.Time("startTime", p.ListParams.StartTime),
+				zap.Time("endTime", p.ListParams.EndTime),
+			)
 			p.AssetID = &id
-			r.sc.Log.Info("aggregate %s %v-%v", id.String(), p.ListParams.StartTime.Format(time.RFC3339), p.ListParams.EndTime.Format(time.RFC3339))
 			aggr, err := r.Aggregate(r.sc.AggregatesCache, p)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "running aggregation"),
+					zap.String("asset", asset),
+					zap.Error(err),
+				)
 				return
 			}
 
 			pa := &params.ListAssetsParams{ListParams: params.ListParams{DisableCounting: true, ID: &id}}
 			lassets, err := r.ListAssets(ctx, pa, conns)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "listing assets"),
+					zap.Error(err),
+				)
 				return
 			}
 
@@ -474,7 +505,11 @@ func (r *Reader) aggregateProcessorAssetAggr(conns *utils.Connections) {
 		for _, asset := range addlAssetsFound {
 			id, err := ids.FromString(asset)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "parsing assetID"),
+					zap.String("asset", asset),
+					zap.Error(err),
+				)
 				return
 			}
 			_, ok := assetMap[id]
@@ -485,7 +520,10 @@ func (r *Reader) aggregateProcessorAssetAggr(conns *utils.Connections) {
 			pa := &params.ListAssetsParams{ListParams: params.ListParams{DisableCounting: true, ID: &id}}
 			lassets, err := r.ListAssets(ctx, pa, conns)
 			if err != nil {
-				r.sc.Log.Warn("Aggregate %v", err)
+				r.sc.Log.Warn("aggregation failed",
+					zap.String("operation", "listing assets"),
+					zap.Error(err),
+				)
 				return
 			}
 			for _, lasset := range lassets.Assets {
@@ -531,13 +569,21 @@ func (r *Reader) processAggregate(runTm time.Time, tag string, intervalSize stri
 	urlv.Add(params.KeyIntervalSize, intervalSize)
 	err := p.ForValues(1, urlv)
 	if err != nil {
-		r.sc.Log.Warn("Aggregate %v", err)
+		r.sc.Log.Warn("aggregation failed",
+			zap.String("operation", "applying url values"),
+			zap.Error(err),
+		)
 		return nil, err
 	}
 	p.ListParams.EndTime = runTm
 	p.ListParams.StartTime = p.ListParams.EndTime.Add(deltaTime)
 	p.ChainIDs = append(p.ChainIDs, r.sc.GenesisContainer.XChainID.String())
-	r.sc.Log.Info("aggregate %s interval %s %v->%v", tag, intervalSize, p.ListParams.StartTime.Format(time.RFC3339), p.ListParams.EndTime.Format(time.RFC3339))
+	r.sc.Log.Info("running aggregation",
+		zap.String("tag", tag),
+		zap.String("intervalSize", intervalSize),
+		zap.Time("startTime", p.ListParams.StartTime),
+		zap.Time("endTime", p.ListParams.EndTime),
+	)
 	return r.Aggregate(r.sc.AggregatesCache, p)
 }
 
@@ -553,7 +599,9 @@ func (r *Reader) aggregateProcessor1m(conns *utils.Connections) {
 	runAgg := func(runTm time.Time) {
 		agg, err := r.processAggregate(runTm, "1m", "1s", -time.Minute)
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.Error(err),
+			)
 			return
 		}
 		r.readerAggregate.lock.Lock()
@@ -587,7 +635,9 @@ func (r *Reader) aggregateProcessor1h(conns *utils.Connections) {
 	runAgg := func(runtm time.Time) {
 		agg, err := r.processAggregate(runtm, "1h", "5m", -time.Hour)
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.Error(err),
+			)
 			return
 		}
 		r.readerAggregate.lock.Lock()
@@ -621,7 +671,9 @@ func (r *Reader) aggregateProcessor24h(conns *utils.Connections) {
 	runAgg := func(runTm time.Time) {
 		agg, err := r.processAggregate(runTm, "24h", "hour", -(24 * time.Hour))
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.Error(err),
+			)
 			return
 		}
 		r.readerAggregate.lock.Lock()
@@ -655,7 +707,9 @@ func (r *Reader) aggregateProcessor7d(conns *utils.Connections) {
 	runAgg := func(runTm time.Time) {
 		agg, err := r.processAggregate(runTm, "7d", "day", -(7 * 24 * time.Hour))
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.Error(err),
+			)
 			return
 		}
 		r.readerAggregate.lock.Lock()
@@ -689,7 +743,9 @@ func (r *Reader) aggregateProcessor30d(conns *utils.Connections) {
 	runAgg := func(runTm time.Time) {
 		agg, err := r.processAggregate(runTm, "30d", "day", -(30 * 24 * time.Hour))
 		if err != nil {
-			r.sc.Log.Warn("Aggregate %v", err)
+			r.sc.Log.Warn("aggregation failed",
+				zap.Error(err),
+			)
 			return
 		}
 		r.readerAggregate.lock.Lock()

@@ -40,18 +40,17 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-var (
-	ErrUnknownBlockType = errors.New("unknown block type")
-)
+var ErrUnknownBlockType = errors.New("unknown block type")
 
 type Writer struct {
 	networkID   uint32
 	avaxAssetID ids.ID
 
-	codec         codec.Manager
-	avax          *avaxIndexer.Writer
-	ap5Activation uint64
-	client        *modelsc.Client
+	codec           codec.Manager
+	avax            *avaxIndexer.Writer
+	ap5Activation   uint64
+	client          *modelsc.Client
+	banffActivation uint64
 }
 
 func NewWriter(networkID uint32, chainID string, conf *cfg.Config) (*Writer, error) {
@@ -61,6 +60,7 @@ func NewWriter(networkID uint32, chainID string, conf *cfg.Config) (*Writer, err
 	}
 
 	ap5Activation := version.GetApricotPhase5Time(networkID).Unix()
+	banffActivation := version.GetBanffTime(networkID).Unix()
 
 	var client *modelsc.Client
 	if conf != nil { // check for test cases
@@ -70,12 +70,13 @@ func NewWriter(networkID uint32, chainID string, conf *cfg.Config) (*Writer, err
 	}
 
 	return &Writer{
-		networkID:     networkID,
-		avaxAssetID:   avaxAssetID,
-		codec:         evm.Codec,
-		avax:          avaxIndexer.NewWriter(chainID, avaxAssetID),
-		ap5Activation: uint64(ap5Activation),
-		client:        client,
+		networkID:       networkID,
+		avaxAssetID:     avaxAssetID,
+		codec:           evm.Codec,
+		avax:            avaxIndexer.NewWriter(chainID, avaxAssetID),
+		ap5Activation:   uint64(ap5Activation),
+		client:          client,
+		banffActivation: uint64(banffActivation),
 	}, nil
 }
 

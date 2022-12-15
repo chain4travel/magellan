@@ -20,10 +20,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/avm/fxs"
+	"github.com/ava-labs/avalanchego/vms/avm/txs"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/avm"
 	caminoGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
@@ -138,7 +140,11 @@ func TestIndexBootstrap(t *testing.T) {
 func newTestIndex(t *testing.T, chainID ids.ID) (*utils.Connections, *Writer, *avax.Reader, func()) {
 	networkID := uint32(5)
 
-	logConf := logging.DefaultConfig
+	logConf := logging.Config{
+		DisplayLevel: logging.Info,
+		LogLevel:     logging.Debug,
+	}
+
 	conf := cfg.Services{
 		Logging: logConf,
 		DB: &cfg.DB{
@@ -177,8 +183,8 @@ func TestInsertTxInternal(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := &avm.Tx{}
-	baseTx := &avm.BaseTx{}
+	tx := &txs.Tx{}
+	baseTx := &txs.BaseTx{}
 
 	transferableOut := &caminoGoAvax.TransferableOutput{}
 	transferableOut.Out = &secp256k1fx.TransferOutput{
@@ -192,17 +198,17 @@ func TestInsertTxInternal(t *testing.T) {
 
 	f := crypto.FactorySECP256K1R{}
 	pk, _ := f.NewPrivateKey()
-	sb, _ := pk.Sign(baseTx.UnsignedBytes())
+	sb, _ := pk.Sign(baseTx.Bytes())
 	cred := &secp256k1fx.Credential{}
 	cred.Sigs = make([][crypto.SECP256K1RSigLen]byte, 0, 1)
 	sig := [crypto.SECP256K1RSigLen]byte{}
 	copy(sig[:], sb)
 	cred.Sigs = append(cred.Sigs, sig)
-	tx.Creds = []*avm.FxCredential{
+	tx.Creds = []*fxs.FxCredential{
 		{Verifiable: cred},
 	}
 
-	tx.UnsignedTx = baseTx
+	tx.Unsigned = baseTx
 
 	persist := db.NewPersistMock()
 	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
@@ -245,8 +251,8 @@ func TestInsertTxInternalCreateAsset(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := &avm.Tx{}
-	baseTx := &avm.CreateAssetTx{}
+	tx := &txs.Tx{}
+	baseTx := &txs.CreateAssetTx{}
 
 	transferableOut := &caminoGoAvax.TransferableOutput{}
 	transferableOut.Out = &secp256k1fx.TransferOutput{}
@@ -256,7 +262,7 @@ func TestInsertTxInternalCreateAsset(t *testing.T) {
 	transferableIn.In = &secp256k1fx.TransferInput{}
 	baseTx.Ins = []*caminoGoAvax.TransferableInput{transferableIn}
 
-	tx.UnsignedTx = baseTx
+	tx.Unsigned = baseTx
 
 	persist := db.NewPersistMock()
 	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)

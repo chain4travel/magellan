@@ -15,6 +15,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanchego/api"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting"
@@ -80,7 +84,9 @@ func (r *Handler) runTicker(sc *servicesctrl.Control, conns *utils.Connections) 
 		case <-ticker.C:
 			err := r.processRewards()
 			if err != nil {
-				sc.Log.Error("process rewards %s", err)
+				sc.Log.Error("failed processing rewards",
+					zap.Error(err),
+				)
 			}
 		case <-r.doneCh:
 			return
@@ -172,7 +178,7 @@ func (r *Handler) processRewardUtxos(rewardsUtxos [][]byte, createdAt time.Time)
 
 	for _, reawrdUtxo := range rewardsUtxos {
 		var utxo *caminoGoAvax.UTXO
-		_, err = platformvm.Codec.Unmarshal(reawrdUtxo, &utxo)
+		_, err = txs.Codec.Unmarshal(reawrdUtxo, &utxo)
 		if err != nil {
 			return err
 		}

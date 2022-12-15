@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	avlancheGoUtils "github.com/ava-labs/avalanchego/utils"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
@@ -58,8 +60,10 @@ var IndexerConsumer = func(networkID uint32, chainVM string, chainID string, con
 
 type ConsumerDBFactory func(uint32, string, string) (stream.ProcessorFactoryChainDB, error)
 
-var IndexerDB = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeDecisions)
-var IndexerConsensusDB = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeConsensus)
+var (
+	IndexerDB          = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeDecisions)
+	IndexerConsensusDB = stream.NewConsumerDBFactory(IndexerConsumer, stream.EventTypeConsensus)
+)
 
 func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, factories []ConsumerFactory) error {
 	if sc.IsDisableBootstrap {
@@ -100,7 +104,11 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 			if err != nil {
 				return err
 			}
-			sc.Log.Info("bootstrap %d vm %s chain %s", networkID, chain.VMType, chain.ID)
+			sc.Log.Info("starting bootstrap",
+				zap.Uint32("networkID", networkID),
+				zap.String("vmType", chain.VMType),
+				zap.String("chainID", chain.ID),
+			)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -108,7 +116,11 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 				if err != nil {
 					errs.SetValue(err)
 				}
-				sc.Log.Info("bootstrap complete %d vm %s chain %s", networkID, chain.VMType, chain.ID)
+				sc.Log.Info("finished bootstrap",
+					zap.Uint32("networkID", networkID),
+					zap.String("vmType", chain.VMType),
+					zap.String("chainID", chain.ID),
+				)
 			}()
 		}
 	}
@@ -249,9 +261,13 @@ func IndexerFactories(
 				ctx, cancelCTX := context.WithTimeout(context.Background(), IteratorTimeout)
 				defer cancelCTX()
 
-				sess, err := conns.DB().NewSession("tx-pool", IteratorTimeout)
+				name := "tx-pool"
+				sess, err := conns.DB().NewSession(name, IteratorTimeout)
 				if err != nil {
-					sc.Log.Error("processing err %v", err)
+					sc.Log.Error("failed creating session",
+						zap.String("name", name),
+						zap.Error(err),
+					)
 					time.Sleep(250 * time.Millisecond)
 					return
 				}
@@ -268,8 +284,10 @@ func IndexerFactories(
 					OrderAsc("created_at").
 					IterateContext(ctx)
 				if err != nil {
-					sc.Log.Warn("iter %v", err)
-					time.Sleep(250 * time.Millisecond)
+					sc.Log.Warn("failed creating iterator",
+						zap.String("name", name),
+						zap.Error(err),
+					)
 					return
 				}
 
@@ -289,7 +307,10 @@ func IndexerFactories(
 					err = iterator.Err()
 					if err != nil {
 						if err != io.EOF {
-							sc.Log.Error("iterator err %v", err)
+							sc.Log.Error("failed iterating",
+								zap.String("name", name),
+								zap.Error(err),
+							)
 						}
 						break
 					}
@@ -297,7 +318,10 @@ func IndexerFactories(
 					txp := &db.TxPool{}
 					err = iterator.Scan(txp)
 					if err != nil {
-						sc.Log.Error("scan %v", err)
+						sc.Log.Error("failed scanning iterator",
+							zap.String("name", name),
+							zap.Error(err),
+						)
 						break
 					}
 					// skip previously processed
@@ -312,9 +336,12 @@ func IndexerFactories(
 					time.Sleep(1 * time.Millisecond)
 				}
 
-				if errs.GetValue() != nil {
-					err := errs.GetValue().(error)
-					sc.Log.Error("processing err %v", err)
+				if errIntf := errs.GetValue(); errIntf != nil {
+					err := errIntf.(error)
+					sc.Log.Error("failed processing",
+						zap.String("name", name),
+						zap.Error(err),
+					)
 					time.Sleep(250 * time.Millisecond)
 					return
 				}

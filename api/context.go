@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
@@ -88,7 +90,9 @@ func (c *Context) WriteCacheable(w http.ResponseWriter, cacheable caching.Cachea
 
 	// Write error or response
 	if err != nil {
-		c.sc.Log.Warn("server error %v", err)
+		c.sc.Log.Warn("server error",
+			zap.Error(err),
+		)
 		c.WriteErr(w, 500, ErrCacheableFnFailed)
 		return
 	}
@@ -103,7 +107,9 @@ func (c *Context) WriteErr(w http.ResponseWriter, code int, err error) {
 	})
 	if err != nil {
 		w.WriteHeader(500)
-		c.sc.Log.Warn("marshal %v", err)
+		c.sc.Log.Warn("marshal error",
+			zap.Error(err),
+		)
 		return
 	}
 

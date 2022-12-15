@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
@@ -93,7 +95,9 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 	router.Subrouter(v2ctx, path).
 		Get("/", func(c *V2Context, resp web.ResponseWriter, _ *web.Request) {
 			if _, err := resp.Write(indexBytes); err != nil {
-				ctx.sc.Log.Info("resp write %v", err)
+				ctx.sc.Log.Warn("response write failed",
+					zap.Error(err),
+				)
 			}
 		}).
 

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/services"
@@ -122,7 +124,9 @@ func (c *consumerDB) Consume(conns *utils.Connections, msg *Message) error {
 	defer func() {
 		err := collectors.Collect()
 		if err != nil {
-			c.sc.Log.Error("collectors.Collect: %s", err)
+			c.sc.Log.Error("failed collecting",
+				zap.Error(err),
+			)
 		}
 	}()
 
@@ -138,7 +142,9 @@ func (c *consumerDB) Consume(conns *utils.Connections, msg *Message) error {
 	if err != nil {
 		c.Failure()
 		collectors.Error()
-		c.sc.Log.Error("consumer.Consume: %s", err)
+		c.sc.Log.Error("failed consuming",
+			zap.Error(err),
+		)
 		return err
 	}
 	c.Success()

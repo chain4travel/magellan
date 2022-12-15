@@ -368,7 +368,10 @@ func TestAggregates(t *testing.T) {
 }
 
 func newTestIndex(t *testing.T) (*Reader, func()) {
-	logConf := logging.DefaultConfig
+	logConf := logging.Config{
+		DisplayLevel: logging.Info,
+		LogLevel:     logging.Debug,
+	}
 
 	conf := cfg.Services{
 		Logging: logConf,

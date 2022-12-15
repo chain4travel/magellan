@@ -28,22 +28,26 @@ var (
 	BlockTypeStandard BlockType = 0x3
 	BlockTypeAtomic   BlockType = 0x4
 
-	TransactionTypeBase               TransactionType = 0x0
-	TransactionTypeCreateAsset        TransactionType = 0x1
-	TransactionTypeOperation          TransactionType = 0x2
-	TransactionTypeAVMImport          TransactionType = 0x3
-	TransactionTypeAVMExport          TransactionType = 0x4
-	TransactionTypeAddValidator       TransactionType = 0xc
-	TransactionTypeAddSubnetValidator TransactionType = 0xd
-	TransactionTypeAddDelegator       TransactionType = 0xe
-	TransactionTypeCreateChain        TransactionType = 0xf
-	TransactionTypeCreateSubnet       TransactionType = 0x10
-	TransactionTypePVMImport          TransactionType = 0x11
-	TransactionTypePVMExport          TransactionType = 0x12
-	TransactionTypeAdvanceTime        TransactionType = 0x13
-	TransactionTypeRewardValidator    TransactionType = 0x14
-	TransactionTypeAddDaoProposal     TransactionType = 0x15
-	TransactionTypeAddDaoVote         TransactionType = 0x16
+	TransactionTypeBase                       TransactionType = 0x0
+	TransactionTypeCreateAsset                TransactionType = 0x1
+	TransactionTypeOperation                  TransactionType = 0x2
+	TransactionTypeAVMImport                  TransactionType = 0x3
+	TransactionTypeAVMExport                  TransactionType = 0x4
+	TransactionTypeAddValidator               TransactionType = 0xc
+	TransactionTypeAddSubnetValidator         TransactionType = 0xd
+	TransactionTypeAddDelegator               TransactionType = 0xe
+	TransactionTypeCreateChain                TransactionType = 0xf
+	TransactionTypeCreateSubnet               TransactionType = 0x10
+	TransactionTypePVMImport                  TransactionType = 0x11
+	TransactionTypePVMExport                  TransactionType = 0x12
+	TransactionTypeAdvanceTime                TransactionType = 0x13
+	TransactionTypeRewardValidator            TransactionType = 0x14
+	TransactionTypeRemoveSubnetValidator      TransactionType = 0x15
+	TransactionTypeTransformSubnet            TransactionType = 0x16
+	TransactionTypeAddPermissionlessValidator TransactionType = 0x17
+	TransactionTypeAddPermissionlessDelegator TransactionType = 0x18
+	TransactionTypeAddDaoProposal             TransactionType = 0x19
+	TransactionTypeAddDaoVote                 TransactionType = 0x20
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -96,6 +100,14 @@ func (t TransactionType) String() string {
 		return "advance_time"
 	case TransactionTypeRewardValidator:
 		return "reward_validator"
+	case TransactionTypeRemoveSubnetValidator:
+		return "remove_subnet_validator"
+	case TransactionTypeTransformSubnet:
+		return "transform_subnet"
+	case TransactionTypeAddPermissionlessValidator:
+		return "add_permissionless_validator"
+	case TransactionTypeAddPermissionlessDelegator:
+		return "add_permissionless_delegator"
 	case TransactionTypeAddDaoProposal:
 		return "add_dao_proposal"
 	case TransactionTypeAddDaoVote:
