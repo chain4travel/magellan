@@ -1,23 +1,22 @@
 {
-  "networkID": 1000,
-  "logDirectory": "/var/log/magellan",
+  "networkID": 54321,
   "metricsListenAddr": "",
   "listenAddr": ":8080",
   "features": [
   ],
-  "caminoNode": "http://camino:9650",
+  "caminoNode": "http://localhost:9650",
   "nodeInstance": "default",
   "chains": {
-    "2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5": {
-      "id": "2q9e4r6Mu3U68nU1fYjgbR6JvwrRx36CohpAX5UQxse55x1Q5",
+    "2p7qjZY7XpF1FQmNvp8onvF4DMmwKY1aPrvajnWTq6ELtLbfCR": {
+      "id": "mgj786NP7uDwBCcq6YwThhaN8FLyybkCa4zBWTQbNgmK6k9A6",
       "vmType": "cvm"
     },
     "11111111111111111111111111111111LpoYY": {
       "id": "11111111111111111111111111111111LpoYY",
       "vmType": "pvm"
     },
-    "2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM": {
-      "id": "2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM",
+    "2VZKJ9FTyEsN7uEegK2vdNBbmiMqafZ4SbnfHywFFQUFR2q2dr": {
+      "id": "jvYyfQTxGMJLuGWa55kdP2p2zSUYsQ5Raupu4TW34ZAUBAbtq",
       "vmType": "avm"
     }
   },

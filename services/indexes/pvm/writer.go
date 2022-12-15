@@ -489,6 +489,29 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs
 		if err != nil {
 			return err
 		}
+	case *txs.CaminoAddValidatorTx:
+		innerTx := castTx.AddValidatorTx
+		baseTx = innerTx.BaseTx.BaseTx
+		outs = &avaxIndexer.AddOutsContainer{
+			Outs:    innerTx.Stake(),
+			Stake:   true,
+			ChainID: w.chainID,
+		}
+		typ = models.TransactionTypeAddValidator
+		err = w.InsertTransactionValidator(ctx, txID, innerTx.Validator)
+		if err != nil {
+			return err
+		}
+		err = w.InsertTransactionBlock(ctx, txID, blkID)
+		if err != nil {
+			return err
+		}
+		if innerTx.RewardsOwner != nil {
+			err = w.insertTransactionsRewardsOwners(ctx, txID, innerTx.RewardsOwner, baseTx, innerTx.Stake())
+			if err != nil {
+				return err
+			}
+		}
 	default:
 		return fmt.Errorf("unknown tx type %s", reflect.TypeOf(castTx))
 	}

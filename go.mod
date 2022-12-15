@@ -59,7 +59,6 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5 // indirect
 	golang.org/x/net v0.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c // indirect
@@ -140,4 +139,5 @@ require (
 
 replace github.com/ava-labs/coreth => ./dependencies/caminoethvm
 
-replace github.com/ava-labs/avalanchego => ./dependencies/caminoethvm/caminogo
+//replace github.com/ava-labs/avalanchego => ./dependencies/caminoethvm/caminogo
+replace github.com/ava-labs/avalanchego => ../caminogo

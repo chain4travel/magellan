@@ -256,7 +256,7 @@ func (a *Aggregates) ID() int { return a.IntervalID }
 func (a *Aggregates) Merge(b AggregateMerge) {
 	src := b.(*Aggregates)
 	a.AddressCount += src.AddressCount
-	a.AssetCount = math.Max64(a.AssetCount, src.AssetCount)
+	a.AssetCount = math.Max(a.AssetCount, src.AssetCount)
 	a.OutputCount += src.OutputCount
 	a.TransactionCount += src.TransactionCount
 	a.TransactionVolume += src.TransactionVolume
