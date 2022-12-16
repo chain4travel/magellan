@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
@@ -145,10 +147,15 @@ func (ac *aggregatesCache) GetAggregatesAndUpdate(chains map[string]cfg.Chain, c
 
 	var builder *dbr.SelectStmt
 
+	// Transaction count for genesis txs is calculated without distinct and then added
+	// because all genesis transactions (e.x. createChainTxs) have zero txID
 	if len(avmChains) > 0 {
 		columns := []string{
 			"COALESCE(SUM(avm_outputs.amount), 0) AS transaction_volume",
-			"COUNT(DISTINCT(avm_outputs.transaction_id)) AS transaction_count",
+			fmt.Sprintf(
+				"(COUNT(DISTINCT(CASE WHEN avm_outputs.transaction_id != '%s' THEN avm_outputs.transaction_id END))) + "+
+					"(COUNT(CASE WHEN avm_outputs.transaction_id = '%s' THEN avm_outputs.transaction_id END)) AS transaction_count",
+				ids.Empty.String(), ids.Empty.String()),
 			"COUNT(DISTINCT(avm_output_addresses.address)) AS address_count",
 			"COUNT(DISTINCT(avm_outputs.asset_id)) AS asset_count",
 			"COUNT(avm_outputs.id) AS output_count",
