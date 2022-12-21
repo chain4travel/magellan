@@ -139,5 +139,4 @@ require (
 
 replace github.com/ava-labs/coreth => ./dependencies/caminoethvm
 
-//replace github.com/ava-labs/avalanchego => ./dependencies/caminoethvm/caminogo
-replace github.com/ava-labs/avalanchego => ../caminogo
+replace github.com/ava-labs/avalanchego => ./dependencies/caminoethvm/caminogo
