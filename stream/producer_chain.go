@@ -219,7 +219,7 @@ func (p *producerChainContainer) ProcessNextMessage() error {
 	nodeIdx := &db.NodeIndex{
 		Instance: p.nodeinstance,
 		Topic:    p.topic,
-		Idx:      p.nodeIndex.Idx + uint64(len(containers)),
+		Idx:      p.nodeIndex.Idx + uint64(len(containers)-1),
 	}
 
 	err = p.updateNodeIndex(p.conns, nodeIdx)
