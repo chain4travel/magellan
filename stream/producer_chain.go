@@ -412,7 +412,9 @@ func (p *ProducerChain) runProcessor() error {
 				)
 				return nil
 			}
-
+			if ZeroAcceptedContainers(err) {
+				return nil
+			}
 			p.Failure()
 			p.sc.Log.Error("unknown error when processing message",
 				zap.Error(err),
@@ -446,10 +448,14 @@ func IndexNotReady(err error) bool {
 }
 
 func ChainNotReady(err error) bool {
-	if strings.HasPrefix(err.Error(), "no containers have been accepted") {
+	if strings.HasPrefix(err.Error(), "received status code '404'") {
 		return true
 	}
-	if strings.HasPrefix(err.Error(), "received status code '404'") {
+	return false
+}
+
+func ZeroAcceptedContainers(err error) bool {
+	if strings.Contains(err.Error(), "no containers have been accepted") {
 		return true
 	}
 	return false
