@@ -48,9 +48,14 @@ func TestIndexBootstrap(t *testing.T) {
 	ctx := context.Background()
 	session, _ := conns.DB().NewSession("avm_test_tx", cfg.RequestTimeout)
 
+	genesis, err := utils.NewInternalGenesisContainer(writer.networkID)
+	if err != nil {
+		t.Fatal("Failed to create genesis:", err.Error())
+	}
+
 	_, _ = session.DeleteFrom("avm_transactions").ExecContext(ctx)
 
-	err := writer.Bootstrap(newTestContext(), conns, persist)
+	err = writer.Bootstrap(newTestContext(), conns, persist, genesis)
 	if err != nil {
 		t.Fatal("Failed to bootstrap index:", err.Error())
 	}

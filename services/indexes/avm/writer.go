@@ -39,7 +39,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/avm"
 	caminoGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
-	p_genesis "github.com/ava-labs/avalanchego/vms/platformvm/genesis"
 	p_txs "github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
@@ -107,10 +106,9 @@ func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]by
 	return json.Marshal(tx)
 }
 
-func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist) error {
+func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
 	var (
-		err                  error
-		platformGenesisBytes []byte
+		err error
 	)
 
 	defer func() {
@@ -122,20 +120,9 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}()
 
-	// Get platform genesis block
-	platformGenesisBytes, _, err = genesis.FromConfig(genesis.GetConfig(w.networkID))
-	if err != nil {
-		return stacktrace.Propagate(err, "Failed to get platform genesis bytes")
-	}
-
-	platformGenesis, err := p_genesis.Parse(platformGenesisBytes)
-	if err != nil {
-		return stacktrace.Propagate(err, "Failed to initialize platform genesis")
-	}
-
 	// Scan chains in platform genesis until we find the singular AVM chain, which
 	// is the X chain, and then we're done
-	for _, chain := range platformGenesis.Chains {
+	for _, chain := range genesis.Genesis.Chains {
 		createChainTx, ok := chain.Unsigned.(*p_txs.CreateChainTx)
 		if !ok {
 			return stacktrace.Propagate(ErrIncorrectGenesisChainTxType, "Platform genesis contains invalid Chains")
@@ -147,7 +134,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 
 		job := conns.Stream().NewJob("bootstrap")
 		dbSess := conns.DB().NewSessionForEventReceiver(job)
-		cCtx := services.NewConsumerContext(ctx, dbSess, int64(platformGenesis.Timestamp), 0, persist, w.chainID)
+		cCtx := services.NewConsumerContext(ctx, dbSess, int64(genesis.Time), 0, persist, w.chainID)
 		err = w.insertGenesis(cCtx, createChainTx.GenesisData)
 		if err != nil {
 			return err

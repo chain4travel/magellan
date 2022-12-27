@@ -31,7 +31,7 @@ type Consumable interface {
 // Consumer takes in Consumables and adds them to the service's backend
 type Consumer interface {
 	Name() string
-	Bootstrap(context.Context, *utils.Connections, db.Persist) error
+	Bootstrap(context.Context, *utils.Connections, db.Persist, *utils.GenesisContainer) error
 	Consume(context.Context, *utils.Connections, Consumable, db.Persist) error
 	ConsumeConsensus(context.Context, *utils.Connections, Consumable, db.Persist) error
 	ParseJSON([]byte, *models.BlockProposal) ([]byte, error)

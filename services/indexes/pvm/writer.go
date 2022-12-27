@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
-	p_genesis "github.com/ava-labs/avalanchego/vms/platformvm/genesis"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
@@ -170,30 +169,21 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 	return dbTx.Commit()
 }
 
-func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist) error {
-	genesisBytes, _, err := genesis.FromConfig(genesis.GetConfig(w.networkID))
-	if err != nil {
-		return err
-	}
-	platformGenesis, err := p_genesis.Parse(genesisBytes)
-	if err != nil {
-		return err
-	}
-
+func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
 	var (
 		job  = conns.Stream().NewJob("bootstrap")
 		db   = conns.DB().NewSessionForEventReceiver(job)
 		errs = wrappers.Errs{}
-		cCtx = services.NewConsumerContext(ctx, db, int64(platformGenesis.Timestamp), 0, persist, w.chainID)
+		cCtx = services.NewConsumerContext(ctx, db, int64(genesis.Time), 0, persist, w.chainID)
 	)
 
-	for idx, utxo := range platformGenesis.UTXOs {
+	for idx, utxo := range genesis.Genesis.UTXOs {
 		select {
 		case <-ctx.Done():
 		default:
 		}
 
-		_, _, err = w.avax.ProcessStateOut(
+		_, _, err := w.avax.ProcessStateOut(
 			cCtx,
 			utxo.Out,
 			ChainID,
@@ -210,7 +200,10 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
-	for _, tx := range append(platformGenesis.Validators, platformGenesis.Chains...) {
+	platformTx := append(genesis.Genesis.Validators, genesis.Genesis.Chains...)
+	platformTx = append(platformTx, genesis.Genesis.Camino.Deposits...)
+
+	for _, tx := range platformTx {
 		select {
 		case <-ctx.Done():
 		default:
@@ -218,7 +211,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 
 		errs.Add(w.indexTransaction(cCtx, ChainID, *tx, true))
 	}
-
 	return errs.Err
 }
 
@@ -450,6 +442,9 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs
 				return err
 			}
 		}
+	case *txs.DepositTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeDeposit
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}

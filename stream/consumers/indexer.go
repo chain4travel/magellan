@@ -112,7 +112,7 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				err = bootstrapfactory.Bootstrap(ctx, conns, sc.Persist)
+				err = bootstrapfactory.Bootstrap(ctx, conns, sc.Persist, sc.GenesisContainer)
 				if err != nil {
 					errs.SetValue(err)
 				}

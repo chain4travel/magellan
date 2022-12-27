@@ -85,7 +85,7 @@ func (s *Control) Init(networkID uint32) error {
 		s.IsAggregateCache = true
 	}
 	var err error
-	s.GenesisContainer, err = utils.NewGenesisContainer(networkID)
+	s.GenesisContainer, err = utils.NewGenesisContainer(&s.ServicesCfg)
 	if err != nil {
 		return err
 	}

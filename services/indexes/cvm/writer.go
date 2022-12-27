@@ -93,7 +93,7 @@ func (w *Writer) ParseJSON(txdata []byte, proposer *models.BlockProposal) ([]byt
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist) error {
+func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
 	return nil
 }
 

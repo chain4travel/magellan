@@ -49,6 +49,19 @@ var (
 	TransactionTypeAddDaoProposal             TransactionType = 0x19
 	TransactionTypeAddDaoVote                 TransactionType = 0x20
 
+	// Camino Custom Datatypes
+	RegisterTransactionTypeCustom TransactionType = 8192
+	RegisterOutputTypeCustom      OutputType      = 8192
+
+	OutputTypesLOCKEDINID  OutputType = RegisterOutputTypeCustom + 0
+	OutputTypesLOCKEDOUTID OutputType = RegisterOutputTypeCustom + 1
+
+	TransactionTypeCaminoAddValidator    TransactionType = RegisterTransactionTypeCustom + 2
+	TransactionTypeCaminoRewardValidator TransactionType = RegisterTransactionTypeCustom + 3
+	TransactionTypeAddAddressState       TransactionType = RegisterTransactionTypeCustom + 4
+	TransactionTypeDeposit               TransactionType = RegisterTransactionTypeCustom + 5
+	TransactionTypeUndeposit             TransactionType = RegisterTransactionTypeCustom + 6
+
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
 	ResultTypeAddress     SearchResultType = "address"
@@ -82,7 +95,8 @@ func (t TransactionType) String() string {
 		return "export"
 
 		// PVM
-	case TransactionTypeAddValidator:
+	case TransactionTypeAddValidator,
+		TransactionTypeCaminoAddValidator:
 		return "add_validator"
 	case TransactionTypeAddSubnetValidator:
 		return "add_subnet_validator"
@@ -98,7 +112,8 @@ func (t TransactionType) String() string {
 		return "pvm_export"
 	case TransactionTypeAdvanceTime:
 		return "advance_time"
-	case TransactionTypeRewardValidator:
+	case TransactionTypeRewardValidator,
+		TransactionTypeCaminoRewardValidator:
 		return "reward_validator"
 	case TransactionTypeRemoveSubnetValidator:
 		return "remove_subnet_validator"
@@ -112,6 +127,12 @@ func (t TransactionType) String() string {
 		return "add_dao_proposal"
 	case TransactionTypeAddDaoVote:
 		return "add_dao_vote"
+	case TransactionTypeAddAddressState:
+		return "address_state"
+	case TransactionTypeDeposit:
+		return "deposit"
+	case TransactionTypeUndeposit:
+		return "undeposit"
 	default:
 		return TypeUnknown
 	}
