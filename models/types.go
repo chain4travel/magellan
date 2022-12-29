@@ -61,6 +61,7 @@ var (
 	TransactionTypeAddAddressState       TransactionType = RegisterTransactionTypeCustom + 4
 	TransactionTypeDeposit               TransactionType = RegisterTransactionTypeCustom + 5
 	TransactionTypeUndeposit             TransactionType = RegisterTransactionTypeCustom + 6
+	TransactionTypeRegisterNodeTx        TransactionType = RegisterTransactionTypeCustom + 7
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -133,6 +134,8 @@ func (t TransactionType) String() string {
 		return "deposit"
 	case TransactionTypeUndeposit:
 		return "undeposit"
+	case TransactionTypeRegisterNodeTx:
+		return "register_node"
 	default:
 		return TypeUnknown
 	}

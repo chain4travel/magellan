@@ -410,7 +410,8 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs
 		if err != nil {
 			return err
 		}
-	case *txs.RewardValidatorTx:
+	case *txs.RewardValidatorTx,
+		*txs.CaminoRewardValidatorTx:
 		rewards := &db.Rewards{
 			ID:                 txID.String(),
 			BlockID:            blkID.String(),
@@ -445,6 +446,15 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs
 	case *txs.DepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeDeposit
+	case *txs.UnlockDepositTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeUndeposit
+	case *txs.AddAddressStateTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddAddressState
+	case *txs.RegisterNodeTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeRegisterNodeTx
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
