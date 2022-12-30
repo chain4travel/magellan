@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -169,15 +170,39 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 	return dbTx.Commit()
 }
 
-func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
+func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, gc *utils.GenesisContainer) error {
+
+	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
+		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
+
+	addressStateTx := func(addr ids.ShortID, state uint8) *txs.Tx {
+		tx := &txs.Tx{
+			Unsigned: &txs.AddAddressStateTx{
+				BaseTx: txs.BaseTx{
+					BaseTx: avax.BaseTx{
+						NetworkID:    gc.NetworkID,
+						BlockchainID: ChainID,
+					},
+				},
+				Address: addr,
+				State:   state,
+				Remove:  false,
+			},
+		}
+		if tx.Sign(txs.GenesisCodec, nil) != nil || txDupCheck.Contains(tx.ID()) {
+			return nil
+		}
+		txDupCheck.Add(tx.ID())
+		return tx
+	}
+
 	var (
 		job  = conns.Stream().NewJob("bootstrap")
 		db   = conns.DB().NewSessionForEventReceiver(job)
-		errs = wrappers.Errs{}
-		cCtx = services.NewConsumerContext(ctx, db, int64(genesis.Time), 0, persist, w.chainID)
+		cCtx = services.NewConsumerContext(ctx, db, int64(gc.Time), 0, persist, w.chainID)
 	)
 
-	for idx, utxo := range genesis.Genesis.UTXOs {
+	for idx, utxo := range gc.Genesis.UTXOs {
 		select {
 		case <-ctx.Done():
 		default:
@@ -200,8 +225,8 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
-	platformTx := append(genesis.Genesis.Validators, genesis.Genesis.Chains...)
-	platformTx = append(platformTx, genesis.Genesis.Camino.Deposits...)
+	platformTx := append(gc.Genesis.Validators, gc.Genesis.Chains...)
+	platformTx = append(platformTx, gc.Genesis.Camino.Deposits...)
 
 	for _, tx := range platformTx {
 		select {
@@ -209,9 +234,74 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		default:
 		}
 
-		errs.Add(w.indexTransaction(cCtx, ChainID, *tx, true))
+		err := w.indexTransaction(cCtx, ChainID, tx, true)
+		if err != nil {
+			return err
+		}
 	}
-	return errs.Err
+
+	for _, as := range gc.Genesis.Camino.AddressStates {
+		select {
+		case <-ctx.Done():
+		default:
+		}
+
+		if as.State&txs.AddressStateKycVerifiedBit != 0 {
+			if tx := addressStateTx(as.Address, txs.AddressStateKycVerified); tx != nil {
+				err := w.indexTransaction(cCtx, ChainID, tx, true)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if as.State&txs.AddressStateConsortiumBit != 0 {
+			if tx := addressStateTx(as.Address, txs.AddressStateConsortium); tx != nil {
+				err := w.indexTransaction(cCtx, ChainID, tx, true)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	for _, cm := range gc.Genesis.Camino.ConsortiumMembersNodeIDs {
+		select {
+		case <-ctx.Done():
+		default:
+		}
+
+		if tx := addressStateTx(cm.ConsortiumMemberAddress, txs.AddressStateRegisteredNode); tx != nil {
+			err := w.indexTransaction(cCtx, ChainID, tx, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		tx := &txs.Tx{
+			Unsigned: &txs.RegisterNodeTx{
+				BaseTx: txs.BaseTx{
+					BaseTx: avax.BaseTx{
+						NetworkID:    gc.NetworkID,
+						BlockchainID: ChainID,
+					},
+				},
+				OldNodeID:               ids.EmptyNodeID,
+				NewNodeID:               cm.NodeID,
+				ConsortiumMemberAddress: cm.ConsortiumMemberAddress,
+				ConsortiumMemberAuth:    &secp256k1fx.Input{},
+			},
+		}
+
+		if tx.Sign(txs.GenesisCodec, nil) == nil && !txDupCheck.Contains(tx.ID()) {
+			txDupCheck.Add(tx.ID())
+			err := w.indexTransaction(cCtx, ChainID, tx, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
@@ -259,7 +349,7 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 		return fmt.Errorf("unknown type %T", blk)
 	}
 	for _, tx := range blk.Txs() {
-		errs.Add(w.indexTransaction(ctx, blkID, *tx, false))
+		errs.Add(w.indexTransaction(ctx, blkID, tx, false))
 	}
 
 	return errs.Err
@@ -291,7 +381,7 @@ func (w *Writer) indexCommonBlock(
 	return ctx.Persist().InsertPvmBlocks(ctx.Ctx(), ctx.DB(), pvmBlocks, cfg.PerformUpdates)
 }
 
-func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs.Tx, genesis bool) error {
+func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *txs.Tx, genesis bool) error {
 	var (
 		txID   = tx.ID()
 		baseTx avax.BaseTx
@@ -410,8 +500,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx txs
 		if err != nil {
 			return err
 		}
-	case *txs.RewardValidatorTx,
-		*txs.CaminoRewardValidatorTx:
+	case *txs.RewardValidatorTx:
 		rewards := &db.Rewards{
 			ID:                 txID.String(),
 			BlockID:            blkID.String(),
