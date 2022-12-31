@@ -171,7 +171,6 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 }
 
 func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, gc *utils.GenesisContainer) error {
-
 	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
 		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
 
@@ -225,7 +224,8 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
-	platformTx := append(gc.Genesis.Validators, gc.Genesis.Chains...)
+	platformTx := gc.Genesis.Validators
+	platformTx = append(platformTx, gc.Genesis.Chains...)
 	platformTx = append(platformTx, gc.Genesis.Camino.Deposits...)
 
 	for _, tx := range platformTx {
@@ -381,6 +381,7 @@ func (w *Writer) indexCommonBlock(
 	return ctx.Persist().InsertPvmBlocks(ctx.Ctx(), ctx.DB(), pvmBlocks, cfg.PerformUpdates)
 }
 
+//nolint:gocyclo
 func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *txs.Tx, genesis bool) error {
 	var (
 		txID   = tx.ID()

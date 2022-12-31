@@ -448,15 +448,9 @@ func IndexNotReady(err error) bool {
 }
 
 func ChainNotReady(err error) bool {
-	if strings.HasPrefix(err.Error(), "received status code '404'") {
-		return true
-	}
-	return false
+	return strings.HasPrefix(err.Error(), "received status code '404'")
 }
 
 func ZeroAcceptedContainers(err error) bool {
-	if strings.Contains(err.Error(), "no containers have been accepted") {
-		return true
-	}
-	return false
+	return strings.Contains(err.Error(), "no containers have been accepted")
 }

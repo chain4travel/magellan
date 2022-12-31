@@ -50,6 +50,7 @@ var (
 	TransactionTypeAddDaoVote                 TransactionType = 0x20
 
 	// Camino Custom Datatypes
+
 	RegisterTransactionTypeCustom TransactionType = 8192
 	RegisterOutputTypeCustom      OutputType      = 8192
 

@@ -2,23 +2,25 @@ name: build-check
 
 on:
   push:
-    branches: [chain4travel]
+    branches: [chain4travel, dev]
   pull_request:
-    branches: [chain4travel]
+    branches: [chain4travel, dev]
 jobs:
   lint:
     name: lint
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         go:
-          - '1.19.1'
+          - '1.18'
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - name: Submodules
+        run: git submodule update --init --recursive
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.41.1
+          version: v1.47.0
           args: --timeout 5m
           skip-go-installation: true
   test-and-build:
@@ -27,7 +29,7 @@ jobs:
     strategy:
       matrix:
         go:
-          - '1.19.1'
+          - '1.18'
     services:
       mysql:
         image: mysql:8.0.26
@@ -38,8 +40,10 @@ jobs:
           MYSQL_DATABASE: magellan_test
         options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
+      - uses: actions/checkout@v3
+      - name: Submodules
+        run: git submodule update --init --recursive
+      - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go }}
 
