@@ -18,8 +18,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/locked"
-
 	"github.com/palantir/stacktrace"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -29,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/nftfx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/locked"
 	"github.com/ava-labs/avalanchego/vms/platformvm/stakeable"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
@@ -550,6 +549,10 @@ func (w *Writer) ProcessStateOut(
 			return 0, 0, stacktrace.Propagate(err, "add %v to %v", typedOut.Amount(), amount)
 		}
 	case *locked.Out:
+		// Deposited outs are handled by DepositTX
+		if genesisutxo && typedOut.LockState().IsDeposited() {
+			return 0, 0, nil
+		}
 		if assetID == w.avaxAssetID {
 			totalout, err = math.Add64(totalout, typedOut.Amount())
 			if err != nil {
@@ -574,7 +577,7 @@ func (w *Writer) ProcessStateOut(
 			stake,
 			false,
 			false,
-			genesisutxo,
+			false,
 		)
 		if err != nil {
 			return 0, 0, err
