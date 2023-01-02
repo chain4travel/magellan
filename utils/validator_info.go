@@ -21,9 +21,9 @@ func PeerIndex(peers *cfg.PeersResponse, nodeID string) int {
 	return -1
 }
 func GetDate(unixTime string) string {
-	//Date in Unix Format
+	// Date in Unix Format
 	unixDateInt, _ := strconv.ParseInt(unixTime, 10, 64)
-	//UnixDate in Time format struct
+	// UnixDate in Time format struct
 	dateFTime := time.Unix(unixDateInt, 0)
 	return strings.Split(dateFTime.String(), " -")[0]
 }
@@ -100,7 +100,6 @@ func SetValidatorInfo(validator *cfg.ValidatorInfo, peer *cfg.PeerInfo, peerFlag
 func GetCurrentValidators(rpc string) cfg.ValidatorsResponse {
 	var response cfg.ValidatorsResponse
 	url := fmt.Sprintf("%s/ext/bc/P", rpc)
-	method := "POST"
 
 	payload := strings.NewReader(`{
 		"jsonrpc": "2.0",
@@ -114,7 +113,7 @@ func GetCurrentValidators(rpc string) cfg.ValidatorsResponse {
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest("POST", url, payload)
 
 	if err != nil {
 		fmt.Println(err)
@@ -137,14 +136,17 @@ func GetCurrentValidators(rpc string) cfg.ValidatorsResponse {
 		return response
 	}
 
-	json.Unmarshal(body, &response)
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+		return response
+	}
 	return response
 }
 
 func GetPeers(rpc string) cfg.PeersResponse {
 	var response cfg.PeersResponse
 	url := fmt.Sprintf("%s/ext/info", rpc)
-	method := "POST"
 
 	payload := strings.NewReader(`{
 		"jsonrpc":"2.0",
@@ -157,7 +159,7 @@ func GetPeers(rpc string) cfg.PeersResponse {
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest("POST", url, payload)
 
 	if err != nil {
 		fmt.Println(err)
@@ -179,6 +181,10 @@ func GetPeers(rpc string) cfg.PeersResponse {
 	}
 
 	json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+		return response
+	}
 	return response
 }
 
@@ -186,7 +192,7 @@ func GetLocationByIP(ip string, config cfg.EndpointService) cfg.IPAPIResponse {
 
 	var response cfg.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
-	url := fmt.Sprintf("%s%s", config.UrlEndpoint, ip)
+	url := fmt.Sprintf("%s%s", config.URLEndpoint, ip)
 	// Perform the HTTP GET request
 	resp, err := http.Get(url)
 	if err != nil {
@@ -203,6 +209,10 @@ func GetLocationByIP(ip string, config cfg.EndpointService) cfg.IPAPIResponse {
 	}
 
 	json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Println(err)
+		return response
+	}
 
 	return response
 }

@@ -94,7 +94,7 @@ type Services struct {
 }
 
 type EndpointService struct {
-	UrlEndpoint       string `json:"urlEndpoint"`
+	URLEndpoint       string `json:"urlEndpoint"`
 	AutorizationToken string `json:"autorizationToken"`
 }
 
@@ -254,7 +254,7 @@ func NewFromFile(filePath string) (*Config, error) {
 				RODSN:  dbrodsn,
 			},
 			GeoIP: EndpointService{
-				UrlEndpoint:       urlEndpointGeoIP,
+				URLEndpoint:       urlEndpointGeoIP,
 				AutorizationToken: tokenGeoIP,
 			},
 		},

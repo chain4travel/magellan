@@ -739,7 +739,7 @@ func (p *TxDataParam) CacheKey() []string {
 
 type ValidatorParams struct {
 	ListParams ListParams
-	Rpc        string
+	RPC        string
 }
 
 func (p *ValidatorParams) ForValues(v uint8, q url.Values) error {
@@ -747,7 +747,7 @@ func (p *ValidatorParams) ForValues(v uint8, q url.Values) error {
 }
 
 func (p *ValidatorParams) SetParamInfo(v uint8, rpc string) error {
-	p.Rpc = rpc
+	p.RPC = rpc
 	return nil
 }
 
