@@ -72,7 +72,6 @@ func ParseGetJSON(r *web.Request, n int64) (url.Values, error) {
 }
 
 func ParseGetBodyJSON(r *web.Request) (map[string]interface{}, error) {
-
 	var data map[string]interface{}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
