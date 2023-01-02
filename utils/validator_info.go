@@ -39,7 +39,6 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig cfg.EndpointService) cfg.Geo
 	validators := GetCurrentValidators(rpc)
 	peers := GetPeers(rpc)
 	for i := 0; i < len(validators.Result.Validators); i++ {
-
 		validator := validators.Result.Validators[i]
 		indexPeerWithSameID := PeerIndex(&peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
@@ -186,7 +185,6 @@ func GetPeers(rpc string) cfg.PeersResponse {
 	return response
 }
 func GetLocationByIP(ip string, config cfg.EndpointService) cfg.IPAPIResponse {
-
 	var response cfg.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
 	url := fmt.Sprintf("%s%s", config.URLEndpoint, ip)
