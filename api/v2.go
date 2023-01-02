@@ -116,6 +116,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/transactions/aggregates", (*V2Context).Aggregate).
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
+		Post("/validatorsInfo", (*V2Context).ValidatorsInfo).
 
 		// List and Get routes
 		Get("/transactions", (*V2Context).ListTransactions).
@@ -139,9 +140,33 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates)
 }
 
-//
 // AVAX
-//
+func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
+	//body test
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricSearchMillis),
+		utils.NewCounterIncCollect(MetricSearchCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.ValidatorParams{}
+	if err := p.SetParamInfo(c.version, c.sc.ServicesCfg.CaminoNode); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams("geoIPValidatorsInfo", p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return utils.GetValidatorsGeoIPInfo(p.Rpc, c.sc.Services.GeoIP), nil
+		},
+	})
+}
 
 func (c *V2Context) Search(w web.ResponseWriter, r *web.Request) {
 	collectors := utils.NewCollectors(
