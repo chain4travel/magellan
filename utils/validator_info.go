@@ -34,7 +34,6 @@ func getDuration(startTime string, endTime string) string {
 	duration := int(difference.Hours() / 24)
 	return strconv.Itoa(duration) + " Days"
 }
-
 func GetValidatorsGeoIPInfo(rpc string, geoIPConfig cfg.EndpointService) cfg.GeoIPValidators {
 	var validatorList []cfg.Validator
 	validators := GetCurrentValidators(rpc)
@@ -48,7 +47,6 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig cfg.EndpointService) cfg.Geo
 		} else {
 			validatorList = append(validatorList, SetValidatorInfo(&validators.Result.Validators[i], nil, false, geoIPConfig))
 		}
-
 	}
 	geoValidatorsInfo := cfg.GeoIPValidators{
 		Name:  "GeoIPInfo",
@@ -180,35 +178,44 @@ func GetPeers(rpc string) cfg.PeersResponse {
 		return response
 	}
 
-	json.Unmarshal(body, &response)
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println(err)
 		return response
 	}
 	return response
 }
-
 func GetLocationByIP(ip string, config cfg.EndpointService) cfg.IPAPIResponse {
 
 	var response cfg.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
 	url := fmt.Sprintf("%s%s", config.URLEndpoint, ip)
 	// Perform the HTTP GET request
-	resp, err := http.Get(url)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+
 	if err != nil {
 		fmt.Println(err)
 		return response
 	}
-	defer resp.Body.Close()
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return response
+	}
+	defer res.Body.Close()
 
 	// Read the response body
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		fmt.Println(err)
 		return response
 	}
 
-	json.Unmarshal(body, &response)
+	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println(err)
 		return response
