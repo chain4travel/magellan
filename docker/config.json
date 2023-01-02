@@ -24,6 +24,10 @@
     "db": {
       "dsn": "root:password@tcp(mysql:3306)/magellan",
       "driver": "mysql"
+    },
+    "geoIP": {
+      "urlEndpoint":"http://ip-api.com/json/",
+      "autorizationToken": ""
     }
   }
 }

@@ -47,6 +47,7 @@ const (
 	KeyOutputOutputType = "outputOutputType"
 	KeyOutputGroupID    = "outputGroupId"
 	KeyTransactionID    = "transactionId"
+	KeyRPC              = "rpc"
 
 	PaginationMaxLimit      = 5000
 	PaginationDefaultOffset = 0

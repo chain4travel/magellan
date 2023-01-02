@@ -16,6 +16,7 @@ package cfg
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/version"
@@ -85,9 +86,16 @@ type Chain struct {
 type Chains map[string]Chain
 
 type Services struct {
-	Logging logging.Config `json:"logging"`
-	API     `json:"api"`
-	*DB     `json:"db"`
+	Logging           logging.Config `json:"logging"`
+	API               `json:"api"`
+	*DB               `json:"db"`
+	InmutableInsights EndpointService `json:"inmutableInsights"`
+	GeoIP             EndpointService `json:"geoIP"`
+}
+
+type EndpointService struct {
+	UrlEndpoint       string `json:"urlEndpoint"`
+	AutorizationToken string `json:"autorizationToken"`
 }
 
 type API struct {
@@ -104,6 +112,80 @@ type Filter struct {
 	Min uint32 `json:"min"`
 	Max uint32 `json:"max"`
 }
+type IPAPIResponse struct {
+	Country     string  `json:"country"`
+	CountryCode string  `json:"countryCode"`
+	City        string  `json:"city"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+}
+
+type ValidatorsResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Result  struct {
+		Validators []ValidatorInfo `json:"validators"`
+	} `json:"result"`
+}
+
+type ValidatorInfo struct {
+	TxID        string `json:"txID"`
+	StartTime   string `json:"startTime"`
+	EndTime     string `json:"endTime"`
+	StakeAmount string `json:"stakeAmount"`
+	NodeID      string `json:"nodeID"`
+	RewardOwner struct {
+		Locktime  string   `json:"locktime"`
+		Threshold string   `json:"threshold"`
+		Addresses []string `json:"addresses"`
+	} `json:"rewardOwner"`
+	PotentialReward string      `json:"potentialReward"`
+	DelegationFee   string      `json:"delegationFee"`
+	Uptime          string      `json:"uptime"`
+	Connected       bool        `json:"connected"`
+	Delegators      interface{} `json:"delegators"`
+}
+
+type PeersResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Result  struct {
+		NumPeers string     `json:"numPeers"`
+		Peers    []PeerInfo `json:"peers"`
+	} `json:"result"`
+	ID int `json:"id"`
+}
+
+type PeerInfo struct {
+	IP             string        `json:"ip"`
+	PublicIP       string        `json:"publicIP"`
+	NodeID         string        `json:"nodeID"`
+	Version        string        `json:"version"`
+	LastSent       time.Time     `json:"lastSent"`
+	LastReceived   time.Time     `json:"lastReceived"`
+	ObservedUptime string        `json:"observedUptime"`
+	TrackedSubnets []string      `json:"trackedSubnets"`
+	Benched        []interface{} `json:"benched"`
+}
+
+type GeoIPValidators struct {
+	Name  string      `json:"name"`
+	Value []Validator `json:"value"`
+}
+
+type Validator struct {
+	NodeID     string  `json:"nodeID"`
+	IP         string  `json:"IP"`
+	TxID       string  `json:"txID"`
+	Connected  bool    `json:"connected"`
+	StartTime  string  `json:"startTime"`
+	EndTime    string  `json:"endTime"`
+	Duration   string  `json:"duration"`
+	Uptime     string  `json:"uptime"`
+	Country    string  `json:"country"`
+	Lng        float64 `json:"lng"`
+	Lat        float64 `json:"lat"`
+	CountryISO string  `json:"countryISO"`
+	City       string  `json:"city"`
+}
 
 // NewFromFile creates a new *Config with the defaults replaced by the config  in
 // the file at the given path
@@ -116,6 +198,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	// Get sub vipers for all objects with parents
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
+	servicesGeoIPViper := newSubViper(servicesViper, keyServicesGeoIP)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
@@ -135,6 +218,9 @@ func NewFromFile(filePath string) (*Config, error) {
 	if servicesDBViper.Get(keysServicesDBRODSN) != nil {
 		dbrodsn = servicesDBViper.GetString(keysServicesDBRODSN)
 	}
+
+	urlEndpointGeoIP := servicesGeoIPViper.GetString(keyServicesEndpoint)
+	tokenGeoIP := servicesGeoIPViper.GetString(keyServicesToken)
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -166,6 +252,10 @@ func NewFromFile(filePath string) (*Config, error) {
 				Driver: servicesDBViper.GetString(keysServicesDBDriver),
 				DSN:    dbdsn,
 				RODSN:  dbrodsn,
+			},
+			GeoIP: EndpointService{
+				UrlEndpoint:       urlEndpointGeoIP,
+				AutorizationToken: tokenGeoIP,
 			},
 		},
 		CchainID:            v.GetString(keysStreamProducerCchainID),

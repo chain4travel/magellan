@@ -71,6 +71,20 @@ func ParseGetJSON(r *web.Request, n int64) (url.Values, error) {
 	return r.URL.Query(), nil
 }
 
+func ParseGetBodyJSON(r *web.Request) (map[string]interface{}, error) {
+
+	var data map[string]interface{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return data, err
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
+}
+
 func mergeValues(a url.Values, b url.Values) url.Values {
 	for k, v := range b {
 		if _, present := a[k]; present {
