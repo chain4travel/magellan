@@ -33,10 +33,9 @@ const (
 	keysServicesDBDSN    = "dsn"
 	keysServicesDBRODSN  = "ro_dsn"
 
-	keyServicesInmutable = "inmutableInsights"
-	keyServicesGeoIP     = "geoIP"
-	keyServicesEndpoint  = "urlEndpoint"
-	keyServicesToken     = "autorizationToken"
+	keyServicesGeoIP    = "geoIP"
+	keyServicesEndpoint = "urlEndpoint"
+	keyServicesToken    = "autorizationToken"
 
 	keysStreamProducerCaminoNode   = "caminoNode"
 	keysStreamProducerNodeInstance = "nodeInstance"

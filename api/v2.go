@@ -145,7 +145,6 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 
 // AVAX
 func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
-	//body test
 	collectors := utils.NewCollectors(
 		utils.NewCounterObserveMillisCollect(MetricMillis),
 		utils.NewCounterIncCollect(MetricCount),
@@ -166,7 +165,7 @@ func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams("geoIPValidatorsInfo", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetValidatorsGeoIPInfo(p.Rpc, c.sc.Services.GeoIP), nil
+			return utils.GetValidatorsGeoIPInfo(p.RPC, c.sc.Services.GeoIP), nil
 		},
 	})
 }
