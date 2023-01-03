@@ -116,6 +116,9 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/transactions/aggregates", (*V2Context).Aggregate).
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
+		Post("/dailyEmissions", (*V2Context).DailyEmissions).
+		Post("/networkEmissions", (*V2Context).NetworkEmissions).
+		Post("/transactionEmissions", (*V2Context).TransactionEmissions).
 
 		// List and Get routes
 		Get("/transactions", (*V2Context).ListTransactions).
@@ -142,6 +145,55 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 //
 // AVAX
 //
+
+func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
+	p := &params.EmissionsParams{}
+	if err := p.SetEmissionsParams(1); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	key := fmt.Sprintf("Daily Emissions %s", p.EndDate)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return utils.GetDailyEmissios(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+		},
+	})
+}
+
+func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
+	p := &params.EmissionsParams{}
+	if err := p.SetEmissionsParams(7); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("Network Emissions %s", p.EndDate)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return utils.GetNetworkEmissions(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+		},
+	})
+}
+
+func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
+	p := &params.EmissionsParams{}
+	if err := p.SetEmissionsParams(7); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("Transaction Emissions %s", p.EndDate)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return utils.GetNetworkEmissionsPerTransaction(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+		},
+	})
+}
 
 func (c *V2Context) Search(w web.ResponseWriter, r *web.Request) {
 	collectors := utils.NewCollectors(

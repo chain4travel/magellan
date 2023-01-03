@@ -59,6 +59,36 @@ func (p *SearchParams) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
 
+type EmissionsParams struct {
+	ListParams    ListParams
+	SubstractDays int
+	StartDate     string
+	EndDate       string
+}
+
+func (p *EmissionsParams) ForValues(v uint8, q url.Values) error {
+	if err := p.ListParams.ForValues(v, q); err != nil {
+		return err
+	}
+	p.StartDate, p.EndDate = Date(p.SubstractDays)
+	return p.ListParams.ForValues(v, q)
+}
+func (p *EmissionsParams) SetEmissionsParams(substractDays int) error {
+	p.SubstractDays = substractDays
+	p.StartDate, p.EndDate = Date(p.SubstractDays)
+	return nil
+}
+
+func (p *EmissionsParams) ForValuesInterface(v uint8, q map[string]interface{}) error {
+	p.StartDate = q["startDate"].(string)
+	p.EndDate = q["endDate"].(string)
+	return nil
+}
+
+func (p *EmissionsParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
+}
+
 type TxfeeAggregateParams struct {
 	ListParams ListParams
 
@@ -735,4 +765,12 @@ func (p *TxDataParam) ForValues(v uint8, q url.Values) error {
 
 func (p *TxDataParam) CacheKey() []string {
 	return p.ListParams.CacheKey()
+}
+
+func Date(s int) (string, string) {
+	now := time.Now()
+	nowF := now.Format("2006-01-02")
+	daysAgo := now.AddDate(0, 0, -s)
+	daysAgoF := daysAgo.Format("2006-01-02")
+	return daysAgoF, nowF
 }
