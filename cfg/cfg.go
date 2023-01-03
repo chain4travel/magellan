@@ -85,9 +85,22 @@ type Chain struct {
 type Chains map[string]Chain
 
 type Services struct {
-	Logging logging.Config `json:"logging"`
-	API     `json:"api"`
-	*DB     `json:"db"`
+	Logging           logging.Config `json:"logging"`
+	API               `json:"api"`
+	*DB               `json:"db"`
+	InmutableInsights EndpointService `json:"inmutableInsights"`
+	GeoIP             EndpointService `json:"geoIP"`
+}
+
+type EndpointService struct {
+	URLEndpoint       string `json:"urlEndpoint"`
+	AutorizationToken string `json:"autorizationToken"`
+}
+
+type Emissions struct {
+	Chain string  `json:"chain"`
+	Time  string  `json:"time"`
+	Value float64 `json:"value"`
 }
 
 type API struct {
@@ -116,6 +129,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	// Get sub vipers for all objects with parents
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
+	servicesInmutableViper := newSubViper(servicesViper, keyServicesInmutable)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
@@ -135,6 +149,9 @@ func NewFromFile(filePath string) (*Config, error) {
 	if servicesDBViper.Get(keysServicesDBRODSN) != nil {
 		dbrodsn = servicesDBViper.GetString(keysServicesDBRODSN)
 	}
+
+	urlEndpointInmutable := servicesInmutableViper.GetString(keyServicesEndpoint)
+	tokenInmutable := servicesInmutableViper.GetString(keyServicesToken)
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -166,6 +183,10 @@ func NewFromFile(filePath string) (*Config, error) {
 				Driver: servicesDBViper.GetString(keysServicesDBDriver),
 				DSN:    dbdsn,
 				RODSN:  dbrodsn,
+			},
+			InmutableInsights: EndpointService{
+				URLEndpoint:       urlEndpointInmutable,
+				AutorizationToken: tokenInmutable,
 			},
 		},
 		CchainID:            v.GetString(keysStreamProducerCchainID),

@@ -25,6 +25,10 @@
     "db": {
       "dsn": "root:password@tcp(mysql:3306)/magellan_columbus",
       "driver": "mysql"
+    },
+    "inmutableInsights": {
+      "urlEndpoint":"https://co2.api.immutableinsight.io/co2",
+      "autorizationToken": ""
     }
   }
 }
