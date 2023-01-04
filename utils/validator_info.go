@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/models"
 )
 
-func PeerIndex(peers *cfg.PeersResponse, nodeID string) int {
+func PeerIndex(peers *models.PeersResponse, nodeID string) int {
 	for idx, peer := range peers.Result.Peers {
 		if peer.NodeID == nodeID {
 			return idx
@@ -34,33 +36,41 @@ func getDuration(startTime string, endTime string) string {
 	duration := int(difference.Hours() / 24)
 	return strconv.Itoa(duration) + " Days"
 }
-func GetValidatorsGeoIPInfo(rpc string, geoIPConfig cfg.EndpointService) cfg.GeoIPValidators {
-	var validatorList []cfg.Validator
+func GetValidatorsGeoIPInfo(rpc string, geoIPConfig cfg.EndpointService) models.GeoIPValidators {
+	var validatorList []models.Validator
+	var geoValidatorsInfo models.GeoIPValidators
 	validators := GetCurrentValidators(rpc)
 	peers := GetPeers(rpc)
-	for i := 0; i < len(validators.Result.Validators); i++ {
-		validator := validators.Result.Validators[i]
-		indexPeerWithSameID := PeerIndex(&peers, validator.NodeID)
-		if indexPeerWithSameID >= 0 {
-			validatorList = append(validatorList, SetValidatorInfo(&validators.Result.Validators[i], &peers.Result.Peers[indexPeerWithSameID], true, geoIPConfig))
-		} else {
-			validatorList = append(validatorList, SetValidatorInfo(&validators.Result.Validators[i], nil, false, geoIPConfig))
+	if !reflect.DeepEqual(validators, models.ValidatorsResponse{}) && !reflect.DeepEqual(peers, models.PeersResponse{}) {
+		for i := 0; i < len(validators.Result.Validators); i++ {
+			validator := validators.Result.Validators[i]
+			indexPeerWithSameID := PeerIndex(&peers, validator.NodeID)
+			if indexPeerWithSameID >= 0 {
+				validatorList = append(validatorList, SetValidatorInfo(&validators.Result.Validators[i], &peers.Result.Peers[indexPeerWithSameID], true, geoIPConfig))
+			} else {
+				validatorList = append(validatorList, SetValidatorInfo(&validators.Result.Validators[i], nil, false, geoIPConfig))
+			}
 		}
-	}
-	geoValidatorsInfo := cfg.GeoIPValidators{
-		Name:  "GeoIPInfo",
-		Value: validatorList,
+		geoValidatorsInfo = models.GeoIPValidators{
+			Name:  "GeoIPInfo",
+			Value: validatorList,
+		}
+	} else {
+		geoValidatorsInfo = models.GeoIPValidators{
+			Name:  "GeoIPInfo",
+			Value: []models.Validator{},
+		}
 	}
 	return geoValidatorsInfo
 }
 
-func SetValidatorInfo(validator *cfg.ValidatorInfo, peer *cfg.PeerInfo, peerFlag bool, config cfg.EndpointService) cfg.Validator {
+func SetValidatorInfo(validator *models.ValidatorInfo, peer *models.PeerInfo, peerFlag bool, config cfg.EndpointService) models.Validator {
 	startTime := GetDate(validator.StartTime)
 	endTime := GetDate(validator.EndTime)
-	var info cfg.Validator
+	var info models.Validator
 	if peerFlag {
 		geoIPInfo := GetLocationByIP(peer.IP, config)
-		info = cfg.Validator{
+		info = models.Validator{
 			NodeID:     validator.NodeID,
 			IP:         peer.IP,
 			TxID:       validator.TxID,
@@ -76,7 +86,7 @@ func SetValidatorInfo(validator *cfg.ValidatorInfo, peer *cfg.PeerInfo, peerFlag
 			City:       geoIPInfo.City,
 		}
 	} else {
-		info = cfg.Validator{
+		info = models.Validator{
 			NodeID:     validator.NodeID,
 			IP:         "",
 			TxID:       validator.TxID,
@@ -94,8 +104,8 @@ func SetValidatorInfo(validator *cfg.ValidatorInfo, peer *cfg.PeerInfo, peerFlag
 	}
 	return info
 }
-func GetCurrentValidators(rpc string) cfg.ValidatorsResponse {
-	var response cfg.ValidatorsResponse
+func GetCurrentValidators(rpc string) models.ValidatorsResponse {
+	var response models.ValidatorsResponse
 	url := fmt.Sprintf("%s/ext/bc/P", rpc)
 
 	payload := strings.NewReader(`{
@@ -141,8 +151,8 @@ func GetCurrentValidators(rpc string) cfg.ValidatorsResponse {
 	return response
 }
 
-func GetPeers(rpc string) cfg.PeersResponse {
-	var response cfg.PeersResponse
+func GetPeers(rpc string) models.PeersResponse {
+	var response models.PeersResponse
 	url := fmt.Sprintf("%s/ext/info", rpc)
 
 	payload := strings.NewReader(`{
@@ -184,8 +194,8 @@ func GetPeers(rpc string) cfg.PeersResponse {
 	}
 	return response
 }
-func GetLocationByIP(ip string, config cfg.EndpointService) cfg.IPAPIResponse {
-	var response cfg.IPAPIResponse
+func GetLocationByIP(ip string, config cfg.EndpointService) models.IPAPIResponse {
+	var response models.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
 	url := fmt.Sprintf("%s%s", config.URLEndpoint, ip)
 	// Perform the HTTP GET request
