@@ -40,6 +40,16 @@ type TransactionList struct {
 
 	Next *string `json:"next,omitempty"`
 }
+type EmissionsResult struct {
+	Chain string  `json:"chain"`
+	Time  string  `json:"time"`
+	Value float64 `json:"value"`
+}
+
+type Emissions struct {
+	Name  string            `json:"name"`
+	Value []EmissionsResult `json:"value"`
+}
 
 type CTransactionData struct {
 	Type      int       `json:"type"`

@@ -97,12 +97,6 @@ type EndpointService struct {
 	AutorizationToken string `json:"autorizationToken"`
 }
 
-type Emissions struct {
-	Chain string  `json:"chain"`
-	Time  string  `json:"time"`
-	Value float64 `json:"value"`
-}
-
 type API struct {
 	ListenAddr string `json:"listenAddr"`
 }
