@@ -153,12 +153,12 @@ func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	key := fmt.Sprintf("Daily Emissions %s", p.EndDate)
+	key := fmt.Sprintf("Daily Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetDailyEmissios(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+			return utils.GetDailyEmissios(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
 		},
 	})
 }
@@ -169,12 +169,12 @@ func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
 		c.WriteErr(w, 400, err)
 		return
 	}
-	key := fmt.Sprintf("Network Emissions %s", p.EndDate)
+	key := fmt.Sprintf("Network Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissions(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
 		},
 	})
 }
@@ -185,12 +185,12 @@ func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
 		c.WriteErr(w, 400, err)
 		return
 	}
-	key := fmt.Sprintf("Transaction Emissions %s", p.EndDate)
+	key := fmt.Sprintf("Transaction Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissionsPerTransaction(p.StartDate, p.EndDate, c.sc.Services.InmutableInsights), nil
+			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
 		},
 	})
 }

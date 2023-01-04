@@ -6,66 +6,72 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/chain4travel/magellan/cfg"
+	"github.com/chain4travel/magellan/models"
 )
 
 // TODO: change the variable to constant
 var chainNames = [19]string{"algorand", "avalanche", "bitcoin", "caminocolumbus", "cardano", "cosmos", "kava", "polkadot", "solana", "tezos", "tron"}
 
-func GetDailyEmissios(startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	var dailyEmissions []cfg.Emissions
+func GetDailyEmissios(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
+	var dailyEmissions []models.EmissionsResult
+	startDatef := startDate.Format("2006-01-02")
+	endDatef := endDate.Format("2006-01-02")
 	for _, chain := range chainNames {
-		intensityFactor := CarbonIntensityFactor(chain, startDate, endDate, config)
+		intensityFactor := CarbonIntensityFactor(chain, startDatef, endDatef, config)
 		if len(intensityFactor) > 0 {
 			dailyEmissions = append(dailyEmissions, intensityFactor[0])
 		}
 	}
-	return dailyEmissions
+	return models.Emissions{Name: "Daily Emissions", Value: dailyEmissions}
 }
 
-func GetNetworkEmissions(startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	return network(chainNames[3], startDate, endDate, config)
+func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
+	startDatef := startDate.Format("2006-01-02")
+	endDatef := endDate.Format("2006-01-02")
+	emissionsResult := network(chainNames[3], startDatef, endDatef, config)
+	return models.Emissions{Name: "Network Emissions", Value: emissionsResult}
 }
-func GetNetworkEmissionsPerTransaction(startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	return transaction(chainNames[3], startDate, endDate, config)
+func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
+	startDatef := startDate.Format("2006-01-02")
+	endDatef := endDate.Format("2006-01-02")
+	emissionsResult := transaction(chainNames[3], startDatef, endDatef, config)
+	return models.Emissions{Name: "Transactions Emissions", Value: emissionsResult}
 }
 
-func CarbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	var response []cfg.Emissions
+func CarbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService) []models.EmissionsResult {
+	var response []models.EmissionsResult
 	url := fmt.Sprintf("%s/carbon-intensity-factor?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
-		fmt.Println(err)
 		return response
 	}
 	req.Header.Add("Authorization", config.AutorizationToken)
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return response
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
 		return response
 	}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		fmt.Println(err)
 		return response
 	}
 	return response
 }
 
-func network(chain string, startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	var response []cfg.Emissions
+func network(chain string, startDate string, endDate string, config cfg.EndpointService) []models.EmissionsResult {
+	var response []models.EmissionsResult
 	url := fmt.Sprintf("%s/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -106,8 +112,8 @@ func network(chain string, startDate string, endDate string, config cfg.Endpoint
 	return response
 }
 
-func transaction(chain string, startDate string, endDate string, config cfg.EndpointService) []cfg.Emissions {
-	var response []cfg.Emissions
+func transaction(chain string, startDate string, endDate string, config cfg.EndpointService) []models.EmissionsResult {
+	var response []models.EmissionsResult
 	url := fmt.Sprintf("%s/transaction?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 
 	client := &http.Client{}
