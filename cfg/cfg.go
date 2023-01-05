@@ -16,6 +16,7 @@ package cfg
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -94,7 +95,7 @@ type Services struct {
 }
 
 type EndpointService struct {
-	URLEndpoint       string `json:"urlEndpoint"`
+	URLEndpoint        string `json:"urlEndpoint"`
 	AuthorizationToken string `json:"autorizationToken"`
 }
 
@@ -146,7 +147,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	}
 
 	urlEndpointInmutable := servicesInmutableViper.GetString(keyServicesEndpoint)
-	tokenInmutable := GetEnvConfig(fmt.Sprintf("%sInmutable",keyServicesToken))
+	tokenInmutable := os.Getenv(fmt.Sprintf("%sInmutable", keyServicesToken))
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -180,7 +181,7 @@ func NewFromFile(filePath string) (*Config, error) {
 				RODSN:  dbrodsn,
 			},
 			InmutableInsights: EndpointService{
-				URLEndpoint:       urlEndpointInmutable,
+				URLEndpoint:        urlEndpointInmutable,
 				AuthorizationToken: tokenInmutable,
 			},
 		},
