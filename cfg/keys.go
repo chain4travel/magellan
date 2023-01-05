@@ -35,7 +35,7 @@ const (
 
 	keyServicesInmutable = "inmutableInsights"
 	keyServicesEndpoint  = "urlEndpoint"
-	keyServicesToken     = "autorizationToken"
+	keyServicesToken     = "authorizationToken"
 
 	keysStreamProducerCaminoNode   = "caminoNode"
 	keysStreamProducerNodeInstance = "nodeInstance"

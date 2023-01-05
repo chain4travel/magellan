@@ -51,7 +51,7 @@ func CarbonIntensityFactor(chain string, startDate string, endDate string, confi
 	if err != nil {
 		return response
 	}
-	req.Header.Add("Authorization", config.AutorizationToken)
+	req.Header.Add("Authorization", config.AuthorizationToken)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -80,7 +80,7 @@ func network(chain string, startDate string, endDate string, config cfg.Endpoint
 		fmt.Println(err)
 		return response
 	}
-	req.Header.Add("Authorization", config.AutorizationToken)
+	req.Header.Add("Authorization", config.AuthorizationToken)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -123,7 +123,7 @@ func transaction(chain string, startDate string, endDate string, config cfg.Endp
 		fmt.Println(err)
 		return response
 	}
-	req.Header.Add("Authorization", config.AutorizationToken)
+	req.Header.Add("Authorization", config.AuthorizationToken)
 
 	res, err := client.Do(req)
 	if err != nil {
