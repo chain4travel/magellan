@@ -6,9 +6,7 @@ package cfg
 import (
 	"bytes"
 	"log"
-	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -85,11 +83,4 @@ func newChainsConfig(v *viper.Viper) (Chains, error) {
 		chains[id] = Chain{ID: id, VMType: vmType}
 	}
 	return chains, nil
-}
-func GetEnvConfig(envKey string)string{
-	err := godotenv.Load("local.env")
-	if err != nil {
-		log.Fatalf("Some error occured. Err: %s", err)
-	}
-	return os.Getenv(envKey)
 }

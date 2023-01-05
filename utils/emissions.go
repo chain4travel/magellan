@@ -25,6 +25,9 @@ func GetDailyEmissios(startDate time.Time, endDate time.Time, config cfg.Endpoin
 			dailyEmissions = append(dailyEmissions, intensityFactor[0])
 		}
 	}
+	if dailyEmissions == nil {
+		return models.Emissions{Name: "Daily Emissions", Value: []models.EmissionsResult{}}
+	}
 	return models.Emissions{Name: "Daily Emissions", Value: dailyEmissions}
 }
 
@@ -32,13 +35,19 @@ func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	startDatef := startDate.Format("2006-01-02")
 	endDatef := endDate.Format("2006-01-02")
 	emissionsResult := network(chainNames[3], startDatef, endDatef, config)
+	if emissionsResult == nil {
+		return models.Emissions{Name: "Network Emissions", Value: []models.EmissionsResult{}}
+	}
 	return models.Emissions{Name: "Network Emissions", Value: emissionsResult}
 }
 func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
 	startDatef := startDate.Format("2006-01-02")
 	endDatef := endDate.Format("2006-01-02")
 	emissionsResult := transaction(chainNames[3], startDatef, endDatef, config)
-	return models.Emissions{Name: "Transactions Emissions", Value: emissionsResult}
+	if emissionsResult == nil {
+		return models.Emissions{Name: "Network Emissions per Transaction", Value: []models.EmissionsResult{}}
+	}
+	return models.Emissions{Name: "Network Emissions per Transaction", Value: emissionsResult}
 }
 
 func CarbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService) []models.EmissionsResult {
@@ -51,21 +60,24 @@ func CarbonIntensityFactor(chain string, startDate string, endDate string, confi
 	if err != nil {
 		return response
 	}
-	req.Header.Add("Authorization", config.AuthorizationToken)
+	if config.AuthorizationToken != "" {
+		req.Header.Add("Authorization", config.AuthorizationToken)
 
-	res, err := client.Do(req)
-	if err != nil {
-		return response
-	}
-	defer res.Body.Close()
+		res, err := client.Do(req)
+		if err != nil {
+			return response
+		}
+		defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return response
-	}
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return response
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return response
+		}
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return response
+		}
+
 	}
 	return response
 }
@@ -80,35 +92,38 @@ func network(chain string, startDate string, endDate string, config cfg.Endpoint
 		fmt.Println(err)
 		return response
 	}
-	req.Header.Add("Authorization", config.AuthorizationToken)
+	if config.AuthorizationToken != "" {
+		req.Header.Add("Authorization", config.AuthorizationToken)
 
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	for i, Value := range response {
-		formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
-		parsedValue, err := strconv.ParseFloat(formatValue, 64)
-
+		res, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
+			return response
 		}
+		defer res.Body.Close()
 
-		response[i].Value = parsedValue
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+			return response
+		}
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			fmt.Println(err)
+			return response
+		}
+		for i, Value := range response {
+			formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
+			parsedValue, err := strconv.ParseFloat(formatValue, 64)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			response[i].Value = parsedValue
+		}
 	}
+
 	return response
 }
 
@@ -123,34 +138,37 @@ func transaction(chain string, startDate string, endDate string, config cfg.Endp
 		fmt.Println(err)
 		return response
 	}
-	req.Header.Add("Authorization", config.AuthorizationToken)
+	if config.AuthorizationToken != "" {
+		req.Header.Add("Authorization", config.AuthorizationToken)
 
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		fmt.Println(err)
-		return response
-	}
-	for i, Value := range response {
-		formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
-		parsedValue, err := strconv.ParseFloat(formatValue, 64)
-
+		res, err := client.Do(req)
 		if err != nil {
 			fmt.Println(err)
+			return response
 		}
+		defer res.Body.Close()
 
-		response[i].Value = parsedValue
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			fmt.Println(err)
+			return response
+		}
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			fmt.Println(err)
+			return response
+		}
+		for i, Value := range response {
+			formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
+			parsedValue, err := strconv.ParseFloat(formatValue, 64)
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			response[i].Value = parsedValue
+		}
 	}
+
 	return response
 }
