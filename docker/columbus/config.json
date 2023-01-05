@@ -28,7 +28,7 @@
     },
     "geoIP": {
       "urlEndpoint":"http://ip-api.com/json/",
-      "autorizationToken": ""
+      "authorizationToken": ""
     }
   }
 }
