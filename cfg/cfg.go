@@ -125,7 +125,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	// Get sub vipers for all objects with parents
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
-	servicesGeoIPViper := newSubViper(servicesViper, keyServicesGeoIP)
+	servicesGeoIPViper := newSubViper(servicesViper, keyServicesToken)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
