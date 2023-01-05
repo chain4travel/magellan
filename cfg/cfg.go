@@ -15,6 +15,8 @@ package cfg
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -93,8 +95,8 @@ type Services struct {
 }
 
 type EndpointService struct {
-	URLEndpoint       string `json:"urlEndpoint"`
-	AutorizationToken string `json:"autorizationToken"`
+	URLEndpoint        string `json:"urlEndpoint"`
+	AuthorizationToken string `json:"authorizationToken"`
 }
 
 type API struct {
@@ -123,7 +125,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	// Get sub vipers for all objects with parents
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
-	servicesGeoIPViper := newSubViper(servicesViper, keyServicesGeoIP)
+	servicesGeoIPViper := newSubViper(servicesViper, keyServicesToken)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
@@ -145,7 +147,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	}
 
 	urlEndpointGeoIP := servicesGeoIPViper.GetString(keyServicesEndpoint)
-	tokenGeoIP := servicesGeoIPViper.GetString(keyServicesToken)
+	tokenGeoIP := os.Getenv(fmt.Sprintf("%sGeoIP", keyServicesGeoIP))
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -179,8 +181,8 @@ func NewFromFile(filePath string) (*Config, error) {
 				RODSN:  dbrodsn,
 			},
 			GeoIP: EndpointService{
-				URLEndpoint:       urlEndpointGeoIP,
-				AutorizationToken: tokenGeoIP,
+				URLEndpoint:        urlEndpointGeoIP,
+				AuthorizationToken: tokenGeoIP,
 			},
 		},
 		CchainID:            v.GetString(keysStreamProducerCchainID),
