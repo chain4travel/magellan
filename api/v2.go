@@ -162,7 +162,7 @@ func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetDailyEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
+			return utils.GetDailyEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
 		},
 	})
 }
@@ -184,7 +184,7 @@ func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
+			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
 		},
 	})
 }
@@ -205,7 +205,7 @@ func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights), nil
+			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
 		},
 	})
 }

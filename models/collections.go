@@ -252,6 +252,13 @@ type AssetAggregate struct {
 	Aggregate *AggregatesHistogram `json:"aggregate"`
 }
 
+type NetworkNameResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Result  struct {
+		NetworkName string `json:"networkName"`
+	} `json:"result"`
+}
+
 /*******************  Merging  ***********************/
 
 type AggregateMerge interface {
