@@ -41,6 +41,23 @@ func WriteErr(w http.ResponseWriter, code int, msg string) {
 	_, _ = w.Write(errBytes)
 }
 
+func ParseGetBodyJSON(r *web.Request) (url.Values, error) {
+	var data map[string]interface{}
+	output := url.Values{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return output, err
+	}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return output, err
+	}
+	for k, v := range data {
+		output.Set(k, v.(string))
+	}
+	return output, nil
+}
+
 func ParseGetJSON(r *web.Request, n int64) (url.Values, error) {
 	if r == nil {
 		return r.URL.Query(), nil
