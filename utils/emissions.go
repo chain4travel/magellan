@@ -15,7 +15,7 @@ import (
 // TODO: change the variable to constant
 var chainNames = [19]string{"algorand", "avalanche", "bitcoin", "caminocolumbus", "cardano", "cosmos", "kava", "polkadot", "solana", "tezos", "tron"}
 
-func GetDailyEmissios(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
+func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService) models.Emissions {
 	var dailyEmissions []models.EmissionsResult
 	startDatef := startDate.Format("2006-01-02")
 	endDatef := endDate.Format("2006-01-02")
