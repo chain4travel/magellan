@@ -30,3 +30,19 @@ type BlockList struct {
 	ListMetadata
 	Blocks []*Block `json:"blocks"`
 }
+
+type BodyRequest struct {
+	JSONRPC string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	ID      int         `json:"id"`
+}
+
+type CurrentValidatorsParams struct {
+	SubnetID *string  `json:"subnetID"`
+	NodeIDs  []string `json:"nodeIDs"`
+}
+
+type PeersParams struct {
+	NodeIDs []string `json:"nodeIDs"`
+}
