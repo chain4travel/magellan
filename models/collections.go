@@ -301,8 +301,8 @@ type PeerInfo struct {
 }
 
 type GeoIPValidators struct {
-	Name  string      `json:"name"`
-	Value []Validator `json:"value"`
+	Name  string       `json:"name"`
+	Value []*Validator `json:"value"`
 }
 
 type Validator struct {
