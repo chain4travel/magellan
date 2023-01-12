@@ -14,8 +14,6 @@ import (
 	"github.com/chain4travel/magellan/models"
 )
 
-const timeLayout = "2006-01-02 15:04:05"
-
 func PeerIndex(peers *models.PeersResponse, nodeID string) int {
 	for idx, peer := range peers.Result.Peers {
 		if peer.NodeID == nodeID {
@@ -36,12 +34,17 @@ func GetDate(unixTime string) (string, error) {
 }
 
 func getDuration(startTime string, endTime string) (string, error) {
-	start, err := time.Parse(timeLayout, startTime)
 	const d = " Days"
+	unixDateInt, err := strconv.ParseInt(startTime, 10, 64)
+	if err != nil {
+		return "", err
+	}
+	start := time.Unix(unixDateInt, 0)
+	unixDateInt, err = strconv.ParseInt(endTime, 10, 64)
 	if err != nil {
 		return "- " + d, err
 	}
-	end, err := time.Parse(timeLayout, endTime)
+	end := time.Unix(unixDateInt, 0)
 	if err != nil {
 		return "- " + d, err
 	}
@@ -86,7 +89,7 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 func setValidatorInfo(validator *models.ValidatorInfo) *models.Validator {
 	startTime, _ := GetDate(validator.StartTime)
 	endTime, _ := GetDate(validator.EndTime)
-	duration, _ := getDuration(startTime, endTime)
+	duration, _ := getDuration(validator.StartTime, validator.EndTime)
 	return &models.Validator{
 		NodeID:    validator.NodeID,
 		TxID:      validator.TxID,
