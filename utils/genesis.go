@@ -32,6 +32,7 @@ type GenesisContainer struct {
 	XChainGenesisTx *txs.Tx
 	XChainID        ids.ID
 	AvaxAssetID     ids.ID
+	GenesisBytes    []byte
 	Genesis         *platformGenesis.Genesis
 }
 
@@ -43,6 +44,8 @@ func NewGenesisContainer(cfg *cfg.Config) (*GenesisContainer, error) {
 	if err != nil {
 		return nil, err
 	}
+	gc.GenesisBytes = genesisBytes
+
 	gc.Genesis, err = platformGenesis.Parse(genesisBytes)
 	if err != nil {
 		return nil, err

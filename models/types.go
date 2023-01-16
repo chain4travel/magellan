@@ -63,6 +63,8 @@ var (
 	TransactionTypeDeposit               TransactionType = RegisterTransactionTypeCustom + 5
 	TransactionTypeUndeposit             TransactionType = RegisterTransactionTypeCustom + 6
 	TransactionTypeRegisterNodeTx        TransactionType = RegisterTransactionTypeCustom + 7
+	TransactionTypePvmBase               TransactionType = RegisterTransactionTypeCustom + 8
+	TransactionTypeMultisigAlias         TransactionType = RegisterTransactionTypeCustom + 9
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -83,10 +85,11 @@ type TransactionType uint16
 
 func (t TransactionType) String() string {
 	switch t {
-	case TransactionTypeBase:
+	case TransactionTypeBase,
+		TransactionTypePvmBase:
 		return "base"
 
-		// AVM
+	// AVM
 	case TransactionTypeCreateAsset:
 		return "create_asset"
 	case TransactionTypeOperation:
@@ -137,6 +140,8 @@ func (t TransactionType) String() string {
 		return "undeposit"
 	case TransactionTypeRegisterNodeTx:
 		return "register_node"
+	case TransactionTypeMultisigAlias:
+		return "multisig"
 	default:
 		return TypeUnknown
 	}
