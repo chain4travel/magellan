@@ -7,7 +7,9 @@ name: publish latest Docker image
 
 on:
   push:
-    branches-ignore: ["*"]
+    branches-ignore: ["**"]
+  pull_request:
+    branches-ignore: ["**"]
 jobs:
   push_latest_to_registry:
     name: Push Docker image to Docker Hub

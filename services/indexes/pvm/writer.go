@@ -170,13 +170,14 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 	return dbTx.Commit()
 }
 
+//nolint:gocyclo
 func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, gc *utils.GenesisContainer) error {
 	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
 		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
 
 	addressStateTx := func(addr ids.ShortID, state uint8) *txs.Tx {
 		tx := &txs.Tx{
-			Unsigned: &txs.AddAddressStateTx{
+			Unsigned: &txs.AddressStateTx{
 				BaseTx: txs.BaseTx{
 					BaseTx: avax.BaseTx{
 						NetworkID:    gc.NetworkID,
@@ -226,8 +227,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 
 	platformTx := gc.Genesis.Validators
 	platformTx = append(platformTx, gc.Genesis.Chains...)
-	platformTx = append(platformTx, gc.Genesis.Camino.Deposits...)
-
 	for _, tx := range platformTx {
 		select {
 		case <-ctx.Done():
@@ -301,6 +300,66 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
+	for _, ma := range gc.Genesis.Camino.InitialMultisigAddresses {
+		tx := &txs.Tx{
+			Unsigned: &txs.MultisigAliasTx{
+				BaseTx: txs.BaseTx{
+					BaseTx: avax.BaseTx{
+						NetworkID:    gc.NetworkID,
+						BlockchainID: ChainID,
+					},
+				},
+				Alias: ma.Alias,
+				Owner: &secp256k1fx.OutputOwners{
+					Addrs:     ma.Addresses,
+					Threshold: ma.Threshold,
+				},
+				ChangeAuth: &secp256k1fx.Input{},
+			},
+		}
+		if tx.Sign(txs.GenesisCodec, nil) == nil {
+			err := w.indexTransaction(cCtx, ChainID, tx, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	parent := ChainID
+	blockIDs, err := genesis.GetGenesisBlocksIDs(gc.GenesisBytes, gc.Genesis)
+	if err != nil {
+		return err
+	}
+	for index, block := range gc.Genesis.Camino.Blocks {
+		cCtx = services.NewConsumerContext(ctx, db, int64(block.Timestamp), 0, persist, w.chainID)
+		if err := w.indexCommonBlock(
+			cCtx,
+			blockIDs[index],
+			models.BlockTypeStandard,
+			blocks.CommonBlock{
+				PrntID: parent,
+				Hght:   uint64(index + 1),
+			},
+			&models.BlockProposal{},
+			nil,
+		); err != nil {
+			return err
+		}
+		parent = blockIDs[index]
+
+		platformTx = block.Txs()
+		for _, tx := range platformTx {
+			select {
+			case <-ctx.Done():
+			default:
+			}
+
+			err := w.indexTransaction(cCtx, blockIDs[index], tx, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -539,12 +598,18 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.UnlockDepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeUndeposit
-	case *txs.AddAddressStateTx:
+	case *txs.AddressStateTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddAddressState
 	case *txs.RegisterNodeTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeRegisterNodeTx
+	case *txs.BaseTx:
+		baseTx = castTx.BaseTx
+		typ = models.TransactionTypePvmBase
+	case *txs.MultisigAliasTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeMultisigAlias
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
