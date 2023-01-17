@@ -44,6 +44,7 @@ type MockPersist struct {
 	TxPool                           map[string]*TxPool
 	KeyValueStore                    map[string]*KeyValueStore
 	NodeIndex                        map[string]*NodeIndex
+	MultisigAlias                    map[string]*MultisigAlias
 }
 
 func NewPersistMock() *MockPersist {
@@ -79,6 +80,7 @@ func NewPersistMock() *MockPersist {
 		TxPool:                           make(map[string]*TxPool),
 		KeyValueStore:                    make(map[string]*KeyValueStore),
 		NodeIndex:                        make(map[string]*NodeIndex),
+		MultisigAlias:                    make(map[string]*MultisigAlias),
 	}
 }
 
@@ -696,5 +698,30 @@ func (m *MockPersist) UpdateNodeIndex(ctx context.Context, runner dbr.SessionRun
 	if fv, present := m.NodeIndex[v.Topic]; present {
 		fv.Idx = v.Idx
 	}
+	return nil
+}
+
+func (m *MockPersist) InsertMultisigAlias(ctx context.Context, runner dbr.SessionRunner, alias *MultisigAlias) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	nv := &MultisigAlias{}
+	*nv = *alias
+	m.MultisigAlias[alias.Owner] = nv
+	return nil
+}
+
+func (m *MockPersist) QueryMultisigAliasForOwner(ctx context.Context, runner dbr.SessionRunner, v string) (*[]MultisigAlias, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if v, present := m.MultisigAlias[v]; present {
+		return &[]MultisigAlias{{Owner: v.Owner}}, nil
+	}
+	return nil, nil
+}
+
+func (m *MockPersist) DeleteMultisigAlias(ctx context.Context, runner dbr.SessionRunner, s string) error {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	delete(m.MultisigAlias, s)
 	return nil
 }

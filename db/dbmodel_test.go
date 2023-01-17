@@ -1528,3 +1528,37 @@ func TestNodeIndex(t *testing.T) {
 		t.Fatal("compare fail")
 	}
 }
+
+func TestInsertMultisigAlias(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	if err != nil {
+		t.Fatal("db fail", err)
+	}
+	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableMultisigAliases).Exec()
+
+	v := &MultisigAlias{}
+	v.Alias = "abcdefghijklmnopqrstABCDEF1234567"
+	v.Owner = "ABCDEFghijklmnopqrstabcdef1234567"
+	v.TransactionID = "abcdefghijklmnopqrstABCDEF1234567abcdefghijklmnop"
+	v.CreatedAt = time.Now().UTC().Truncate(1 * time.Second)
+
+	err = p.InsertMultisigAlias(ctx, rawDBConn.NewSession(stream), v)
+	if err != nil {
+		t.Fatal("insert fail", err)
+	}
+	fv, err := p.QueryMultisigAliasForOwner(ctx, rawDBConn.NewSession(stream), v.Owner)
+	if err != nil {
+		t.Fatal("query fail", err)
+	}
+	if !reflect.DeepEqual(*v, (*fv)[0]) {
+		t.Fatal("compare fail")
+	}
+	err = p.DeleteMultisigAlias(ctx, rawDBConn.NewSession(stream), v.Alias)
+	if err != nil {
+		t.Fatal("delete fail", err)
+	}
+}

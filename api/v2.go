@@ -136,7 +136,8 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cachetxscounts", (*V2Context).CacheTxCounts).
 		Get("/cacheassets", (*V2Context).CacheAssets).
 		Get("/cacheassetaggregates", (*V2Context).CacheAssetAggregates).
-		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates)
+		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates).
+		Get("/multisigalias/:owner", (*V2Context).GetMultisigAlias)
 }
 
 //
@@ -216,6 +217,28 @@ func (c *V2Context) Aggregate(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForParams("aggregate", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return c.avaxReader.Aggregate(c.sc.AggregatesCache, p)
+		},
+	})
+}
+
+func (c *V2Context) GetMultisigAlias(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	ownerAddr := r.PathParams["owner"]
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForID("multisig_alias", ownerAddr),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GetMultisigAlias(ctx, ownerAddr)
 		},
 	})
 }
