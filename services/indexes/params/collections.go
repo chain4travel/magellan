@@ -70,12 +70,6 @@ func (p *EmissionsParams) ForValues(v uint8, q url.Values) error {
 	return p.ListParams.ForValues(v, q)
 }
 
-func (p *EmissionsParams) ForValuesInterface(v uint8, q map[string]interface{}) error {
-	p.ListParams.StartTime = q["startDate"].(time.Time)
-	p.ListParams.EndTime = q["endDate"].(time.Time)
-	return nil
-}
-
 func (p *EmissionsParams) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
@@ -757,11 +751,3 @@ func (p *TxDataParam) ForValues(v uint8, q url.Values) error {
 func (p *TxDataParam) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
-
-/* func Date(s int) (time.Time, time.Time) {
-	now := time.Now()
-	dateWithoutHour := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	daysAgo := dateWithoutHour.AddDate(0, 0, -s)
-	daysAgoF := time.Date(daysAgo.Year(), daysAgo.Month(), daysAgo.Day(), 0, 0, 0, 0, daysAgo.Location())
-	return daysAgoF, dateWithoutHour
-} */
