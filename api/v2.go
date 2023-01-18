@@ -116,9 +116,9 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/transactions/aggregates", (*V2Context).Aggregate).
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
-		Post("/dailyEmissions", (*V2Context).DailyEmissions).
-		Post("/networkEmissions", (*V2Context).NetworkEmissions).
-		Post("/transactionEmissions", (*V2Context).TransactionEmissions).
+		Get("/dailyEmissions", (*V2Context).DailyEmissions).
+		Get("/networkEmissions", (*V2Context).NetworkEmissions).
+		Get("/transactionEmissions", (*V2Context).TransactionEmissions).
 
 		// List and Get routes
 		Get("/transactions", (*V2Context).ListTransactions).
@@ -148,12 +148,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 
 func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 	p := &params.EmissionsParams{}
-	q, err := ParseGetBodyJSON(r)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-	if err := p.ForValues(c.version, q); err != nil {
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
 		c.WriteErr(w, 400, err)
 		return
 	}
@@ -169,12 +164,7 @@ func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 
 func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
 	p := &params.EmissionsParams{}
-	q, err := ParseGetBodyJSON(r)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-	if err := p.ForValues(c.version, q); err != nil {
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
 		c.WriteErr(w, 400, err)
 		return
 	}
@@ -184,19 +174,14 @@ func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
+			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
 		},
 	})
 }
 
 func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
 	p := &params.EmissionsParams{}
-	q, err := ParseGetBodyJSON(r)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
-	}
-	if err := p.ForValues(c.version, q); err != nil {
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
 		c.WriteErr(w, 400, err)
 		return
 	}
@@ -205,7 +190,7 @@ func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
+			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
 		},
 	})
 }
