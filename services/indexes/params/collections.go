@@ -67,7 +67,8 @@ func (p *EmissionsParams) ForValues(v uint8, q url.Values) error {
 	if err := p.ListParams.ForValues(v, q); err != nil {
 		return err
 	}
-	return p.ListParams.ForValues(v, q)
+	p.SubstractDays = int(p.ListParams.EndTime.Sub(p.ListParams.StartTime).Hours()) / 24
+	return nil
 }
 
 func (p *EmissionsParams) CacheKey() []string {
