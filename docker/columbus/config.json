@@ -27,7 +27,7 @@
       "driver": "mysql"
     },
     "inmutableInsights": {
-      "urlEndpoint":"https://co2.api.immutableinsight.io/co2",
+      "urlEndpoint":"https://co2.api.immutableinsight.io",
       "autorizationToken": ""
     }
   }

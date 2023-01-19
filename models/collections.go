@@ -47,8 +47,14 @@ type EmissionsResult struct {
 }
 
 type Emissions struct {
-	Name  string            `json:"name"`
-	Value []EmissionsResult `json:"value"`
+	Name   string      `json:"name"`
+	Filter string      `jsont:"filter"`
+	Value  interface{} `json:"value"`
+}
+
+type CountryEmissionsResult struct {
+	Country string  `json:"Country"`
+	Value   float64 `json:"Value"`
 }
 
 type CTransactionData struct {

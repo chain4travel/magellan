@@ -119,6 +119,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/dailyEmissions", (*V2Context).DailyEmissions).
 		Get("/networkEmissions", (*V2Context).NetworkEmissions).
 		Get("/transactionEmissions", (*V2Context).TransactionEmissions).
+		Get("/countryEmissions", (*V2Context).CountryEmissions).
 
 		// List and Get routes
 		Get("/transactions", (*V2Context).ListTransactions).
@@ -158,6 +159,22 @@ func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetDailyEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
+		},
+	})
+}
+
+func (c *V2Context) CountryEmissions(w web.ResponseWriter, r *web.Request) {
+	p := &params.EmissionsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("Daily Emissions %s", p.ListParams.EndTime)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return utils.GetCountryEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
 		},
 	})
 }
