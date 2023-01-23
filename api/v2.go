@@ -117,6 +117,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
 		Get("/dailyTransactions", (*V2Context).DailyTransactions).
+		Get("/dailyGasUsed", (*V2Context).DailyGasUsed).
 
 		// List and Get routes
 		Get("/transactions", (*V2Context).ListTransactions).
@@ -170,6 +171,31 @@ func (c *V2Context) DailyTransactions(w web.ResponseWriter, r *web.Request) {
 	})
 }
 
+func (c *V2Context) DailyGasUsed(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("DailyGasUsed %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GasUsedPerDay(ctx, &p.ListParams)
+		},
+	})
+}
 func (c *V2Context) Search(w web.ResponseWriter, r *web.Request) {
 	collectors := utils.NewCollectors(
 		utils.NewCounterObserveMillisCollect(MetricMillis),

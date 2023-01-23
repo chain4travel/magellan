@@ -149,6 +149,11 @@ type TransactionsInfo struct {
 	NewAddressSeen    string  `json:"newAddressSeen"`
 }
 
+type GasUsedPerDate struct {
+	Gas  float32 `json:"avgGas"`
+	Date string  `json:"date"`
+}
+
 type CResult struct {
 	Number uint64 `json:"number"`
 	Hash   string `json:"hash"`
