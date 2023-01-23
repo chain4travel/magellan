@@ -117,6 +117,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/transactions/aggregates", (*V2Context).Aggregate).
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
+		Get("/dailyTransactions", (*V2Context).DailyTransactions).
 		Post("/validatorsInfo", (*V2Context).ValidatorsInfo).
 
 		// List and Get routes
@@ -165,6 +166,31 @@ func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForParams("geoIPValidatorsInfo", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetValidatorsGeoIPInfo(p.RPC, &c.sc.Services.GeoIP, c.sc.Logger())
+		},
+	})
+}
+func (c *V2Context) DailyTransactions(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("dailyTransactionsChart %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.DailyTransactions(ctx, &p.ListParams)
 		},
 	})
 }
