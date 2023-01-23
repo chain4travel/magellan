@@ -145,6 +145,11 @@ type TransactionsInfo struct {
 	NewAddressSeen    string  `json:"newAddressSeen"`
 }
 
+type AverageBlockSize struct {
+	BlockSize float64 `json:"blockSize"`
+	DateInfo  string  `json:"dateInfo"`
+}
+
 type GasUsedPerDate struct {
 	Gas  float32 `json:"avgGas"`
 	Date string  `json:"date"`

@@ -159,3 +159,25 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 
 	return &result, nil
 }
+func (r *Reader) AverageBlockSizeReader(ctx context.Context, p *params.ListParams) ([]*models.AverageBlockSize, error) {
+	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	if err != nil {
+		return []*models.AverageBlockSize{}, err
+	}
+
+	var averageBlockSizeData []*models.AverageBlockSize
+	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", "CAST(created_at as DATE) as dateAt").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy("block_idx", "CAST(created_at as DATE)")
+
+	_, err = dbRunner.Select("AVG(AvgGasUsed) AS block_size", "CAST(dateAt as char(10)) AS date_info").
+		From(ua.As("q")).
+		GroupBy("CAST(dateAt as char(10))").LoadContext(ctx, &averageBlockSizeData)
+
+	if err != nil || len(averageBlockSizeData) == 0 {
+		return []*models.AverageBlockSize{}, err
+	}
+
+	return averageBlockSizeData, err
+}
