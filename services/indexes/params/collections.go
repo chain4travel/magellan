@@ -45,6 +45,7 @@ var (
 	_ Param = &ListOutputsParams{}
 	_ Param = &ListCTransactionsParams{}
 	_ Param = &ListBlocksParams{}
+	_ Param = &StatisticsParams{}
 )
 
 type SearchParams struct {
@@ -56,6 +57,18 @@ func (p *SearchParams) ForValues(v uint8, q url.Values) error {
 }
 
 func (p *SearchParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
+}
+
+type StatisticsParams struct {
+	ListParams ListParams
+}
+
+func (p *StatisticsParams) ForValues(v uint8, q url.Values) error {
+	return p.ListParams.ForValues(v, q)
+}
+
+func (p *StatisticsParams) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
 

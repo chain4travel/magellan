@@ -631,6 +631,71 @@ func collectInsAndOuts(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []
 	return append(outputs, outputs2...), nil
 }
 
+func (r *Reader) DailyTransactionsCount(ctx context.Context, p *params.ListParams) ([]*models.TransactionsInfo, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_transactions", cfg.RequestTimeout)
+	var transactionData []*models.TransactionsInfo
+	if err != nil {
+		return transactionData, err
+	}
+	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", "CAST(created_at as DATE) as dateAt").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy("created_at")
+
+	baseq := dbRunner.Select("AVG(AvgGasUsed) as avg_gas", "CAST(dateAt as char(10)) as date_at").
+		From(ua.As("q")).
+		GroupBy("CAST(dateAt as char(10))")
+
+	count := dbRunner.Select("COUNT(block) AS counter", "CAST(created_at as char(10)) as date_at", "COUNT(DISTINCT block_idx) as blocks").
+		From("magellan.cvm_transactions_txdata").
+		GroupBy("CAST(created_at as char(10))")
+
+	_, err = dbRunner.Select("avgGas.avg_gas as avg_block_size", "txs.counter as total_transactions", "avgGas.date_at as date", "txs.blocks AS total_block_count").
+		From(baseq.As("avgGas")).
+		Join(count.As("txs"), "avgGas.date_at = txs.date_at").
+		LoadContext(ctx, &transactionData)
+
+	return transactionData, err
+}
+
+func (r *Reader) HighestData(m []*models.TransactionsInfo) (models.StatisticsStruct, error) {
+	var txmaxmin models.StatisticsStruct
+	var highestNumber = 0
+	var highestDate = ""
+	var lowerNumber = m[0].TotalTransactions
+	var lowerDate = m[0].Date
+
+	for _, value := range m {
+		if value.TotalTransactions > highestNumber {
+			highestNumber = value.TotalTransactions
+			highestDate = value.Date
+		}
+
+		if value.TotalTransactions < lowerNumber {
+			lowerNumber = value.TotalTransactions
+			lowerDate = value.Date
+		}
+
+		txmaxmin.HighestDate = highestDate
+		txmaxmin.HighestNumber = highestNumber
+		txmaxmin.LowerNumber = lowerNumber
+		txmaxmin.LowerDate = lowerDate
+		txmaxmin.TxInfo = m
+	}
+	return txmaxmin, nil
+}
+
+func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
+	c, err := r.DailyTransactionsCount(ctx, p)
+	if err != nil {
+		return models.StatisticsStruct{}, err
+	}
+	if len(c) > 0 {
+		return r.HighestData(c)
+	}
+	return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+}
+
 func collectCvmTransactions(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []models.StringID) (map[models.StringID][]models.Output, map[models.StringID][]models.Output, error) {
 	var cvmAddress []models.CvmOutput
 	_, err := dbRunner.Select(
