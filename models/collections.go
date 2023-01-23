@@ -131,6 +131,24 @@ type AddressList struct {
 	Addresses []*AddressInfo `json:"addresses"`
 }
 
+type StatisticsStruct struct {
+	HighestNumber int         `json:"highestNumber"`
+	HighestDate   string      `json:"highestDate"`
+	LowerNumber   int         `json:"lowerNumber"`
+	LowerDate     string      `json:"lowerDate"`
+	TxInfo        interface{} `json:"txInfo"`
+}
+
+type TransactionsInfo struct {
+	Date              string  `json:"date"`
+	TotalTransactions int     `json:"totalTransactions"`
+	AvgBlockTime      float32 `json:"avgBlockTime"`
+	AvgBlockSize      float32 `json:"avgBlockSize"`
+	TotalBlockCount   int     `json:"totalBlockCount"`
+	TotalUnclesCount  int     `json:"totalUnclesCount"`
+	NewAddressSeen    string  `json:"newAddressSeen"`
+}
+
 type CResult struct {
 	Number uint64 `json:"number"`
 	Hash   string `json:"hash"`
