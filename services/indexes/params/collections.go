@@ -59,6 +59,23 @@ func (p *SearchParams) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
 
+type EmissionsParams struct {
+	ListParams    ListParams
+	SubstractDays int
+}
+
+func (p *EmissionsParams) ForValues(v uint8, q url.Values) error {
+	if err := p.ListParams.ForValues(v, q); err != nil {
+		return err
+	}
+	p.SubstractDays = int(p.ListParams.EndTime.Sub(p.ListParams.StartTime).Hours()) / 24
+	return nil
+}
+
+func (p *EmissionsParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
+}
+
 type TxfeeAggregateParams struct {
 	ListParams ListParams
 
