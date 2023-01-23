@@ -696,6 +696,53 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (m
 	return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 }
 
+func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_gas_used", cfg.RequestTimeout)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	var gasUsed []*models.GasUsedPerDate
+	var statisticsStruct models.StatisticsStruct
+	var maxGasUsed models.GasUsedPerDate
+	var minGasUsed models.GasUsedPerDate
+
+	sa := dbRunner.Select("DATE(created_at) AS date", "SUM(gas_used) AS gas").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy("DATE(created_at)")
+
+	_, errGas := sa.LoadContext(ctx, &gasUsed)
+	if errGas != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	}
+	_, errMaxGas := dbRunner.Select("date", "gas").
+		From(sa.As("gas")).
+		OrderBy("gas DESC LIMIT 1").
+		LoadContext(ctx, &maxGasUsed)
+
+	if errMaxGas != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	}
+	_, errMinGas := dbRunner.Select("date", "gas").
+		From(sa.As("gas")).
+		OrderBy("gas ASC LIMIT 1").
+		LoadContext(ctx, &minGasUsed)
+
+	if errMinGas != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	}
+	if len(gasUsed) > 0 {
+		statisticsStruct.HighestNumber = int(maxGasUsed.Gas)
+		statisticsStruct.HighestDate = maxGasUsed.Date
+		statisticsStruct.LowerDate = minGasUsed.Date
+		statisticsStruct.LowerNumber = int(minGasUsed.Gas)
+		statisticsStruct.TxInfo = gasUsed
+		return statisticsStruct, err
+	}
+
+	return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+}
+
 func collectCvmTransactions(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []models.StringID) (map[models.StringID][]models.Output, map[models.StringID][]models.Output, error) {
 	var cvmAddress []models.CvmOutput
 	_, err := dbRunner.Select(
