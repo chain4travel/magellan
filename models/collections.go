@@ -21,6 +21,10 @@ import (
 	"github.com/chain4travel/magellan/modelsc"
 )
 
+type MultisigAliasList struct {
+	Alias []string `json:"alias"`
+}
+
 type ListMetadata struct {
 	Count *uint64 `json:"count,omitempty"`
 }

@@ -610,6 +610,10 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.MultisigAliasTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeMultisigAlias
+		err := w.InsertMultisigAlias(ctx, castTx.Alias, castTx.Owner, castTx.ChangeAuth, txID)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
@@ -706,4 +710,41 @@ func (w *Writer) InsertTransactionBlock(ctx services.ConsumerCtx, txID ids.ID, b
 		CreatedAt: ctx.Time(),
 	}
 	return ctx.Persist().InsertTransactionsBlock(ctx.Ctx(), ctx.DB(), transactionsBlock, cfg.PerformUpdates)
+}
+
+func (w *Writer) InsertMultisigAlias(ctx services.ConsumerCtx, alias ids.ShortID, multiSigOwner verify.Verifiable, changeAuth verify.Verifiable, txID ids.ID) error {
+	var err error
+
+	// If changeAuth is nil, then delete all aliases for this multisig
+	if changeAuth == nil {
+		// Delete any existing multisig alias first
+		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.String())
+		if err != nil {
+			return err
+		}
+	}
+
+	// Get owner addresses
+	owner, ok := multiSigOwner.(*secp256k1fx.OutputOwners)
+	if !ok {
+		return fmt.Errorf("could not parse Multisig owners %T", multiSigOwner)
+	}
+
+	// Loop over owner addresses and insert an entry for each
+	for _, addr := range owner.Addresses() {
+		addrid := ids.ShortID{}
+		copy(addrid[:], addr)
+		multisigAlias := &db.MultisigAlias{
+			Alias:         alias.String(),
+			Owner:         addrid.String(),
+			TransactionID: txID.String(),
+			CreatedAt:     ctx.Time(),
+		}
+
+		err = ctx.Persist().InsertMultisigAlias(ctx.Ctx(), ctx.DB(), multisigAlias)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

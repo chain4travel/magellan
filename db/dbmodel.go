@@ -57,6 +57,7 @@ const (
 	TableKeyValueStore                    = "key_value_store"
 	TableNodeIndex                        = "node_index"
 	TableCamLastBlockCache                = "cam_last_block_cache"
+	TableMultisigAliases                  = "multisig_aliases"
 )
 
 type Persist interface {
@@ -273,6 +274,7 @@ type Persist interface {
 		dbr.SessionRunner,
 		*TransactionsValidator,
 	) (*TransactionsValidator, error)
+
 	InsertTransactionsValidator(
 		context.Context,
 		dbr.SessionRunner,
@@ -456,6 +458,24 @@ type Persist interface {
 		context.Context,
 		dbr.SessionRunner,
 		*NodeIndex,
+	) error
+
+	InsertMultisigAlias(
+		context.Context,
+		dbr.SessionRunner,
+		*MultisigAlias,
+	) error
+
+	QueryMultisigAliasForOwner(
+		context.Context,
+		dbr.SessionRunner,
+		string,
+	) (*[]MultisigAlias, error)
+
+	DeleteMultisigAlias(
+		context.Context,
+		dbr.SessionRunner,
+		string,
 	) error
 }
 
@@ -2508,4 +2528,51 @@ func (b *CvmLogs) ComputeID() {
 	idsv := fmt.Sprintf("%s:%s:%d", b.BlockHash, b.TxHash, b.LogIndex)
 	id := ids.ID(hashing.ComputeHash256Array([]byte(idsv)))
 	b.ID = id.String()
+}
+
+type MultisigAlias struct {
+	Alias         string
+	Owner         string
+	TransactionID string
+	CreatedAt     time.Time
+}
+
+func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRunner, alias *MultisigAlias) error {
+	var err error
+	_, err = session.
+		InsertInto(TableMultisigAliases).
+		Pair("alias", alias.Alias).
+		Pair("owner", alias.Owner).
+		Pair("transaction_id", alias.TransactionID).
+		Pair("created_at", alias.CreatedAt).
+		ExecContext(ctx)
+
+	if err != nil {
+		return EventErr(TableMultisigAliases, false, err)
+	}
+	return nil
+}
+
+func (p *persist) QueryMultisigAliasForOwner(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	owner string) (*[]MultisigAlias, error) {
+	v := &[]MultisigAlias{}
+	_, err := session.Select(
+		"alias, owner, transaction_id, created_at",
+	).From(TableMultisigAliases).
+		Where("owner=?", owner).
+		LoadContext(ctx, v)
+	return v, err
+}
+
+func (p *persist) DeleteMultisigAlias(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	alias string) error {
+	_, err := session.DeleteFrom(TableMultisigAliases).Where("alias=?", alias).ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableMultisigAliases, false, err)
+	}
+	return nil
 }
