@@ -873,3 +873,22 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 func uint64Ptr(u64 uint64) *uint64 {
 	return &u64
 }
+
+func (r *Reader) UniqueAddressesReader(ctx context.Context, p *params.ListParams) ([]*models.AverageBlockSize, error) {
+	dbRunner, err := r.conns.DB().NewSession("unique_addresses", cfg.RequestTimeout)
+	if err != nil {
+		return []*models.AverageBlockSize{}, err
+	}
+
+	var averageBlockSizeData []*models.AverageBlockSize
+
+	_, err = dbRunner.Select("DISTINCT (address)", "MIN(DATE(created_at)) AS created_at").
+		From("address_chain").Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy("address").OrderBy("created_at ASC").LoadContext(ctx, &averageBlockSizeData)
+
+	if err != nil {
+		return []*models.AverageBlockSize{}, err
+	}
+
+	return averageBlockSizeData, err
+}
