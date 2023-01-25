@@ -892,21 +892,46 @@ func uint64Ptr(u64 uint64) *uint64 {
 	return &u64
 }
 
-func (r *Reader) UniqueAddressesReader(ctx context.Context, p *params.ListParams) ([]*models.AverageBlockSize, error) {
-	dbRunner, err := r.conns.DB().NewSession("unique_addresses", cfg.RequestTimeout)
+func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
 	if err != nil {
-		return []*models.AverageBlockSize{}, err
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
 	}
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	var UniqueAddresses []*models.UniqueAddresses
+	_, err = dbRunner.Select("COUNT(DISTINCT address) as total_addresses", filterDate+" as date_at").
+		From("magellan.address_chain").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
 
-	var averageBlockSizeData []*models.AverageBlockSize
-
-	_, err = dbRunner.Select("DISTINCT (address)", "MIN(DATE(created_at)) AS created_at").
-		From("address_chain").Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy("address").OrderBy("created_at ASC").LoadContext(ctx, &averageBlockSizeData)
-
-	if err != nil {
-		return []*models.AverageBlockSize{}, err
+	if err != nil || len(UniqueAddresses) == 0 {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
 	}
+	return r.DailyIncreaseInfo(UniqueAddresses), err
+}
 
-	return averageBlockSizeData, err
+func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.AddressStruct {
+	PreviousValue := uniquea[0].TotalAddresses
+	addressInfo := &models.AddressStruct{
+		LowerDate:   uniquea[0].DateAt,
+		HighestDate: uniquea[0].DateAt,
+	}
+	for _, address := range uniquea {
+		address.DailyIncrease = address.TotalAddresses - PreviousValue
+		PreviousValue = address.TotalAddresses
+		if address.DailyIncrease > addressInfo.HighestNumber {
+			addressInfo.HighestNumber = address.DailyIncrease
+			addressInfo.HighestDate = address.DateAt
+		}
+		if address.DailyIncrease < addressInfo.LowerNumber {
+			addressInfo.LowerNumber = address.DailyIncrease
+			addressInfo.LowerDate = address.DateAt
+		}
+	}
+	addressInfo.AddressInfo = uniquea
+	return addressInfo
 }
