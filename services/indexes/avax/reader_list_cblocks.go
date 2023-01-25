@@ -21,6 +21,7 @@ import (
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
 
@@ -164,16 +165,16 @@ func (r *Reader) AverageBlockSizeReader(ctx context.Context, p *params.ListParam
 	if err != nil {
 		return []*models.AverageBlockSize{}, err
 	}
-
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
 	var averageBlockSizeData []*models.AverageBlockSize
-	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", "CAST(created_at as DATE) as dateAt").
+	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", filterDate+" as date_at").
 		From("magellan.cvm_transactions_txdata").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy("block_idx", "CAST(created_at as DATE)")
+		GroupBy("block_idx", filterDate)
 
-	_, err = dbRunner.Select("AVG(AvgGasUsed) AS block_size", "CAST(dateAt as char(10)) AS date_info").
+	_, err = dbRunner.Select("AVG(AvgGasUsed) AS block_size", "date_at").
 		From(ua.As("q")).
-		GroupBy("CAST(dateAt as char(10))").LoadContext(ctx, &averageBlockSizeData)
+		GroupBy("date_at").LoadContext(ctx, &averageBlockSizeData)
 
 	if err != nil || len(averageBlockSizeData) == 0 {
 		return []*models.AverageBlockSize{}, err
