@@ -122,6 +122,8 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/dailyGasUsed", (*V2Context).DailyGasUsed).
 		Get("/averageBlockSize", (*V2Context).AverageBlockSize).
 		Get("/uniqueAddresses", (*V2Context).UniqueAddresses).
+		Get("/avggaspriceused", (*V2Context).AvgGasPriceUsed).
+		Get("/dailytokentransfer", (*V2Context).DailyTokenTransfer).
 		Get("/activeAddresses", (*V2Context).ActiveAddresses).
 
 		// List and Get routes
@@ -173,6 +175,59 @@ func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
 		},
 	})
 }
+
+func (c *V2Context) DailyTokenTransfer(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("DailyTokenTransfer %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.DailyTokenTransfer(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) AvgGasPriceUsed(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("AvgGasPriceUsed %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 24 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.AvgGasPriceUsed(ctx, &p.ListParams)
+		},
+	})
+}
+
 func (c *V2Context) DailyTransactions(w web.ResponseWriter, r *web.Request) {
 	collectors := utils.NewCollectors(
 		utils.NewCounterObserveMillisCollect(MetricMillis),
