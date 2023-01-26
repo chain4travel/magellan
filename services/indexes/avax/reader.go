@@ -917,3 +917,25 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 	addressInfo.AddressInfo = uniquea
 	return addressInfo
 }
+
+func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	if err != nil {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
+	}
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	var UniqueAddresses []*models.UniqueAddresses
+	_, err = dbRunner.Select("COUNT(DISTINCT id_from_addr) as receive_count", filterDate+" as date_at").
+		From("magellan.address_chain").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
+
+	if err != nil || len(UniqueAddresses) == 0 {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
+	}
+	return r.DailyIncreaseInfo(UniqueAddresses), err
+}

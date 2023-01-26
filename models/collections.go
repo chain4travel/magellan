@@ -168,6 +168,12 @@ type UniqueAddresses struct {
 	DailyIncrease  int    `json:"dailyIncrease"`
 }
 
+type ActiveAddresses struct {
+	ReceiveCount int    `json:"receiveCount"`
+	SendCount    int    `json:"sendCount"`
+	DateAt       string `json:"dateAt"`
+}
+
 type CResult struct {
 	Number uint64 `json:"number"`
 	Hash   string `json:"hash"`
