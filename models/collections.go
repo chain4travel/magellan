@@ -135,6 +135,11 @@ type StatisticsStruct struct {
 	TxInfo        interface{} `json:"txInfo"`
 }
 
+type TransactionsPerDate struct {
+	Counter int    `json:"counter"`
+	DateAt  string `json:"dateAt"`
+}
+
 type TransactionsInfo struct {
 	Date              string  `json:"date"`
 	TotalTransactions int     `json:"totalTransactions"`
