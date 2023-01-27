@@ -640,47 +640,42 @@ func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) (
 
 	var camCount []*models.TransactionsPerDate
 	var statisticsStruct models.StatisticsStruct
-	var maxCam models.TransactionsPerDate
-	var minCam models.TransactionsPerDate
 
-	sa := dbRunner.Select("DATE(created_at) AS date_at", "SUM(amount) as counter").
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+
+	sa := dbRunner.Select(filterDate+"AS date_at", "SUM(amount) as counter").
 		From("magellan.cvm_transactions_txdata").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy("DATE(created_at)")
+		GroupBy(filterDate)
 
 	_, errCamCount := sa.LoadContext(ctx, &camCount)
 
-	_, errMaxCam := dbRunner.Select("date_at", "counter").
+	if errCamCount != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errCamCount
+	}
+
+	_, errMaxCam := dbRunner.Select("date_at as highest_date ", "counter as highest_number").
 		From(sa.As("counter")).
 		GroupBy("date_at").
 		OrderBy("counter DESC LIMIT 1").
-		LoadContext(ctx, &maxCam)
+		LoadContext(ctx, &statisticsStruct)
 
-	_, errMinCam := dbRunner.Select("date_at", "counter").
+	if errMaxCam != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMaxCam
+	}
+
+	_, errMinCam := dbRunner.Select("date_at as lower_date", "counter as lower_number").
 		From(sa.As("counter")).
 		GroupBy("date_at").
 		OrderBy("counter ASC LIMIT 1").
-		LoadContext(ctx, &minCam)
+		LoadContext(ctx, &statisticsStruct)
 
-	switch {
-	case errCamCount != nil:
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errCamCount
-	case errMaxCam != nil:
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMaxCam
-	case errMinCam != nil:
+	if errMinCam != nil {
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMinCam
 	}
 
-	if len(camCount) > 0 {
-		statisticsStruct.HighestNumber = maxCam.Counter
-		statisticsStruct.HighestDate = maxCam.DateAt
-		statisticsStruct.LowerDate = minCam.DateAt
-		statisticsStruct.LowerNumber = minCam.Counter
-		statisticsStruct.TxInfo = camCount
-		return statisticsStruct, err
-	}
-
-	return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	statisticsStruct.TxInfo = camCount
+	return statisticsStruct, err
 }
 
 func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
@@ -690,45 +685,37 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 	}
 	var gasPrice []*models.GasUsedPerDate
 	var statisticsStruct models.StatisticsStruct
-	var maxGasPrice models.GasUsedPerDate
-	var minGasPrice models.GasUsedPerDate
 
-	sa := dbRunner.Select("DATE(created_at) AS date", "SUM(gas_price) AS gas").
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+
+	sa := dbRunner.Select(filterDate+"AS date", "SUM(gas_price) AS gas").
 		From("magellan.cvm_transactions_txdata").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy("DATE(created_at)")
+		GroupBy(filterDate)
 
 	_, errGasUsed := sa.LoadContext(ctx, &gasPrice)
 
-	_, errMaxGas := dbRunner.Select("date", "gas").
-		From(sa.As("gas")).
+	_, errMaxGas := dbRunner.Select("date as highest_date", "gas as highest_number").
+		From(sa.As("sum_gas")).
 		OrderBy("gas DESC LIMIT 1").
-		LoadContext(ctx, &maxGasPrice)
+		LoadContext(ctx, &statisticsStruct)
 
-	_, errMinGas := dbRunner.Select("date", "gas").
-		From(sa.As("gas")).
-		OrderBy("gas ASC LIMIT 1").
-		LoadContext(ctx, &minGasPrice)
-
-	switch {
-	case errGasUsed != nil:
+	if errMaxGas != nil {
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGasUsed
-	case errMaxGas != nil:
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMaxGas
-	case errMinGas != nil:
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMinGas
 	}
 
-	if len(gasPrice) > 0 {
-		statisticsStruct.HighestNumber = int(maxGasPrice.Gas)
-		statisticsStruct.HighestDate = maxGasPrice.Date
-		statisticsStruct.LowerDate = minGasPrice.Date
-		statisticsStruct.LowerNumber = int(minGasPrice.Gas)
-		statisticsStruct.TxInfo = gasPrice
-		return statisticsStruct, err
+	_, errMinGas := dbRunner.Select("date as lower_date", "gas as lower_number").
+		From(sa.As("sum_gas")).
+		OrderBy("gas ASC LIMIT 1").
+		LoadContext(ctx, &statisticsStruct)
+
+	if errMinGas != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGasUsed
 	}
 
-	return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	statisticsStruct.TxInfo = gasPrice
+	return statisticsStruct, err
+
 }
 
 func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*models.StatisticsStruct, error) {

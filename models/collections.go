@@ -128,16 +128,16 @@ type AddressList struct {
 }
 
 type StatisticsStruct struct {
-	HighestNumber int         `json:"highestValue"`
+	HighestNumber float64     `json:"highestValue"`
 	HighestDate   string      `json:"highestDate"`
-	LowerNumber   int         `json:"lowerValue"`
+	LowerNumber   float64     `json:"lowerValue"`
 	LowerDate     string      `json:"lowerDate"`
 	TxInfo        interface{} `json:"txInfo"`
 }
 
 type TransactionsPerDate struct {
-	Counter int    `json:"counter"`
-	DateAt  string `json:"dateAt"`
+	Counter float64 `json:"counter"`
+	DateAt  string  `json:"dateAt"`
 }
 
 type TransactionsInfo struct {
