@@ -122,8 +122,8 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/dailyGasUsed", (*V2Context).DailyGasUsed).
 		Get("/averageBlockSize", (*V2Context).AverageBlockSize).
 		Get("/uniqueAddresses", (*V2Context).UniqueAddresses).
-		Get("/avggaspriceused", (*V2Context).AvgGasPriceUsed).
-		Get("/dailytokentransfer", (*V2Context).DailyTokenTransfer).
+		Get("/avgGasPriceUsed", (*V2Context).AvgGasPriceUsed).
+		Get("/dailyTokenTransfer", (*V2Context).DailyTokenTransfer).
 		Get("/activeAddresses", (*V2Context).ActiveAddresses).
 
 		// List and Get routes
