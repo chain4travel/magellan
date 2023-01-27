@@ -664,7 +664,7 @@ func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) (
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMaxCam
 	}
 
-	_, errMinCam := dbRunner.Select("date_at as lower_date", "counter as lower_number").
+	_, errMinCam := dbRunner.Select("date_at as lowest_date", "counter as lowest_number").
 		From(sa.As("counter")).
 		GroupBy("date_at").
 		OrderBy("counter ASC LIMIT 1").
@@ -704,7 +704,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGasUsed
 	}
 
-	_, errMinGas := dbRunner.Select("date as lower_date", "gas as lower_number").
+	_, errMinGas := dbRunner.Select("date as lowest_date", "gas as lowest_number").
 		From(sa.As("sum_gas")).
 		OrderBy("gas ASC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
@@ -715,7 +715,6 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 
 	statisticsStruct.TxInfo = gasPrice
 	return statisticsStruct, err
-
 }
 
 func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*models.StatisticsStruct, error) {
@@ -746,20 +745,20 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*
 
 	_, errGas := baseq.LoadContext(ctx, &transactionData)
 
-	_, errMaxGas := dbRunner.Select("date as highest_date", "CAST(avg_block_size as SIGNED) as highest_number").
+	_, err = dbRunner.Select("date as highest_date", "CAST(avg_block_size as SIGNED) as highest_number").
 		From(baseq.As("gas")).
 		OrderBy("avg_block_size DESC LIMIT 1").
 		LoadContext(ctx, &statistics)
 
-	if errMaxGas != nil {
+	if err != nil {
 		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
 	}
-	_, errMinGas := dbRunner.Select("date as lower_date", "CAST(avg_block_size as SIGNED) as lower_number").
+	_, err = dbRunner.Select("date as lowest_date", "CAST(avg_block_size as SIGNED) as lowest_number").
 		From(baseq.As("gas")).
 		OrderBy("avg_block_size ASC LIMIT 1").
 		LoadContext(ctx, &statistics)
 
-	if errMinGas != nil {
+	if err != nil {
 		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
 	}
 	statistics.TxInfo = transactionData
@@ -781,25 +780,25 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
 		GroupBy(filterDate)
 
-	_, errGas := sa.LoadContext(ctx, &gasUsed)
-	if errGas != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	_, err = sa.LoadContext(ctx, &gasUsed)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
-	_, errMaxGas := dbRunner.Select("date as highest_date", "gas as highest_number").
+	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
 		From(sa.As("gas")).
 		OrderBy("gas DESC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
-	if errMaxGas != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
-	_, errMinGas := dbRunner.Select("date as lower_date", "gas as lower_number").
+	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
 		From(sa.As("gas")).
 		OrderBy("gas ASC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
-	if errMinGas != nil || len(gasUsed) == 0 {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errGas
+	if err != nil || len(gasUsed) == 0 {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
 	statisticsStruct.TxInfo = gasUsed
 	return statisticsStruct, err

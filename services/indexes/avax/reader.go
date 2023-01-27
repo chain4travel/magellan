@@ -917,7 +917,7 @@ func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*mo
 func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.AddressStruct {
 	PreviousValue := uniquea[0].TotalAddresses
 	addressInfo := &models.AddressStruct{
-		LowerDate:   uniquea[0].DateAt,
+		LowestDate:  uniquea[0].DateAt,
 		HighestDate: uniquea[0].DateAt,
 	}
 	for _, address := range uniquea {
@@ -927,9 +927,9 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 			addressInfo.HighestNumber = address.DailyIncrease
 			addressInfo.HighestDate = address.DateAt
 		}
-		if address.DailyIncrease < addressInfo.LowerNumber {
-			addressInfo.LowerNumber = address.DailyIncrease
-			addressInfo.LowerDate = address.DateAt
+		if address.DailyIncrease < addressInfo.LowestNumber {
+			addressInfo.LowestNumber = address.DailyIncrease
+			addressInfo.LowestDate = address.DateAt
 		}
 	}
 	addressInfo.AddressInfo = uniquea
@@ -955,5 +955,22 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 			AddressInfo: []*models.UniqueAddresses{},
 		}, err
 	}
-	return r.DailyIncreaseInfo(UniqueAddresses), err
+	_, err = dbRunner.Select("date_at as highest_date", "GREATEST(send_count, receive_count) as highest_number").
+		From(Active.As("q")).
+		OrderBy("GREATEST(send_count, receive_count) DESC LIMIT 1").
+		LoadContext(ctx, &addressStatistics)
+
+	if err != nil {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
+	}
+	_, err = dbRunner.Select("date_at as lowest_date", "GREATEST(send_count, receive_count) as lowest_number").
+		From(baseq.As("q")).
+		OrderBy("GREATEST(send_count, receive_count) ASC LIMIT 1").
+		LoadContext(ctx, &addressStatistics)
+
+	if err != nil {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
+	}
+	addressStatistics.AddressInfo = ActiveAddresses
+	return addressStatistics, err
 }

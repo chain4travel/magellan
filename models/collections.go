@@ -134,8 +134,8 @@ type AddressList struct {
 type StatisticsStruct struct {
 	HighestNumber float64     `json:"highestValue"`
 	HighestDate   string      `json:"highestDate"`
-	LowerNumber   float64     `json:"lowerValue"`
-	LowerDate     string      `json:"lowerDate"`
+	LowestNumber  float64     `json:"lowerValue"`
+	LowestDate    string      `json:"lowerDate"`
 	TxInfo        interface{} `json:"txInfo"`
 }
 
@@ -167,8 +167,8 @@ type GasUsedPerDate struct {
 type AddressStruct struct {
 	HighestNumber int         `json:"highestValue"`
 	HighestDate   string      `json:"highestDate"`
-	LowerNumber   int         `json:"lowerValue"`
-	LowerDate     string      `json:"lowerDate"`
+	LowestNumber  int         `json:"lowestValue"`
+	LowestDate    string      `json:"lowestDate"`
 	AddressInfo   interface{} `json:"addressInfo"`
 }
 type UniqueAddresses struct {
