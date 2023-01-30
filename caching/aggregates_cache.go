@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ava-labs/avalanchego/ids"
-
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
@@ -87,10 +85,6 @@ func (ac *aggregatesCache) GetAggregatesAndUpdate(chains map[string]cfg.Chain, c
 
 	intervals := models.AggregatesList{}
 	urlv := url.Values{}
-	assetID, err := params.GetQueryID(urlv, params.KeyAssetID)
-	if err != nil {
-		return err
-	}
 	intervalSize, err := params.GetQueryInterval(urlv, params.KeyIntervalSize)
 	if err != nil {
 		return err
@@ -147,40 +141,26 @@ func (ac *aggregatesCache) GetAggregatesAndUpdate(chains map[string]cfg.Chain, c
 
 	var builder *dbr.SelectStmt
 
-	// Transaction count for genesis txs is calculated without distinct and then added
-	// because all genesis transactions (e.x. createChainTxs) have zero txID
 	if len(avmChains) > 0 {
 		columns := []string{
-			"COALESCE(SUM(avm_outputs.amount), 0) AS transaction_volume",
-			fmt.Sprintf(
-				"(COUNT(DISTINCT(CASE WHEN avm_outputs.transaction_id != '%s' THEN avm_outputs.transaction_id END))) + "+
-					"(COUNT(CASE WHEN avm_outputs.transaction_id = '%s' THEN avm_outputs.transaction_id END)) AS transaction_count",
-				ids.Empty.String(), ids.Empty.String()),
-			"COUNT(DISTINCT(avm_output_addresses.address)) AS address_count",
-			"COUNT(DISTINCT(avm_outputs.asset_id)) AS asset_count",
-			"COUNT(avm_outputs.id) AS output_count",
+			"COUNT(DISTINCT(avm_transactions.id)) AS transaction_count",
 		}
 
 		if requestedIntervalCount > 0 {
 			columns = append(columns, fmt.Sprintf(
-				"FLOOR((UNIX_TIMESTAMP(avm_outputs.created_at)-%d) / %d) AS interval_id",
+				"FLOOR((UNIX_TIMESTAMP(avm_transactions.created_at)-%d) / %d) AS interval_id",
 				startTime.Unix(),
 				intervalSeconds))
 		}
 
 		builder = dbRunner.
 			Select(columns...).
-			From("avm_outputs").
-			LeftJoin("avm_output_addresses", "avm_output_addresses.output_id = avm_outputs.id").
-			Where("avm_outputs.created_at >= ?", startTime).
-			Where("avm_outputs.created_at < ?", endTime)
+			From("avm_transactions").
+			Where("avm_transactions.created_at >= ?", startTime).
+			Where("avm_transactions.created_at < ?", endTime)
 
 		if len(chainIds) != 0 {
-			builder.Where("avm_outputs.chain_id IN ?", avmChains)
-		}
-
-		if assetID != nil {
-			builder.Where("avm_outputs.asset_id = ?", assetID.String())
+			builder.Where("avm_transactions.chain_id IN ?", avmChains)
 		}
 
 		if requestedIntervalCount > 0 {
