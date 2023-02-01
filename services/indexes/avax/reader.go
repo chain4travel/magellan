@@ -905,7 +905,6 @@ func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*mo
 		From("magellan.address_chain").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
 		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
-
 	if err != nil || len(UniqueAddresses) == 0 {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
@@ -937,11 +936,10 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 }
 
 func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
-	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	dbRunner, err := r.conns.DB().NewSession("Active_Addresses", cfg.RequestTimeout)
+	var addressStatistics *models.AddressStruct
 	if err != nil {
-		return &models.AddressStruct{
-			AddressInfo: []*models.UniqueAddresses{},
-		}, err
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}
 	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
 	var ActiveAddresses []*models.ActiveAddresses
