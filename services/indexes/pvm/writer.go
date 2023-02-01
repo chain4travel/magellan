@@ -211,7 +211,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		_, _, err := w.avax.ProcessStateOut(
 			cCtx,
 			utxo.Out,
-			ChainID,
+			utxo.TxID,
 			uint32(idx),
 			utxo.AssetID(),
 			0,
@@ -572,25 +572,10 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.CaminoAddValidatorTx:
 		innerTx := castTx.AddValidatorTx
 		baseTx = innerTx.BaseTx.BaseTx
-		outs = &avaxIndexer.AddOutsContainer{
-			Outs:    innerTx.Stake(),
-			Stake:   true,
-			ChainID: w.chainID,
-		}
 		typ = models.TransactionTypeAddValidator
 		err := w.InsertTransactionValidator(ctx, txID, innerTx.Validator)
 		if err != nil {
 			return err
-		}
-		err = w.InsertTransactionBlock(ctx, txID, blkID)
-		if err != nil {
-			return err
-		}
-		if innerTx.RewardsOwner != nil {
-			err = w.insertTransactionsRewardsOwners(ctx, txID, innerTx.RewardsOwner, baseTx, innerTx.Stake())
-			if err != nil {
-				return err
-			}
 		}
 	case *txs.DepositTx:
 		baseTx = castTx.BaseTx.BaseTx

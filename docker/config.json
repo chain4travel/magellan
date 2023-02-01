@@ -1,5 +1,5 @@
 {
-  "networkID": 54321,
+  "networkID": 1002,
   "metricsListenAddr": "",
   "listenAddr": ":8080",
   "features": [
@@ -7,7 +7,7 @@
   "caminoNode": "http://localhost:9650",
   "nodeInstance": "default",
   "chains": {
-    "2p7qjZY7XpF1FQmNvp8onvF4DMmwKY1aPrvajnWTq6ELtLbfCR": {
+    "2oBwpcTG6ZLViVnigvZ2MLgmz4mL2JYGR89ymRnUM6wNpN8cvq": {
       "id": "mgj786NP7uDwBCcq6YwThhaN8FLyybkCa4zBWTQbNgmK6k9A6",
       "vmType": "cvm"
     },
@@ -15,7 +15,7 @@
       "id": "11111111111111111111111111111111LpoYY",
       "vmType": "pvm"
     },
-    "2VZKJ9FTyEsN7uEegK2vdNBbmiMqafZ4SbnfHywFFQUFR2q2dr": {
+    "2hQXfgx6aeM7ZPthZJTdtUK6rG1uhdvfYqFhBw7ajziYMM7toX": {
       "id": "jvYyfQTxGMJLuGWa55kdP2p2zSUYsQ5Raupu4TW34ZAUBAbtq",
       "vmType": "avm"
     }
