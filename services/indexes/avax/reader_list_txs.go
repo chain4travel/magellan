@@ -632,50 +632,26 @@ func collectInsAndOuts(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []
 	return append(outputs, outputs2...), nil
 }
 
-func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
+func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) ([]*models.TransactionsPerDate, error) {
 	dbRunner, err := r.conns.DB().NewSession("daily_token", cfg.RequestTimeout)
 	if err != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+		return []*models.TransactionsPerDate{}, err
 	}
 
 	var camCount []*models.TransactionsPerDate
-	var statisticsStruct models.StatisticsStruct
 
 	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
 
-	sa := dbRunner.Select(filterDate+"AS date_at", "SUM(amount) as counter").
+	_, err = dbRunner.Select(filterDate+"AS date_at", "SUM(amount) as counter").
 		From("magellan.cvm_transactions_txdata").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate)
+		GroupBy(filterDate).
+		LoadContext(ctx, &camCount)
 
-	_, errCamCount := sa.LoadContext(ctx, &camCount)
-
-	if errCamCount != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errCamCount
+	if err != nil || len(camCount) == 0 {
+		return []*models.TransactionsPerDate{}, err
 	}
-
-	_, errMaxCam := dbRunner.Select("date_at as highest_date ", "counter as highest_number").
-		From(sa.As("counter")).
-		GroupBy("date_at").
-		OrderBy("counter DESC LIMIT 1").
-		LoadContext(ctx, &statisticsStruct)
-
-	if errMaxCam != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMaxCam
-	}
-
-	_, errMinCam := dbRunner.Select("date_at as lowest_date", "counter as lowest_number").
-		From(sa.As("counter")).
-		GroupBy("date_at").
-		OrderBy("counter ASC LIMIT 1").
-		LoadContext(ctx, &statisticsStruct)
-
-	if errMinCam != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, errMinCam
-	}
-
-	statisticsStruct.TxInfo = camCount
-	return statisticsStruct, err
+	return camCount, err
 }
 
 func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
@@ -758,7 +734,7 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*
 		OrderBy("avg_block_size ASC LIMIT 1").
 		LoadContext(ctx, &statistics)
 
-	if err != nil {
+	if err != nil || len(transactionData) == 0 {
 		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
 	}
 	statistics.TxInfo = transactionData
