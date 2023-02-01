@@ -17,11 +17,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gocraft/dbr/v2"
+
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
-	"github.com/gocraft/dbr/v2"
 )
 
 func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (*models.CBlockList, error) {
@@ -93,19 +94,36 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 			GasPrice      uint64
 		}
 
-		sq := dbRunner.Select(
-			"serialization",
-			"created_at",
-			"F.address AS from_addr",
-			"block",
-			"idx",
-			"status",
-			"gas_used",
-			"gas_price",
-			"block_idx",
-		).
-			From(db.TableCvmTransactionsTxdata).
-			LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = F.id")
+		// get cvm txs data
+		union := dbr.Union(
+			dbRunner.Select(
+				"serialization",
+				"created_at",
+				"F.address AS from_addr",
+				"block",
+				"idx",
+				"status",
+				"gas_used",
+				"gas_price",
+				"block_idx",
+			).
+				From(db.TableCvmTransactionsTxdata).
+				LeftJoin(dbr.I(db.TableCvmAccounts).As("F"), "id_from_addr = F.id"),
+			dbRunner.Select(
+				"serialization",
+				"created_at",
+				"from_addr",
+				"block",
+				"idx",
+				"0",
+				"0",
+				"0",
+				"block_idx",
+			).
+				From(db.TableCvmTransactionsAtomic),
+		).As("union_q")
+
+		sq := dbRunner.Select("*").From(union)
 
 		if p.ListParams.StartTimeProvided {
 			sq = sq.Where("created_at >= ?", p.ListParams.StartTime)

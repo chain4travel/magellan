@@ -1282,8 +1282,11 @@ func (p *persist) InsertCvmAddresses(
 type CvmTransactionsAtomic struct {
 	TransactionID string
 	Block         string
+	Idx           uint64
+	FromAddr      string
 	ChainID       string
 	Type          models.CChainType
+	Serialization []byte
 	CreatedAt     time.Time
 }
 
@@ -1296,8 +1299,11 @@ func (p *persist) QueryCvmTransactionsAtomic(
 	err := sess.Select(
 		"transaction_id",
 		"cast(block as char) as block",
+		"idx",
+		"from_addr",
 		"chain_id",
 		"type",
+		"serialization",
 		"created_at",
 	).From(TableCvmTransactionsAtomic).
 		Where("transaction_id=?", q.TransactionID).
@@ -1313,16 +1319,16 @@ func (p *persist) InsertCvmTransactionsAtomic(
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmTransactionsAtomic+" (transaction_id,block,chain_id,type,created_at) values(?,"+v.Block+",?,?,?)",
-			v.TransactionID, v.ChainID, v.Type, v.CreatedAt).
+		InsertBySql("insert into "+TableCvmTransactionsAtomic+" (transaction_id,block,idx,from_addr,chain_id,type,serialization,created_at) values(?,"+v.Block+",?,?,?,?,?,?)",
+			v.TransactionID, v.Idx, v.FromAddr, v.ChainID, v.Type, v.Serialization, v.CreatedAt).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmTransactionsAtomic, false, err)
 	}
 	if upd {
 		_, err = sess.
-			UpdateBySql("update "+TableCvmTransactionsAtomic+" set block="+v.Block+",chain_id=?,type=?,created_at=? where transaction_id=?",
-				v.ChainID, v.Type, v.CreatedAt, v.TransactionID).
+			UpdateBySql("update "+TableCvmTransactionsAtomic+" set block="+v.Block+",idx=?,from_addr=?,chain_id=?,type=?,serialization=?,created_at=? where transaction_id=?",
+				v.Idx, v.FromAddr, v.ChainID, v.Type, v.Serialization, v.CreatedAt, v.TransactionID).
 			ExecContext(ctx)
 		if err != nil {
 			return EventErr(TableCvmTransactionsAtomic, true, err)
@@ -2559,7 +2565,8 @@ func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRu
 func (p *persist) QueryMultisigAliasForOwner(
 	ctx context.Context,
 	session dbr.SessionRunner,
-	owner string) (*[]MultisigAlias, error) {
+	owner string,
+) (*[]MultisigAlias, error) {
 	v := &[]MultisigAlias{}
 	_, err := session.Select(
 		"alias, memo, bech32_address, owner, transaction_id, created_at",
@@ -2572,7 +2579,8 @@ func (p *persist) QueryMultisigAliasForOwner(
 func (p *persist) DeleteMultisigAlias(
 	ctx context.Context,
 	session dbr.SessionRunner,
-	alias string) error {
+	alias string,
+) error {
 	_, err := session.DeleteFrom(TableMultisigAliases).Where("alias=?", alias).ExecContext(ctx)
 	if err != nil {
 		return EventErr(TableMultisigAliases, false, err)

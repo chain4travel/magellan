@@ -18,15 +18,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ava-labs/avalanchego/codec"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/coreth/core/types"
 	"github.com/ava-labs/coreth/plugin/evm"
 	"github.com/chain4travel/magellan/cfg"
@@ -34,10 +38,11 @@ import (
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/modelsc"
 	"github.com/chain4travel/magellan/services"
-	avaxIndexer "github.com/chain4travel/magellan/services/indexes/avax"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	avaxIndexer "github.com/chain4travel/magellan/services/indexes/avax"
 )
 
 var ErrUnknownBlockType = errors.New("unknown block type")
@@ -180,16 +185,25 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 }
 
 func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.Tx, proposer *models.BlockProposal, block *types.Block) error {
-	txIDs := make([]string, len(atomicTXs))
-
 	var typ models.CChainType = 0
 	var err error
+	var fromAddr string
+	var toAddr string
+	ecdsaRecoveryFactory := crypto.FactorySECP256K1R{}
+	var amount uint64
+
 	// OPT: Store maybe only TX bytes instead whole ExtData
 	for i, atomicTX := range atomicTXs {
 		txID := atomicTX.ID()
-		txIDs[i] = txID.String()
 		switch atx := atomicTX.UnsignedAtomicTx.(type) {
 		case *evm.UnsignedExportTx:
+			atxOutput := atx.ExportedOutputs[0].Out.(*secp256k1fx.TransferOutput)
+			toAddr, err = address.FormatBech32(models.Bech32HRP, atxOutput.Addrs[0].Bytes())
+			if err != nil {
+				return err
+			}
+			fromAddr = atx.Ins[0].Address.String()
+			amount = atxOutput.Amount()
 			typ = models.CChainExport
 			err = w.indexExportTx(ctx, txID, atx, block.ExtData())
 			if err != nil {
@@ -197,16 +211,50 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 			}
 		case *evm.UnsignedImportTx:
 			unsignedBytes, err := w.codec.Marshal(0, &atomicTX.UnsignedAtomicTx)
+			cred, ok := atomicTX.Creds[0].(*secp256k1fx.Credential)
+			if !ok {
+				return err
+			}
+			publicKey, err := ecdsaRecoveryFactory.RecoverPublicKey(unsignedBytes, cred.Sigs[0][:])
 			if err != nil {
 				return err
 			}
-
+			fromAddr, err = address.FormatBech32(models.Bech32HRP, publicKey.Address().Bytes())
+			if err != nil {
+				return err
+			}
+			toAddr = atx.Outs[0].Address.String()
+			amount = atx.Outs[0].Amount
 			typ = models.CChainImport
 			err = w.indexImportTx(ctx, txID, atx, atomicTX.Creds, block.ExtData(), unsignedBytes)
 			if err != nil {
 				return err
 			}
 		default:
+		}
+
+		txData, err := json.Marshal(models.CTransactionDataBase{
+			Hash:   txID.String(),
+			To:     toAddr,
+			Amount: strconv.FormatUint(amount, 10),
+		})
+		if err != nil {
+			return err
+		}
+
+		cvmTransaction := &db.CvmTransactionsAtomic{
+			TransactionID: txID.String(),
+			Block:         block.Header().Number.String(),
+			Idx:           uint64(i),
+			FromAddr:      fromAddr,
+			ChainID:       ctx.ChainID(),
+			Type:          typ,
+			Serialization: txData,
+			CreatedAt:     ctx.Time(),
+		}
+		err = ctx.Persist().InsertCvmTransactionsAtomic(ctx.Ctx(), ctx.DB(), cvmTransaction, cfg.PerformUpdates)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -279,20 +327,6 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		}
 	}
 
-	for _, txIDString := range txIDs {
-		cvmTransaction := &db.CvmTransactionsAtomic{
-			TransactionID: txIDString,
-			Block:         block.Header().Number.String(),
-			ChainID:       ctx.ChainID(),
-			Type:          typ,
-			CreatedAt:     ctx.Time(),
-		}
-		err = ctx.Persist().InsertCvmTransactionsAtomic(ctx.Ctx(), ctx.DB(), cvmTransaction, cfg.PerformUpdates)
-		if err != nil {
-			return err
-		}
-	}
-
 	blockBytes, err := json.Marshal(block.Header())
 	if err != nil {
 		return err
@@ -303,7 +337,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		Hash:          block.Hash().String(),
 		ChainID:       ctx.ChainID(),
 		EvmTx:         int16(len(block.Transactions())),
-		AtomicTx:      int16(len(txIDs)),
+		AtomicTx:      int16(len(atomicTXs)),
 		Serialization: blockBytes,
 		CreatedAt:     ctx.Time(),
 		Proposer:      proposer.Proposer,
