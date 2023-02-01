@@ -893,7 +893,7 @@ func uint64Ptr(u64 uint64) *uint64 {
 }
 
 func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
-	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	dbRunner, err := r.conns.DB().NewSession("unique_adresses", cfg.RequestTimeout)
 	if err != nil {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
@@ -944,16 +944,19 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 		}, err
 	}
 	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
-	var UniqueAddresses []*models.UniqueAddresses
-	_, err = dbRunner.Select("COUNT(DISTINCT id_from_addr) as receive_count", filterDate+" as date_at").
-		From("magellan.address_chain").
+	var ActiveAddresses []*models.ActiveAddresses
+	baseq := dbRunner.Select("COUNT(DISTINCT id_from_addr) as send_count", "COUNT(DISTINCT id_to_addr) as receive_count", filterDate+" as date_at").
+		From("cvm_transactions_txdata").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
+		GroupBy(filterDate)
 
-	if err != nil || len(UniqueAddresses) == 0 {
-		return &models.AddressStruct{
-			AddressInfo: []*models.UniqueAddresses{},
-		}, err
+	Active := dbRunner.Select("GREATEST(send_count, receive_count) as total", "send_count", "receive_count", "date_at").
+		From(baseq.As("bq"))
+
+	_, err = Active.LoadContext(ctx, &ActiveAddresses)
+
+	if err != nil || len(ActiveAddresses) == 0 {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}
 	_, err = dbRunner.Select("date_at as highest_date", "GREATEST(send_count, receive_count) as highest_number").
 		From(Active.As("q")).
