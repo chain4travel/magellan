@@ -1,4 +1,4 @@
-ame: build-check
+name: Update Magellan Kopernikus
 
 on:
   push:
