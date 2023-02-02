@@ -2,9 +2,9 @@ name: build-check
 
 on:
   push:
-    branches: [chain4travel, dev]
+    branches: [c4t, dev]
   pull_request:
-    branches: [chain4travel, dev]
+    branches: [c4t, dev]
 jobs:
   lint:
     name: lint
