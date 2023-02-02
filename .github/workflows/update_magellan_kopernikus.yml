@@ -2,7 +2,7 @@ name: Update Magellan Kopernikus
 
 on:
   push:
-    branches: [dev,update-magellan-kopernikus]
+    branches: [dev]
 
 jobs:
   updateMagellan:
