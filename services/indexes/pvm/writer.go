@@ -202,7 +202,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		cCtx = services.NewConsumerContext(ctx, db, int64(gc.Time), 0, persist, w.chainID)
 	)
 
-	for idx, utxo := range gc.Genesis.UTXOs {
+	for _, utxo := range gc.Genesis.UTXOs {
 		select {
 		case <-ctx.Done():
 		default:
@@ -212,7 +212,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 			cCtx,
 			utxo.Out,
 			utxo.TxID,
-			uint32(idx),
+			utxo.OutputIndex,
 			utxo.AssetID(),
 			0,
 			0,
