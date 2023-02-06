@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -233,12 +235,18 @@ func (c *V2Context) GetMultisigAlias(w web.ResponseWriter, r *web.Request) {
 	}()
 
 	ownerAddr := r.PathParams["owner"]
+	// convert owner address from bech32 to be used internally
+	addr, err := address.ParseToID(ownerAddr)
+	if err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
 
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 5 * time.Second,
-		Key: c.cacheKeyForID("multisig_alias", ownerAddr),
+		Key: c.cacheKeyForID("multisig_alias", addr.String()),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return c.avaxReader.GetMultisigAlias(ctx, ownerAddr)
+			return c.avaxReader.GetMultisigAlias(ctx, addr.String())
 		},
 	})
 }
