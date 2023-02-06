@@ -260,19 +260,19 @@ type GeoIPValidators struct {
 }
 
 type Validator struct {
-	NodeID     ids.NodeID  `json:"nodeID"`
-	IP         string  `json:"IP"`
-	TxID       ids.ID  `json:"txID"`
-	Connected  bool    `json:"connected"`
-	StartTime  string  `json:"startTime"`
-	EndTime    string  `json:"endTime"`
-	Duration   string  `json:"duration"`
-	Uptime     float32  `json:"uptime"`
-	Country    string  `json:"country"`
-	Lng        float64 `json:"lng"`
-	Lat        float64 `json:"lat"`
-	CountryISO string  `json:"countryISO"`
-	City       string  `json:"city"`
+	NodeID     ids.NodeID `json:"nodeID"`
+	TxID       ids.ID     `json:"txID"`
+	Connected  bool       `json:"connected"`
+	Uptime     float32    `json:"uptime"`
+	Lng        float64    `json:"lng"`
+	Lat        float64    `json:"lat"`
+	IP         string     `json:"IP"`
+	StartTime  string     `json:"startTime"`
+	EndTime    string     `json:"endTime"`
+	Duration   string     `json:"duration"`
+	Country    string     `json:"country"`
+	CountryISO string     `json:"countryISO"`
+	City       string     `json:"city"`
 }
 
 /*******************  Merging  ***********************/

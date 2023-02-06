@@ -51,14 +51,14 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 	}
 	pvmClient := platformvm.NewClient(rpc)
 	infoClient := info.NewClient(rpc)
-	validators,err := pvmClient.GetCurrentValidators(context.Background(),ids.ID{},[]ids.NodeID{})
+	validators, err := pvmClient.GetCurrentValidators(context.Background(), ids.ID{}, []ids.NodeID{})
 	if err != nil {
 		geoValidatorsInfo.Value = validatorList
 		return *geoValidatorsInfo, err
 	}
 	peers, _ := infoClient.Peers(context.Background())
-	for _,validator := range validators{
-		validatorGeoIPInfo := setValidatorInfo(&validator)
+	for _, validator := range validators {
+		validatorGeoIPInfo := setValidatorInfo(validator)
 		indexPeerWithSameID := PeerIndex(peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
 			err = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
@@ -70,7 +70,7 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 	return *geoValidatorsInfo, err
 }
 
-func setValidatorInfo(validator *platformvm.ClientPermissionlessValidator) *models.Validator {
+func setValidatorInfo(validator platformvm.ClientPermissionlessValidator) *models.Validator {
 	startTime, _ := GetDate(validator.StartTime)
 	endTime, _ := GetDate(validator.EndTime)
 	duration, _ := getDuration(validator.StartTime, validator.EndTime)
