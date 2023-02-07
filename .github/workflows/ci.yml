@@ -18,9 +18,9 @@ jobs:
       - name: Submodules
         run: git submodule update --init --recursive
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.47.0
+          version: v1.49.0
           args: --timeout 5m
           skip-go-installation: true
   test-and-build:

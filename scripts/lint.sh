@@ -12,7 +12,7 @@ fi
 TARGET="./..."
 
 if ! [ -x "$(command -v golangci-lint)" ]; then
-  go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@v1.47.0
+  go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@v1.49.0
 fi
 golangci-lint run --config .golangci.yml
 
