@@ -2547,7 +2547,7 @@ func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRu
 		Pair("created_at", alias.CreatedAt).
 		ExecContext(ctx)
 
-	if err != nil {
+	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableMultisigAliases, false, err)
 	}
 	return nil

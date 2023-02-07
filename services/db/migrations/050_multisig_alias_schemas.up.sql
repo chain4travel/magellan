@@ -2,9 +2,9 @@
 ## Multisig alias
 ##
 create table multisig_aliases (
-    alias           char(33) not null,
-    owner           char(33) not null,
-    transaction_id  char(49) not null,
+    alias           varchar(35) not null,
+    owner           varchar(35) not null,
+    transaction_id  varchar(56) not null,
     created_at      timestamp   not null default current_timestamp,
     primary key(alias, owner)
 );

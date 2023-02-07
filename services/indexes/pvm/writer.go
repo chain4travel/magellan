@@ -170,7 +170,6 @@ func (w *Writer) Consume(ctx context.Context, conns *utils.Connections, c servic
 	return dbTx.Commit()
 }
 
-//nolint:gocyclo
 func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, gc *utils.GenesisContainer) error {
 	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
 		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
@@ -267,13 +266,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		select {
 		case <-ctx.Done():
 		default:
-		}
-
-		if tx := addressStateTx(cm.ConsortiumMemberAddress, txs.AddressStateRegisteredNode); tx != nil {
-			err := w.indexTransaction(cCtx, ChainID, tx, true)
-			if err != nil {
-				return err
-			}
 		}
 
 		tx := &txs.Tx{
