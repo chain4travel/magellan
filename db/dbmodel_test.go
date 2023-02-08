@@ -1543,6 +1543,7 @@ func TestInsertMultisigAlias(t *testing.T) {
 	v := &MultisigAlias{}
 	v.Alias = "abcdefghijklmnopqrstABCDEF1234567"
 	v.Owner = "ABCDEFghijklmnopqrstabcdef1234567"
+	v.Bech32Address = "kopernikus1vscyf7czawylztn6ghhg0z27swwewxgzgpcxvy"
 	v.TransactionID = "abcdefghijklmnopqrstABCDEF1234567abcdefghijklmnop"
 	v.CreatedAt = time.Now().UTC().Truncate(1 * time.Second)
 
@@ -1550,6 +1551,11 @@ func TestInsertMultisigAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
+	err = p.InsertAddressBech32(ctx, rawDBConn.NewSession(stream), &AddressBech32{Address: v.Alias, Bech32Address: "kopernikus1vscyf7czawylztn6ghhg0z27swwewxgzgpcxvy", UpdatedAt: time.Now().UTC().Truncate(1 * time.Second)}, false)
+	if err != nil {
+		t.Fatal("insert address bech32 fail", err)
+	}
+
 	fv, err := p.QueryMultisigAliasForOwner(ctx, rawDBConn.NewSession(stream), v.Owner)
 	if err != nil {
 		t.Fatal("query fail", err)

@@ -225,7 +225,7 @@ func (r *Reader) GetMultisigAlias(ctx context.Context, ownerAddress string) (*mo
 
 	aliasList := make([]string, 0, len(*alias))
 	for _, v := range *alias {
-		aliasList = append(aliasList, v.Alias)
+		aliasList = append(aliasList, v.Bech32Address)
 	}
 
 	multisigAliasList := &models.MultisigAliasList{Alias: aliasList}
