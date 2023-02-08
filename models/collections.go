@@ -246,6 +246,35 @@ type AssetAggregate struct {
 	Aggregate *AggregatesHistogram `json:"aggregate"`
 }
 
+type IPAPIResponse struct {
+	Country     string  `json:"country"`
+	CountryCode string  `json:"countryCode"`
+	City        string  `json:"city"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+}
+
+type GeoIPValidators struct {
+	Name  string       `json:"name"`
+	Value []*Validator `json:"value"`
+}
+
+type Validator struct {
+	NodeID     ids.NodeID `json:"nodeID"`
+	TxID       ids.ID     `json:"txID"`
+	Connected  bool       `json:"connected"`
+	Uptime     float32    `json:"uptime"`
+	Lng        float64    `json:"lng"`
+	Lat        float64    `json:"lat"`
+	IP         string     `json:"IP"`
+	StartTime  string     `json:"startTime"`
+	EndTime    string     `json:"endTime"`
+	Duration   string     `json:"duration"`
+	Country    string     `json:"country"`
+	CountryISO string     `json:"countryISO"`
+	City       string     `json:"city"`
+}
+
 /*******************  Merging  ***********************/
 
 type AggregateMerge interface {

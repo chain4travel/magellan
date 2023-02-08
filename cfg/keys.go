@@ -33,6 +33,10 @@ const (
 	keysServicesDBDSN    = "dsn"
 	keysServicesDBRODSN  = "ro_dsn"
 
+	keyServicesGeoIP    = "geoIP"
+	keyServicesEndpoint = "urlEndpoint"
+	keyServicesToken    = "authorizationToken"
+
 	keysStreamProducerCaminoNode   = "caminoNode"
 	keysStreamProducerNodeInstance = "nodeInstance"
 

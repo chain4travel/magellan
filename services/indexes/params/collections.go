@@ -736,3 +736,21 @@ func (p *TxDataParam) ForValues(v uint8, q url.Values) error {
 func (p *TxDataParam) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }
+
+type ValidatorParams struct {
+	ListParams ListParams
+	RPC        string
+}
+
+func (p *ValidatorParams) ForValues(v uint8, q url.Values) error {
+	return p.ListParams.ForValues(v, q)
+}
+
+func (p *ValidatorParams) SetParamInfo(v uint8, rpc string) error {
+	p.RPC = rpc
+	return nil
+}
+
+func (p *ValidatorParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
+}

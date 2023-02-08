@@ -15,6 +15,8 @@ package cfg
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -85,9 +87,16 @@ type Chain struct {
 type Chains map[string]Chain
 
 type Services struct {
-	Logging logging.Config `json:"logging"`
-	API     `json:"api"`
-	*DB     `json:"db"`
+	Logging           logging.Config `json:"logging"`
+	API               `json:"api"`
+	*DB               `json:"db"`
+	InmutableInsights EndpointService `json:"inmutableInsights"`
+	GeoIP             EndpointService `json:"geoIP"`
+}
+
+type EndpointService struct {
+	URLEndpoint        string `json:"urlEndpoint"`
+	AuthorizationToken string `json:"authorizationToken"`
 }
 
 type API struct {
@@ -116,6 +125,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	// Get sub vipers for all objects with parents
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
+	servicesGeoIPViper := newSubViper(servicesViper, keyServicesGeoIP)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
@@ -135,6 +145,9 @@ func NewFromFile(filePath string) (*Config, error) {
 	if servicesDBViper.Get(keysServicesDBRODSN) != nil {
 		dbrodsn = servicesDBViper.GetString(keysServicesDBRODSN)
 	}
+
+	urlEndpointGeoIP := servicesGeoIPViper.GetString(keyServicesEndpoint)
+	tokenGeoIP := os.Getenv(fmt.Sprintf("%sGeoIP", keyServicesToken))
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -166,6 +179,10 @@ func NewFromFile(filePath string) (*Config, error) {
 				Driver: servicesDBViper.GetString(keysServicesDBDriver),
 				DSN:    dbdsn,
 				RODSN:  dbrodsn,
+			},
+			GeoIP: EndpointService{
+				URLEndpoint:        urlEndpointGeoIP,
+				AuthorizationToken: tokenGeoIP,
 			},
 		},
 		CchainID:            v.GetString(keysStreamProducerCchainID),
