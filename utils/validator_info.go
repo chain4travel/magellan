@@ -61,7 +61,7 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 		validatorGeoIPInfo := setValidatorInfo(validator)
 		indexPeerWithSameID := PeerIndex(peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
-			err = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
+			_ = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
 		}
 		validatorList = append(validatorList, validatorGeoIPInfo)
 	}
