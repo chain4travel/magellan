@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
@@ -33,7 +34,7 @@ func GetDate(unixTime uint64) (string, error) {
 	return strings.Split(dateFTime.String(), " -")[0], nil
 }
 
-func getDuration(startTime uint64, endTime uint64) (string, error) {
+func getDuration(startTime uint64, endTime uint64) string {
 	const d = " Days"
 	timestamp := int64(startTime)
 	start := time.Unix(timestamp, 0)
@@ -41,10 +42,10 @@ func getDuration(startTime uint64, endTime uint64) (string, error) {
 	end := time.Unix(timestamp, 0)
 	difference := end.Sub(start)
 	duration := int(difference.Hours() / 24)
-	return strconv.Itoa(duration) + d, nil
+	return strconv.Itoa(duration) + d
 }
 
-func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (models.GeoIPValidators, error) {
+func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService, log logging.Logger) (models.GeoIPValidators, error) {
 	validatorList := []*models.Validator{}
 	geoValidatorsInfo := &models.GeoIPValidators{
 		Name: "GeoIPInfo",
@@ -62,18 +63,21 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 		indexPeerWithSameID := PeerIndex(peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
 			err = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		}
 		validatorList = append(validatorList, validatorGeoIPInfo)
 	}
 	geoValidatorsInfo.Value = validatorList
 
-	return *geoValidatorsInfo, err
+	return *geoValidatorsInfo, nil
 }
 
 func setValidatorInfo(validator platformvm.ClientPermissionlessValidator) *models.Validator {
 	startTime, _ := GetDate(validator.StartTime)
 	endTime, _ := GetDate(validator.EndTime)
-	duration, _ := getDuration(validator.StartTime, validator.EndTime)
+	duration := getDuration(validator.StartTime, validator.EndTime)
 	return &models.Validator{
 		NodeID:    validator.NodeID,
 		TxID:      validator.TxID,

@@ -164,7 +164,7 @@ func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
 		TTL: 24 * time.Hour,
 		Key: c.cacheKeyForParams("geoIPValidatorsInfo", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetValidatorsGeoIPInfo(p.RPC, &c.sc.Services.GeoIP)
+			return utils.GetValidatorsGeoIPInfo(p.RPC, &c.sc.Services.GeoIP, c.sc.Logger())
 		},
 	})
 }
