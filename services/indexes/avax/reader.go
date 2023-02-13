@@ -938,6 +938,7 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 
 func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
 	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	var addressStatistics *models.AddressStruct
 	if err != nil {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
@@ -960,7 +961,7 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 	}
 	_, err = dbRunner.Select("date_at as highest_date", "GREATEST(send_count, receive_count) as highest_number").
 		From(Active.As("q")).
-		OrderBy("GREATEST(send_count, receive_count) DESC LIMIT 1").
+		OrderBy("GREATEST(send_count, receive_count) s LIMIT 1").
 		LoadContext(ctx, &addressStatistics)
 
 	if err != nil {
