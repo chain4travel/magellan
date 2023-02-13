@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
@@ -44,7 +45,7 @@ func getDuration(startTime uint64, endTime uint64) string {
 	return strconv.Itoa(duration) + d
 }
 
-func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (models.GeoIPValidators, error) {
+func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService, log logging.Logger) (models.GeoIPValidators, error) {
 	validatorList := []*models.Validator{}
 	geoValidatorsInfo := &models.GeoIPValidators{
 		Name: "GeoIPInfo",
@@ -61,13 +62,16 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService) (model
 		validatorGeoIPInfo := setValidatorInfo(validator)
 		indexPeerWithSameID := PeerIndex(peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
-			_ = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
+			err = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
+			if err != nil {
+				log.Error(err.Error())
+			}
 		}
 		validatorList = append(validatorList, validatorGeoIPInfo)
 	}
 	geoValidatorsInfo.Value = validatorList
 
-	return *geoValidatorsInfo, err
+	return *geoValidatorsInfo, nil
 }
 
 func setValidatorInfo(validator platformvm.ClientPermissionlessValidator) *models.Validator {
