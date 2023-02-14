@@ -1097,6 +1097,7 @@ type CvmBlocks struct {
 	CreatedAt     time.Time
 	Proposer      string
 	ProposerTime  *time.Time
+	Size          float64
 }
 
 func (p *persist) QueryCvmBlock(
@@ -1128,8 +1129,8 @@ func (p *persist) InsertCvmBlocks(
 ) error {
 	var err error
 	_, err = sess.
-		InsertBySql("insert into "+TableCvmBlocks+" (block,hash,chain_id,evm_tx,atomic_tx,serialization,created_at, proposer,proposer_time) values("+v.Block+",?,?,?,?,?,?,?,?)",
-			v.Hash, v.ChainID, v.EvmTx, v.AtomicTx, v.Serialization, v.CreatedAt, v.Proposer, v.ProposerTime).
+		InsertBySql("insert into "+TableCvmBlocks+" (block,hash,chain_id,evm_tx,atomic_tx,serialization,created_at, proposer,proposer_time,size) values("+v.Block+",?,?,?,?,?,?,?,?,?)",
+			v.Hash, v.ChainID, v.EvmTx, v.AtomicTx, v.Serialization, v.CreatedAt, v.Proposer, v.ProposerTime, v.Size).
 		ExecContext(ctx)
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableCvmBlocks, false, err)

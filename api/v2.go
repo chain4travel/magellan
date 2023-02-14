@@ -120,6 +120,13 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/addressChains", (*V2Context).AddressChains).
 		Post("/addressChains", (*V2Context).AddressChainsPost).
 		Post("/validatorsInfo", (*V2Context).ValidatorsInfo).
+		Get("/activeAddresses", (*V2Context).ActiveAddresses).
+		Get("/uniqueAddresses", (*V2Context).UniqueAddresses).
+		Get("/averageBlockSize", (*V2Context).AverageBlockSize).
+		Get("/dailyTransactions", (*V2Context).DailyTransactions).
+		Get("/dailyGasUsed", (*V2Context).DailyGasUsed).
+		Get("/avgGasPriceUsed", (*V2Context).AvgGasPriceUsed).
+		Get("/dailyTokenTransfer", (*V2Context).DailyTokenTransfer).
 		Get("/dailyEmissions", (*V2Context).DailyEmissions).
 		Get("/networkEmissions", (*V2Context).NetworkEmissions).
 		Get("/transactionEmissions", (*V2Context).TransactionEmissions).
@@ -170,6 +177,188 @@ func (c *V2Context) ValidatorsInfo(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForParams("geoIPValidatorsInfo", p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetValidatorsGeoIPInfo(p.RPC, &c.sc.Services.GeoIP, c.sc.Logger())
+		},
+	})
+}
+
+func (c *V2Context) ActiveAddresses(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams("activeAddresses", p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.ActiveAddresses(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) UniqueAddresses(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams("uniqueAddresses", p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.UniqueAddresses(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) AverageBlockSize(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams("AverageBlockSize", p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.AverageBlockSizeReader(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) DailyTransactions(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("dailyTransactionsChart %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.DailyTransactions(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) DailyGasUsed(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("DailyGasUsed %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GasUsedPerDay(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) AvgGasPriceUsed(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("AvgGasPriceUsed %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.AvgGasPriceUsed(ctx, &p.ListParams)
+		},
+	})
+}
+
+func (c *V2Context) DailyTokenTransfer(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.StatisticsParams{}
+	if err := p.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	key := fmt.Sprintf("DailyTokenTransfer %s", p.ListParams.ID)
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 1 * time.Hour,
+		Key: c.cacheKeyForParams(key, p),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.DailyTokenTransfer(ctx, &p.ListParams)
 		},
 	})
 }

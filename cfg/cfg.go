@@ -65,18 +65,19 @@ type AggregatesFeesMain struct {
 }
 
 type Config struct {
-	NetworkID           uint32 `json:"networkID"`
-	Chains              `json:"chains"`
-	Services            `json:"services"`
-	MetricsListenAddr   string `json:"metricsListenAddr"`
-	AdminListenAddr     string `json:"adminListenAddr"`
-	Features            map[string]struct{}
-	CchainID            string `json:"cchainId"`
-	CaminoNode          string `json:"caminoNode"`
-	NodeInstance        string `json:"nodeInstance"`
-	CacheUpdateInterval uint64 `json:"cacheUpdateInterval"`
-	AP5Activation       uint64 `json:"ap5Activation"`
-	BanffActivation     uint64 `json:"banffActivation"`
+	NetworkID               uint32 `json:"networkID"`
+	Chains                  `json:"chains"`
+	Services                `json:"services"`
+	MetricsListenAddr       string `json:"metricsListenAddr"`
+	AdminListenAddr         string `json:"adminListenAddr"`
+	Features                map[string]struct{}
+	CchainID                string `json:"cchainId"`
+	CaminoNode              string `json:"caminoNode"`
+	NodeInstance            string `json:"nodeInstance"`
+	CacheUpdateInterval     uint64 `json:"cacheUpdateInterval"`
+	CacheStatisticsInterval uint64 `json:"cacheStatisticsInterval"`
+	AP5Activation           uint64 `json:"ap5Activation"`
+	BanffActivation         uint64 `json:"banffActivation"`
 }
 
 type Chain struct {
@@ -192,11 +193,12 @@ func NewFromFile(filePath string) (*Config, error) {
 				AuthorizationToken: tokenInmutable,
 			},
 		},
-		CchainID:            v.GetString(keysStreamProducerCchainID),
-		CaminoNode:          v.GetString(keysStreamProducerCaminoNode),
-		NodeInstance:        v.GetString(keysStreamProducerNodeInstance),
-		CacheUpdateInterval: uint64(v.GetInt(keysCacheUpdateInterval)),
-		AP5Activation:       uint64(ap5Activation),
-		BanffActivation:     uint64(banffActivation),
+		CchainID:                v.GetString(keysStreamProducerCchainID),
+		CaminoNode:              v.GetString(keysStreamProducerCaminoNode),
+		NodeInstance:            v.GetString(keysStreamProducerNodeInstance),
+		CacheUpdateInterval:     uint64(v.GetInt(keysCacheUpdateInterval)),
+		CacheStatisticsInterval: uint64(v.GetInt(keysCacheStatisticsInterval)),
+		AP5Activation:           uint64(ap5Activation),
+		BanffActivation:         uint64(banffActivation),
 	}, nil
 }
