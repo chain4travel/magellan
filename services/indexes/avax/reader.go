@@ -906,3 +906,90 @@ func (r *Reader) CTxDATA(ctx context.Context, p *params.TxDataParam) ([]byte, er
 func uint64Ptr(u64 uint64) *uint64 {
 	return &u64
 }
+
+func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("unique_adresses", cfg.RequestTimeout)
+	if err != nil {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
+	}
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	var UniqueAddresses []*models.UniqueAddresses
+	_, err = dbRunner.Select("COUNT(DISTINCT address) as total_addresses", filterDate+" as date_at").
+		From("magellan.address_chain").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
+
+	if err != nil || len(UniqueAddresses) == 0 {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
+	}
+	return r.DailyIncreaseInfo(UniqueAddresses), err
+}
+
+func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.AddressStruct {
+	PreviousValue := uniquea[0].TotalAddresses
+	addressInfo := &models.AddressStruct{
+		LowestDate:  uniquea[0].DateAt,
+		HighestDate: uniquea[0].DateAt,
+	}
+	for _, address := range uniquea {
+		address.DailyIncrease = address.TotalAddresses - PreviousValue
+		PreviousValue = address.TotalAddresses
+		if address.DailyIncrease > addressInfo.HighestNumber {
+			addressInfo.HighestNumber = address.DailyIncrease
+			addressInfo.HighestDate = address.DateAt
+		}
+		if address.DailyIncrease < addressInfo.LowestNumber {
+			addressInfo.LowestNumber = address.DailyIncrease
+			addressInfo.LowestDate = address.DateAt
+		}
+	}
+	addressInfo.AddressInfo = uniquea
+	return addressInfo
+}
+
+func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	var addressStatistics *models.AddressStruct
+	if err != nil {
+		return &models.AddressStruct{
+			AddressInfo: []*models.UniqueAddresses{},
+		}, err
+	}
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	var ActiveAddresses []*models.ActiveAddresses
+	baseq := dbRunner.Select("COUNT(DISTINCT id_from_addr) as send_count", "COUNT(DISTINCT id_to_addr) as receive_count", filterDate+" as date_at").
+		From("cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate)
+
+	Active := dbRunner.Select("GREATEST(send_count, receive_count) as total", "send_count", "receive_count", "date_at").
+		From(baseq.As("bq"))
+
+	_, err = Active.LoadContext(ctx, &ActiveAddresses)
+
+	if err != nil || len(ActiveAddresses) == 0 {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
+	}
+	_, err = dbRunner.Select("date_at as highest_date", "GREATEST(send_count, receive_count) as highest_number").
+		From(Active.As("q")).
+		OrderBy("GREATEST(send_count, receive_count)  LIMIT 1").
+		LoadContext(ctx, &addressStatistics)
+
+	if err != nil {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
+	}
+	_, err = dbRunner.Select("date_at as lowest_date", "GREATEST(send_count, receive_count) as lowest_number").
+		From(baseq.As("q")).
+		OrderBy("GREATEST(send_count, receive_count) ASC LIMIT 1").
+		LoadContext(ctx, &addressStatistics)
+
+	if err != nil {
+		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
+	}
+	addressStatistics.AddressInfo = ActiveAddresses
+	return addressStatistics, err
+}
