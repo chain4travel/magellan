@@ -22,6 +22,7 @@ import (
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
 
@@ -745,4 +746,155 @@ func selectOutputs(dbRunner dbr.SessionRunner, redeem bool) *dbr.SelectBuilder {
 		LeftJoin("avm_output_addresses", tbl+".id = avm_output_addresses.output_id").
 		LeftJoin("transactions_rewards_owners_outputs", tbl+".id = transactions_rewards_owners_outputs.id").
 		LeftJoin("addresses", "addresses.address = avm_output_addresses.address")
+}
+
+func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*models.StatisticsStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_transactions", cfg.RequestTimeout)
+	var transactionData []*models.TransactionsInfo
+	var statistics *models.StatisticsStruct
+	if err != nil {
+		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, err
+	}
+
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", filterDate+" as date_at").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy("block_idx", filterDate)
+
+	blockSize := dbRunner.Select("AVG(AvgGasUsed) as avg_gas", "date_at").
+		From(ua.As("q")).
+		GroupBy("date_at")
+
+	transactions := dbRunner.Select("COUNT(block) AS transactions", filterDate+" as date_at", "COUNT(DISTINCT block_idx) as blocks").
+		From("magellan.cvm_transactions_txdata").
+		GroupBy(filterDate)
+
+	baseq := dbRunner.Select("avgGas.avg_gas as avg_block_size", "txs.transactions as total_transactions", "avgGas.date_at as date", "txs.blocks AS total_block_count").
+		From(blockSize.As("avgGas")).
+		Join(transactions.As("txs"), "avgGas.date_at = txs.date_at")
+
+	_, errGas := baseq.LoadContext(ctx, &transactionData)
+
+	_, err = dbRunner.Select("date as highest_date", "CAST(avg_block_size as SIGNED) as highest_number").
+		From(baseq.As("gas")).
+		OrderBy("avg_block_size DESC LIMIT 1").
+		LoadContext(ctx, &statistics)
+
+	if err != nil {
+		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
+	}
+	_, err = dbRunner.Select("date as lowest_date", "CAST(avg_block_size as SIGNED) as lowest_number").
+		From(baseq.As("gas")).
+		OrderBy("avg_block_size ASC LIMIT 1").
+		LoadContext(ctx, &statistics)
+
+	if err != nil || len(transactionData) == 0 {
+		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
+	}
+	statistics.TxInfo = transactionData
+	return statistics, err
+}
+
+func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_gas_used", cfg.RequestTimeout)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	var (
+		gasUsed          []*models.GasUsedPerDate
+		statisticsStruct models.StatisticsStruct
+	)
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	sa := dbRunner.Select(filterDate+" as date", "SUM(gas_used) AS gas").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate)
+
+	_, err = sa.LoadContext(ctx, &gasUsed)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
+		From(sa.As("gas")).
+		OrderBy("gas DESC LIMIT 1").
+		LoadContext(ctx, &statisticsStruct)
+
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
+		From(sa.As("gas")).
+		OrderBy("gas ASC LIMIT 1").
+		LoadContext(ctx, &statisticsStruct)
+
+	if err != nil || len(gasUsed) == 0 {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	statisticsStruct.TxInfo = gasUsed
+	return statisticsStruct, err
+}
+
+func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_gas_used", cfg.RequestTimeout)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+	var gasPrice []*models.GasUsedPerDate
+	var statisticsStruct models.StatisticsStruct
+
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+
+	sa := dbRunner.Select(filterDate+"AS date", "SUM(gas_price) AS gas").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate)
+
+	_, err = sa.LoadContext(ctx, &gasPrice)
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+
+	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
+		From(sa.As("sum_gas")).
+		OrderBy("gas DESC LIMIT 1").
+		LoadContext(ctx, &statisticsStruct)
+
+	if err != nil {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+
+	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
+		From(sa.As("sum_gas")).
+		OrderBy("gas ASC LIMIT 1").
+		LoadContext(ctx, &statisticsStruct)
+
+	if err != nil || len(gasPrice) == 0 {
+		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+	}
+
+	statisticsStruct.TxInfo = gasPrice
+	return statisticsStruct, err
+}
+
+func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) ([]*models.TransactionsPerDate, error) {
+	dbRunner, err := r.conns.DB().NewSession("daily_token", cfg.RequestTimeout)
+	if err != nil {
+		return []*models.TransactionsPerDate{}, err
+	}
+
+	var camCount []*models.TransactionsPerDate
+
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+
+	_, err = dbRunner.Select(filterDate+"AS date_at", "SUM(amount) as counter").
+		From("magellan.cvm_transactions_txdata").
+		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).
+		LoadContext(ctx, &camCount)
+
+	if err != nil || len(camCount) == 0 {
+		return []*models.TransactionsPerDate{}, err
+	}
+	return camCount, err
 }
