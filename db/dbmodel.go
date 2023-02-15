@@ -2532,6 +2532,7 @@ func (b *CvmLogs) ComputeID() {
 
 type MultisigAlias struct {
 	Alias         string
+	Memo          string
 	Bech32Address string
 	Owner         string
 	TransactionID string
@@ -2543,6 +2544,7 @@ func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRu
 	_, err = session.
 		InsertInto(TableMultisigAliases).
 		Pair("alias", alias.Alias).
+		Pair("memo", alias.Memo).
 		Pair("owner", alias.Owner).
 		Pair("transaction_id", alias.TransactionID).
 		Pair("created_at", alias.CreatedAt).
@@ -2560,7 +2562,7 @@ func (p *persist) QueryMultisigAliasForOwner(
 	owner string) (*[]MultisigAlias, error) {
 	v := &[]MultisigAlias{}
 	_, err := session.Select(
-		"alias, bech32_address, owner, transaction_id, created_at",
+		"alias, memo, bech32_address, owner, transaction_id, created_at",
 	).From(TableMultisigAliases).Join(TableAddressBech32, "alias=address").
 		Where("owner=?", owner).
 		LoadContext(ctx, v)

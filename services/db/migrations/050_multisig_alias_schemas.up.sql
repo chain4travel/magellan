@@ -3,6 +3,7 @@
 ##
 create table multisig_aliases (
     alias           varchar(35) not null,
+    memo            varchar(256) not null,
     owner           varchar(35) not null,
     transaction_id  varchar(56) not null,
     created_at      timestamp   not null default current_timestamp,
