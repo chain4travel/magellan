@@ -588,6 +588,12 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
+	case *txs.ClaimRewardTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeClaimReward
+	case *txs.RewardsImportTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeRewardsImport
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}

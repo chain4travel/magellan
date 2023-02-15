@@ -65,6 +65,8 @@ var (
 	TransactionTypeRegisterNodeTx        TransactionType = RegisterTransactionTypeCustom + 7
 	TransactionTypePvmBase               TransactionType = RegisterTransactionTypeCustom + 8
 	TransactionTypeMultisigAlias         TransactionType = RegisterTransactionTypeCustom + 9
+	TransactionTypeClaimReward           TransactionType = RegisterTransactionTypeCustom + 10
+	TransactionTypeRewardsImport         TransactionType = RegisterTransactionTypeCustom + 11
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -142,6 +144,10 @@ func (t TransactionType) String() string {
 		return "register_node"
 	case TransactionTypeMultisigAlias:
 		return "multisig"
+	case TransactionTypeClaimReward:
+		return "claim"
+	case TransactionTypeRewardsImport:
+		return "rewards"
 	default:
 		return TypeUnknown
 	}
