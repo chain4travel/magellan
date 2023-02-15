@@ -1543,6 +1543,7 @@ func TestInsertMultisigAlias(t *testing.T) {
 	v := &MultisigAlias{}
 	v.Alias = "abcdefghijklmnopqrstABCDEF1234567"
 	v.Owner = "ABCDEFghijklmnopqrstabcdef1234567"
+	v.Memo = "Memo"
 	v.Bech32Address = "kopernikus1vscyf7czawylztn6ghhg0z27swwewxgzgpcxvy"
 	v.TransactionID = "abcdefghijklmnopqrstABCDEF1234567abcdefghijklmnop"
 	v.CreatedAt = time.Now().UTC().Truncate(1 * time.Second)

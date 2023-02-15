@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
+	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -292,7 +293,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
-	for _, ma := range gc.Genesis.Camino.InitialMultisigAddresses {
+	for _, ma := range gc.Genesis.Camino.MultisigAliases {
 		tx := &txs.Tx{
 			Unsigned: &txs.MultisigAliasTx{
 				BaseTx: txs.BaseTx{
@@ -301,12 +302,8 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 						BlockchainID: ChainID,
 					},
 				},
-				Alias: ma.Alias,
-				Owner: &secp256k1fx.OutputOwners{
-					Addrs:     ma.Addresses,
-					Threshold: ma.Threshold,
-				},
-				ChangeAuth: &secp256k1fx.Input{},
+				MultisigAlias: *ma,
+				ChangeAuth:    &secp256k1fx.Input{},
 			},
 		}
 		if tx.Sign(txs.GenesisCodec, nil) == nil {
@@ -587,7 +584,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.MultisigAliasTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeMultisigAlias
-		err := w.InsertMultisigAlias(ctx, castTx.Alias, castTx.Owner, castTx.ChangeAuth, txID)
+		err := w.InsertMultisigAlias(ctx, &castTx.MultisigAlias, castTx.ChangeAuth, txID)
 		if err != nil {
 			return err
 		}
@@ -689,30 +686,38 @@ func (w *Writer) InsertTransactionBlock(ctx services.ConsumerCtx, txID ids.ID, b
 	return ctx.Persist().InsertTransactionsBlock(ctx.Ctx(), ctx.DB(), transactionsBlock, cfg.PerformUpdates)
 }
 
-func (w *Writer) InsertMultisigAlias(ctx services.ConsumerCtx, alias ids.ShortID, multiSigOwner verify.Verifiable, changeAuth verify.Verifiable, txID ids.ID) error {
+func (w *Writer) InsertMultisigAlias(
+	ctx services.ConsumerCtx,
+	alias *multisig.Alias,
+	changeAuth verify.Verifiable,
+	txID ids.ID,
+) error {
 	var err error
 
 	// If changeAuth is nil, then delete all aliases for this multisig
 	if changeAuth == nil {
 		// Delete any existing multisig alias first
-		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.String())
+		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
 		if err != nil {
 			return err
 		}
 	}
 
 	// Get owner addresses
-	owner, ok := multiSigOwner.(*secp256k1fx.OutputOwners)
+	owner, ok := alias.Owners.(*secp256k1fx.OutputOwners)
 	if !ok {
-		return fmt.Errorf("could not parse Multisig owners %T", multiSigOwner)
+		return fmt.Errorf("could not parse Multisig owners %T", alias.Owners)
 	}
 
 	// Loop over owner addresses and insert an entry for each
 	for _, addr := range owner.Addresses() {
-		addrid := ids.ShortID{}
-		copy(addrid[:], addr)
+		addrid, err := ids.ToShortID(addr)
+		if err != nil {
+			return err
+		}
 		multisigAlias := &db.MultisigAlias{
-			Alias:         alias.String(),
+			Alias:         alias.ID.String(),
+			Memo:          string(alias.Memo),
 			Owner:         addrid.String(),
 			TransactionID: txID.String(),
 			CreatedAt:     ctx.Time(),
