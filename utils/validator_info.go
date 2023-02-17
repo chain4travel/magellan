@@ -103,7 +103,7 @@ func setGeoIPInfo(validatorInfo *models.Validator, peerIP string, config *cfg.En
 func GetLocationByIP(ip string, config *cfg.EndpointService) (models.IPAPIResponse, error) {
 	var response models.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
-	url := fmt.Sprintf("%s%s", config.URLEndpoint, ip)
+	url := fmt.Sprintf("%s%s?key=%s", config.URLEndpoint, ip, config.AuthorizationToken)
 	// Perform the HTTP GET request
 	client := &http.Client{}
 
