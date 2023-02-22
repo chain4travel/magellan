@@ -45,6 +45,23 @@ type TransactionList struct {
 	Next *string `json:"next,omitempty"`
 }
 
+type EmissionsResult struct {
+	Chain string  `json:"chain"`
+	Time  string  `json:"time"`
+	Value float64 `json:"value"`
+}
+
+type Emissions struct {
+	Name   string      `json:"name"`
+	Filter string      `jsont:"filter"`
+	Value  interface{} `json:"value"`
+}
+
+type CountryEmissionsResult struct {
+	Country string  `json:"Country"`
+	Value   float64 `json:"Value"`
+}
+
 type CTransactionData struct {
 	Type      int       `json:"type"`
 	Block     string    `json:"block"`
@@ -244,6 +261,13 @@ type AddressChains struct {
 type AssetAggregate struct {
 	Asset     ids.ID               `json:"asset"`
 	Aggregate *AggregatesHistogram `json:"aggregate"`
+}
+
+type NetworkNameResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	Result  struct {
+		NetworkName string `json:"networkName"`
+	} `json:"result"`
 }
 
 type IPAPIResponse struct {

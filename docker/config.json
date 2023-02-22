@@ -26,8 +26,10 @@
       "driver": "mysql"
     },
     "geoIP": {
-      "urlEndpoint":"http://ip-api.com/json/",
-      "authorizationToken": ""
+      "urlEndpoint":"http://ip-api.com/json/"
+    },
+    "inmutableInsights": {
+      "urlEndpoint":"https://co2.api.immutableinsight.io"
     }
   }
 }

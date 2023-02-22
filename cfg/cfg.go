@@ -126,6 +126,7 @@ func NewFromFile(filePath string) (*Config, error) {
 	servicesViper := newSubViper(v, keysServices)
 	servicesDBViper := newSubViper(servicesViper, keysServicesDB)
 	servicesGeoIPViper := newSubViper(servicesViper, keyServicesGeoIP)
+	servicesInmutableViper := newSubViper(servicesViper, keyServicesInmutable)
 
 	// Get chains config
 	chains, err := newChainsConfig(v)
@@ -148,6 +149,8 @@ func NewFromFile(filePath string) (*Config, error) {
 
 	urlEndpointGeoIP := servicesGeoIPViper.GetString(keyServicesEndpoint)
 	tokenGeoIP := os.Getenv(fmt.Sprintf("%sGeoIP", keyServicesToken))
+	urlEndpointInmutable := servicesInmutableViper.GetString(keyServicesEndpoint)
+	tokenInmutable := os.Getenv(fmt.Sprintf("%sInmutable", keyServicesToken))
 
 	features := v.GetStringSlice(keysFeatures)
 	featuresMap := make(map[string]struct{})
@@ -183,6 +186,10 @@ func NewFromFile(filePath string) (*Config, error) {
 			GeoIP: EndpointService{
 				URLEndpoint:        urlEndpointGeoIP,
 				AuthorizationToken: tokenGeoIP,
+			},
+			InmutableInsights: EndpointService{
+				URLEndpoint:        urlEndpointInmutable,
+				AuthorizationToken: tokenInmutable,
 			},
 		},
 		CchainID:            v.GetString(keysStreamProducerCchainID),
