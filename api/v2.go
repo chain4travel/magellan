@@ -143,7 +143,8 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cacheassets", (*V2Context).CacheAssets).
 		Get("/cacheassetaggregates", (*V2Context).CacheAssetAggregates).
 		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates).
-		Get("/multisigalias/:owner", (*V2Context).GetMultisigAlias)
+		Get("/multisigalias/:owner", (*V2Context).GetMultisigAlias).
+		Get("/multisigalias/alias/:alias", (*V2Context).GetMultisigOwnersForAlias)
 }
 
 // AVAX
@@ -338,6 +339,34 @@ func (c *V2Context) GetMultisigAlias(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForID("multisig_alias", addr.String()),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return c.avaxReader.GetMultisigAlias(ctx, addr.String())
+		},
+	})
+}
+
+func (c *V2Context) GetMultisigOwnersForAlias(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	aliasAddr := r.PathParams["alias"]
+	// convert owner address from bech32 to be used internally
+	addr, err := address.ParseToID(aliasAddr)
+	if err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForID("multisig_alias_owners", addr.String()),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GetOwnersForMultisigAlias(ctx, addr.String())
 		},
 	})
 }

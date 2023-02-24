@@ -233,6 +233,20 @@ func (r *Reader) GetMultisigAlias(ctx context.Context, ownerAddress string) (*mo
 	return multisigAliasList, err
 }
 
+func (r *Reader) GetOwnersForMultisigAlias(ctx context.Context, aliasAddress string) (*[]string, error) {
+	dbRunner, err := r.conns.DB().NewSession("multisig_alias_owners", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	owners, err := r.sc.Persist.QueryMultisigOwnersForAlias(ctx, dbRunner, aliasAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	return owners, nil
+}
+
 func (r *Reader) ListAddresses(ctx context.Context, p *params.ListAddressesParams) (*models.AddressList, error) {
 	dbRunner, err := r.conns.DB().NewSession("list_addresses", cfg.RequestTimeout)
 	if err != nil {

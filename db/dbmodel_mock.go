@@ -725,3 +725,12 @@ func (m *MockPersist) DeleteMultisigAlias(ctx context.Context, runner dbr.Sessio
 	delete(m.MultisigAlias, s)
 	return nil
 }
+
+func (m *MockPersist) QueryMultisigOwnersForAlias(ctx context.Context, runner dbr.SessionRunner, s string) (*[]string, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if v, present := m.MultisigAlias[s]; present {
+		return &[]string{v.Owner}, nil
+	}
+	return nil, nil
+}

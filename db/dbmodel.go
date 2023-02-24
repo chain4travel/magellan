@@ -477,6 +477,12 @@ type Persist interface {
 		dbr.SessionRunner,
 		string,
 	) error
+
+	QueryMultisigOwnersForAlias(
+		context.Context,
+		dbr.SessionRunner,
+		string,
+	) (*[]string, error)
 }
 
 type persist struct{}
@@ -2578,4 +2584,17 @@ func (p *persist) DeleteMultisigAlias(
 		return EventErr(TableMultisigAliases, false, err)
 	}
 	return nil
+}
+
+func (p *persist) QueryMultisigOwnersForAlias(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	alias string) (*[]string, error) {
+	v := &[]string{}
+
+	_, err := session.Select("bech32_address").
+		From(TableMultisigAliases).Join(TableAddressBech32, "owner=address").
+		Where("alias=?", alias).
+		LoadContext(ctx, v)
+	return v, err
 }

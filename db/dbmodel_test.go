@@ -1529,7 +1529,7 @@ func TestNodeIndex(t *testing.T) {
 	}
 }
 
-func TestInsertMultisigAlias(t *testing.T) {
+func TestMultisigAlias(t *testing.T) {
 	p := NewPersist()
 	ctx := context.Background()
 	stream := &dbr.NullEventReceiver{}
@@ -1541,10 +1541,10 @@ func TestInsertMultisigAlias(t *testing.T) {
 	_, _ = rawDBConn.NewSession(stream).DeleteFrom(TableMultisigAliases).Exec()
 
 	v := &MultisigAlias{}
-	v.Alias = "abcdefghijklmnopqrstABCDEF1234567"
-	v.Owner = "ABCDEFghijklmnopqrstabcdef1234567"
+	v.Alias = "58xVinwm6Kg5Z3bfn3yxJVx7bJTzMgyJg"
+	v.Owner = "68Z2EEfb2Sp1hFT8Xpsp7kEFE5Mdaaj42"
 	v.Memo = "Memo"
-	v.Bech32Address = "kopernikus1vscyf7czawylztn6ghhg0z27swwewxgzgpcxvy"
+	v.Bech32Address = "kopernikus194sm66h2qrmtae7gcesnmxdstzqv0mpt53yjft"
 	v.TransactionID = "abcdefghijklmnopqrstABCDEF1234567abcdefghijklmnop"
 	v.CreatedAt = time.Now().UTC().Truncate(1 * time.Second)
 
@@ -1552,7 +1552,7 @@ func TestInsertMultisigAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal("insert fail", err)
 	}
-	err = p.InsertAddressBech32(ctx, rawDBConn.NewSession(stream), &AddressBech32{Address: v.Alias, Bech32Address: "kopernikus1vscyf7czawylztn6ghhg0z27swwewxgzgpcxvy", UpdatedAt: time.Now().UTC().Truncate(1 * time.Second)}, false)
+	err = p.InsertAddressBech32(ctx, rawDBConn.NewSession(stream), &AddressBech32{Address: v.Alias, Bech32Address: "kopernikus194sm66h2qrmtae7gcesnmxdstzqv0mpt53yjft", UpdatedAt: time.Now().UTC().Truncate(1 * time.Second)}, false)
 	if err != nil {
 		t.Fatal("insert address bech32 fail", err)
 	}
@@ -1564,6 +1564,21 @@ func TestInsertMultisigAlias(t *testing.T) {
 	if !reflect.DeepEqual(*v, (*fv)[0]) {
 		t.Fatal("compare fail")
 	}
+
+	ownerBech32Addr := "kopernikus18pry238vq8uzzpar32wa4x4p2rkyc7wx2qnctc"
+	err = p.InsertAddressBech32(ctx, rawDBConn.NewSession(stream), &AddressBech32{Address: v.Owner, Bech32Address: ownerBech32Addr, UpdatedAt: time.Now().UTC().Truncate(1 * time.Second)}, false)
+	if err != nil {
+		t.Fatal("insert address bech32 fail", err)
+	}
+
+	owners, err := p.QueryMultisigOwnersForAlias(ctx, rawDBConn.NewSession(stream), v.Alias)
+	if err != nil {
+		t.Fatal("query fail", err)
+	}
+	if !reflect.DeepEqual(ownerBech32Addr, (*owners)[0]) {
+		t.Fatal("compare fail")
+	}
+
 	err = p.DeleteMultisigAlias(ctx, rawDBConn.NewSession(stream), v.Alias)
 	if err != nil {
 		t.Fatal("delete fail", err)
