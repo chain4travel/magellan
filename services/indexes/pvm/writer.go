@@ -588,7 +588,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
-	case *txs.ClaimRewardTx:
+	case *txs.ClaimTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeClaimReward
 	case *txs.RewardsImportTx:
