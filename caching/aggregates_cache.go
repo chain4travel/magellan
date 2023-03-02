@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/chain4travel/magellan/db"
+
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
@@ -221,12 +223,17 @@ func (ac *aggregatesCache) GetAggregatesAndUpdate(chains map[string]cfg.Chain, c
 		}
 
 		// 3rd step: we obtain the count of the transactions based on the block range we acquired from the previous steps
-		// we will construct based on the block numbers the relevant block_idx filters since this is our main index in the cvm_transactions_txdata table
+		// we will construct based on the block numbers the relevant block_idx filters since this is our main index
+		// in the cvm_transactions_txdata and cvm_transactions_atomic tables
+		union := dbr.Union(
+			dbRunner.Select("block_idx").From(db.TableCvmTransactionsTxdata),
+			dbRunner.Select("block_idx").From(db.TableCvmTransactionsAtomic),
+		).As("union_q")
 		builder = dbRunner.
-			Select("count(*) as  transaction_count").
-			From("cvm_transactions_txdata").
-			Where("cvm_transactions_txdata.block_idx >= concat(?,'000')", firstBlockValue.Block).
-			Where("cvm_transactions_txdata.block_idx <= concat(?,'999')", lastBlockValue.Block)
+			Select("count(*) as transaction_count").
+			From(union).
+			Where("union_q.block_idx >= concat(?,'000')", firstBlockValue.Block).
+			Where("union_q.block_idx <= concat(?,'999')", lastBlockValue.Block)
 
 		cvmIntervals := models.AggregatesList{}
 

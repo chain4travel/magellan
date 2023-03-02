@@ -11,11 +11,15 @@ create table `cvm_blocks`
 
 create table `cvm_transactions_atomic`
 (
-    transaction_id varchar(50)     not null primary key,    
+    transaction_id varchar(50)     not null,
     block          decimal(65)     not null,
+    idx            bigint unsigned not null,
+    from_addr      varchar(50)     not null,
     chain_id       varchar(50)     not null,
     type           smallint        not null,
-    created_at                     timestamp not null default current_timestamp
+    serialization  mediumblob,
+    created_at     timestamp       not null default current_timestamp,
+    primary key(block,idx)
 );
 
 create table `cvm_addresses`
