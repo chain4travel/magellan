@@ -15,8 +15,10 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -143,7 +145,7 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cacheassets", (*V2Context).CacheAssets).
 		Get("/cacheassetaggregates", (*V2Context).CacheAssetAggregates).
 		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates).
-		Get("/multisigalias/:owner", (*V2Context).GetMultisigAlias)
+		Get("/multisigalias/:owners", (*V2Context).GetMultisigAlias)
 }
 
 // AVAX
@@ -325,19 +327,24 @@ func (c *V2Context) GetMultisigAlias(w web.ResponseWriter, r *web.Request) {
 		_ = collectors.Collect()
 	}()
 
-	ownerAddr := r.PathParams["owner"]
-	// convert owner address from bech32 to be used internally
-	addr, err := address.ParseToID(ownerAddr)
-	if err != nil {
-		c.WriteErr(w, 400, err)
-		return
+	ownersParam := r.PathParams["owners"]
+	ownerAddresses := []string{}
+	for _, ownerAddress := range strings.Split(ownersParam, ",") {
+		// convert owner address from bech32 to be used internally
+		addr, err := address.ParseToID(ownerAddress)
+		if err != nil {
+			c.WriteErr(w, 400, err)
+			return
+		}
+		ownerAddresses = append(ownerAddresses, addr.String())
 	}
-
+	// calculate cache key from owner addresses
+	cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(ownersParam)))
 	c.WriteCacheable(w, caching.Cacheable{
 		TTL: 5 * time.Second,
-		Key: c.cacheKeyForID("multisig_alias", addr.String()),
+		Key: c.cacheKeyForID("multisig_alias", cacheKey),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return c.avaxReader.GetMultisigAlias(ctx, addr.String())
+			return c.avaxReader.GetMultisigAlias(ctx, ownerAddresses)
 		},
 	})
 }

@@ -215,13 +215,13 @@ func (r *Reader) Aggregate(aggregateCache caching.AggregatesCache, params *param
 	}, nil
 }
 
-func (r *Reader) GetMultisigAlias(ctx context.Context, ownerAddress string) (*models.MultisigAliasList, error) {
+func (r *Reader) GetMultisigAlias(ctx context.Context, ownersAddresses []string) (*models.MultisigAliasList, error) {
 	dbRunner, err := r.conns.DB().NewSession("multisig_alias", cfg.RequestTimeout)
 	if err != nil {
 		return nil, err
 	}
 
-	alias, err := r.sc.Persist.QueryMultisigAliasForOwner(ctx, dbRunner, ownerAddress)
+	alias, err := r.sc.Persist.QueryMultisigAliasesForOwners(ctx, dbRunner, ownersAddresses)
 
 	aliasList := make([]string, 0, len(*alias))
 	for _, v := range *alias {

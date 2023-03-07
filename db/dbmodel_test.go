@@ -1557,11 +1557,12 @@ func TestInsertMultisigAlias(t *testing.T) {
 		t.Fatal("insert address bech32 fail", err)
 	}
 
-	fv, err := p.QueryMultisigAliasForOwner(ctx, rawDBConn.NewSession(stream), v.Owner)
+	owners := []string{v.Owner}
+	fv, err := p.QueryMultisigAliasesForOwners(ctx, rawDBConn.NewSession(stream), owners)
 	if err != nil {
 		t.Fatal("query fail", err)
 	}
-	if !reflect.DeepEqual(*v, (*fv)[0]) {
+	if !reflect.DeepEqual(v.Bech32Address, (*fv)[0].Bech32Address) {
 		t.Fatal("compare fail")
 	}
 	err = p.DeleteMultisigAlias(ctx, rawDBConn.NewSession(stream), v.Alias)
