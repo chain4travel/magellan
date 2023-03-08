@@ -466,10 +466,10 @@ type Persist interface {
 		*MultisigAlias,
 	) error
 
-	QueryMultisigAliasForOwner(
+	QueryMultisigAliasesForOwners(
 		context.Context,
 		dbr.SessionRunner,
-		string,
+		[]string,
 	) (*[]MultisigAlias, error)
 
 	DeleteMultisigAlias(
@@ -2556,15 +2556,16 @@ func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRu
 	return nil
 }
 
-func (p *persist) QueryMultisigAliasForOwner(
+func (p *persist) QueryMultisigAliasesForOwners(
 	ctx context.Context,
 	session dbr.SessionRunner,
-	owner string) (*[]MultisigAlias, error) {
+	owners []string) (*[]MultisigAlias, error) {
 	v := &[]MultisigAlias{}
 	_, err := session.Select(
-		"alias, memo, bech32_address, owner, transaction_id, created_at",
+		"bech32_address",
 	).From(TableMultisigAliases).Join(TableAddressBech32, "alias=address").
-		Where("owner=?", owner).
+		Where("owner IN ?", owners).
+		GroupBy("alias").
 		LoadContext(ctx, v)
 	return v, err
 }
