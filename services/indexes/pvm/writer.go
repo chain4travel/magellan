@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
@@ -709,6 +710,12 @@ func (w *Writer) InsertMultisigAlias(
 		}
 	}
 
+	// add alias to bech32 address mapping table
+	err = persistMultisigAliasAddresses(ctx, alias.ID, w.chainID)
+	if err != nil {
+		return err
+	}
+
 	// Get owner addresses
 	owner, ok := alias.Owners.(*secp256k1fx.OutputOwners)
 	if !ok {
@@ -733,6 +740,46 @@ func (w *Writer) InsertMultisigAlias(
 		if err != nil {
 			return err
 		}
+
+		// add owner address to bech32 address mapping table
+		err = persistMultisigAliasAddresses(ctx, addrid, w.chainID)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func persistMultisigAliasAddresses(ctx services.ConsumerCtx, addr ids.ShortID, chainID string) error {
+	var err error
+
+	// add alias and owners to address table
+	addressChain := &db.AddressChain{
+		Address:   addr.String(),
+		ChainID:   chainID,
+		CreatedAt: ctx.Time(),
+		UpdatedAt: time.Now().UTC(),
+	}
+	err = ctx.Persist().InsertAddressChain(ctx.Ctx(), ctx.DB(), addressChain, cfg.PerformUpdates)
+	if err != nil {
+		return err
+	}
+
+	bech32Addr, err := address.FormatBech32(models.Bech32HRP, addr.Bytes())
+	if err != nil {
+		return err
+	}
+
+	addressBech32 := &db.AddressBech32{
+		Address:       addr.String(),
+		Bech32Address: bech32Addr,
+		UpdatedAt:     time.Now().UTC(),
+	}
+
+	err = ctx.Persist().InsertAddressBech32(ctx.Ctx(), ctx.DB(), addressBech32, cfg.PerformUpdates)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
