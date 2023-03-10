@@ -47,12 +47,12 @@ func DateFilter(startTime time.Time, endTime time.Time, columnName string) strin
 	switch {
 	// if the date range is greater than or equal to one month the values are averaged per month
 	case (monthsBetween >= 1 || monthsBetween < 0 || startTime.Year() == 1) && yearsBetween == 0:
-		filterDate = "DATE_FORMAT(created_at,'%Y-%m-01')"
+		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-%m-01')"
 	// if the date range is greater than or equal to one year the values are averaged per year
 	case yearsBetween > 0:
-		filterDate = "DATE_FORMAT(created_at,'%Y-01-01')"
+		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-01-01')"
 	default:
-		filterDate = "DATE_FORMAT(created_at,'%Y-%m-%d')"
+		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-%m-%d')"
 	}
 	return filterDate
 }

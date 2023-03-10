@@ -166,16 +166,12 @@ func (r *Reader) AverageBlockSizeReader(ctx context.Context, p *params.ListParam
 	if err != nil {
 		return []*models.AverageBlockSize{}, err
 	}
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
 	var averageBlockSizeData []*models.AverageBlockSize
-	ua := dbRunner.Select("AVG(gas_used) AS AvgGasUsed", filterDate+" as date_info").
-		From("magellan.cvm_transactions_txdata").
-		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy("block_idx", filterDate)
-
-	_, err = dbRunner.Select("AVG(AvgGasUsed) AS block_size", "date_info").
-		From(ua.As("q")).
-		GroupBy("date_info").LoadContext(ctx, &averageBlockSizeData)
+	_, err = dbRunner.Select("AVG(avg_block_size) AS block_size", filterDate+" as date_info").
+		From("statistics").
+		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).LoadContext(ctx, &averageBlockSizeData)
 
 	if err != nil || len(averageBlockSizeData) == 0 {
 		return []*models.AverageBlockSize{}, err
