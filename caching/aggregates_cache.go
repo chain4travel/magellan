@@ -29,6 +29,7 @@ type AggregatesCache interface {
 	InitCacheStorage(cfg.Chains)
 	GetAggregatesFeesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
 	GetAggregatesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
+	UpdateStatisticsCache(*utils.Connections) error
 }
 
 type aggregatesCache struct {
@@ -450,6 +451,15 @@ func (ac *aggregatesCache) GetAggregatesFeesAndUpdate(chains map[string]cfg.Chai
 	}
 	ac.aggregateFeesMap[chainid][rangeKeyType] = aggs.TxfeeAggregates.Txfee
 	return nil
+}
+
+func (ac *aggregatesCache) UpdateStatisticsCache(conns *utils.Connections) error {
+	dbRunner, err := conns.DB().NewSession("update_statistics_cache", cfg.RequestTimeout)
+	if err != nil {
+		return err
+	}
+	_, err = dbRunner.Exec("Call daily_statistics_update()")
+	return err
 }
 
 func getFirstTransactionTime(conns *utils.Connections, chainIDs []string) (time.Time, error) {

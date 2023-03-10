@@ -952,39 +952,36 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 }
 
 func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
-	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	dbRunner, err := r.conns.DB().NewSession("active_addresses", cfg.RequestTimeout)
 	var addressStatistics *models.AddressStruct
 	if err != nil {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
 		}, err
 	}
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
 	var ActiveAddresses []*models.ActiveAddresses
-	baseq := dbRunner.Select("COUNT(DISTINCT id_from_addr) as send_count", "COUNT(DISTINCT id_to_addr) as receive_count", filterDate+" as date_at").
-		From("cvm_transactions_txdata").
-		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+	Active := dbRunner.Select("SUM(send_count) as send_count", "SUM(receive_count) as receive_count", "SUM(active_accounts) as total", filterDate+" as date_at").
+		From("statistics").
+		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
 		GroupBy(filterDate)
-
-	Active := dbRunner.Select("GREATEST(send_count, receive_count) as total", "send_count", "receive_count", "date_at").
-		From(baseq.As("bq"))
 
 	_, err = Active.LoadContext(ctx, &ActiveAddresses)
 
 	if err != nil || len(ActiveAddresses) == 0 {
 		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}
-	_, err = dbRunner.Select("date_at as highest_date", "GREATEST(send_count, receive_count) as highest_number").
+	_, err = dbRunner.Select("date_at as highest_date", "total as highest_number").
 		From(Active.As("q")).
-		OrderBy("GREATEST(send_count, receive_count)  LIMIT 1").
+		OrderBy("total DESC LIMIT 1").
 		LoadContext(ctx, &addressStatistics)
 
 	if err != nil {
 		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}
-	_, err = dbRunner.Select("date_at as lowest_date", "GREATEST(send_count, receive_count) as lowest_number").
-		From(baseq.As("q")).
-		OrderBy("GREATEST(send_count, receive_count) ASC LIMIT 1").
+	_, err = dbRunner.Select("date_at as lowest_date", "total as lowest_number").
+		From(Active.As("q")).
+		OrderBy("total ASC LIMIT 1").
 		LoadContext(ctx, &addressStatistics)
 
 	if err != nil {

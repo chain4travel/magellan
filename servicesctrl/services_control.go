@@ -145,6 +145,22 @@ func (s *Control) StartCacheScheduler(config *cfg.Config) error {
 	return nil
 }
 
+func (s *Control) StartStatisticsScheduler(config *cfg.Config) error {
+	// create new database connection
+	connections, err := s.DatabaseRO()
+	if err != nil {
+		return err
+	}
+	MyTimer := time.NewTimer(time.Duration(config.CacheStatisticsInterval) * time.Hour)
+
+	for range MyTimer.C {
+		MyTimer.Stop()
+		_ = s.AggregatesCache.UpdateStatisticsCache(connections)
+		MyTimer.Reset(time.Duration(config.CacheStatisticsInterval) * time.Hour)
+	}
+	return nil
+}
+
 func (s *Control) InitProduceMetrics() {
 	utils.Prometheus.CounterInit(MetricProduceProcessedCountKey, "records processed")
 	utils.Prometheus.CounterInit(MetricProduceSuccessCountKey, "records success")
