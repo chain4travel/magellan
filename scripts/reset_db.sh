@@ -1,7 +1,5 @@
 #! /bin/bash
 
-PATH=$PATH:'/c/Program Files/MariaDB 10.7/bin'
-
 mysql -uroot -ppassword -e"DROP DATABASE IF EXISTS $1"
 mysql -uroot -ppassword -e"CREATE DATABASE $1"
 
