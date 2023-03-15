@@ -54,8 +54,9 @@ var (
 	RegisterTransactionTypeCustom TransactionType = 8192
 	RegisterOutputTypeCustom      OutputType      = 8192
 
-	OutputTypesLOCKEDINID  OutputType = RegisterOutputTypeCustom + 0
-	OutputTypesLOCKEDOUTID OutputType = RegisterOutputTypeCustom + 1
+	OutputTypesLockedOutD  OutputType = RegisterOutputTypeCustom + 0
+	OutputTypesLockedOutB  OutputType = RegisterOutputTypeCustom + 1
+	OutputTypesLockedOutDB OutputType = RegisterOutputTypeCustom + 2
 
 	TransactionTypeCaminoAddValidator    TransactionType = RegisterTransactionTypeCustom + 2
 	TransactionTypeCaminoRewardValidator TransactionType = RegisterTransactionTypeCustom + 3
@@ -170,6 +171,12 @@ func (t OutputType) String() string {
 		return "atomic_export"
 	case OutputTypesAtomicImportTx:
 		return "atomic_import"
+	case OutputTypesLockedOutD:
+		return "deposit_locked"
+	case OutputTypesLockedOutB:
+		return "bond_locked"
+	case OutputTypesLockedOutDB:
+		return "deposit_bond_locked"
 	default:
 		return TypeUnknown
 	}

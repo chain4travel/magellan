@@ -563,13 +563,24 @@ func (w *Writer) ProcessStateOut(
 		if !ok {
 			return 0, 0, fmt.Errorf("invalid type *secp256k1fx.TransferOutput")
 		}
+
+		var outType models.OutputType
+		switch {
+		case typedOut.LockState().IsStateDepositedBonded():
+			outType = models.OutputTypesLockedOutDB
+		case typedOut.LockState().IsDeposited():
+			outType = models.OutputTypesLockedOutD
+		default:
+			outType = models.OutputTypesLockedOutB
+		}
+
 		err = w.InsertOutput(
 			ctx,
 			txID,
 			outputCount,
 			assetID,
 			xOut,
-			models.OutputTypesSECP2556K1Transfer,
+			outType,
 			0,
 			nil,
 			0,
