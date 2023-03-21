@@ -29,11 +29,11 @@ func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.Endpoi
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	chainIDs, _ := accessibleChains(config)
 	for _, chain := range chainIDs {
-		intensityFactor, err := carbonIntensityFactor(chain, startDatef, endDatef, config)
-		if len(intensityFactor) > 0 && err == nil {
+		networkEmissions, err := network(chain, startDatef, endDatef, config)
+		if len(networkEmissions) > 0 && err == nil {
 			dailyEmissions = append(dailyEmissions, models.EmissionsResult{
 				Chain: chain,
-				Value: getAvgEmissionsValue(intensityFactor),
+				Value: getAvgEmissionsValue(networkEmissions),
 			})
 		}
 	}
@@ -97,35 +97,6 @@ func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, c
 		err = getEmissionsResults(emissions, emissionsResult, endDate, startDate)
 	}
 	return emissions, err
-}
-
-func carbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService) ([]*models.EmissionsResult, error) {
-	response := []*models.EmissionsResult{}
-	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-
-	if err != nil {
-		return response, err
-	}
-	req.Header.Add("Authorization", config.AuthorizationToken)
-
-	res, err := client.Do(req)
-	if err != nil {
-		return response, err
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return response, err
-	}
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return response, err
-	}
-
-	return response, nil
 }
 
 func network(chain string, startDate string, endDate string, config cfg.EndpointService) ([]*models.EmissionsResult, error) {
