@@ -62,7 +62,7 @@ var (
 	TransactionTypeCaminoRewardValidator TransactionType = RegisterTransactionTypeCustom + 3
 	TransactionTypeAddAddressState       TransactionType = RegisterTransactionTypeCustom + 4
 	TransactionTypeDeposit               TransactionType = RegisterTransactionTypeCustom + 5
-	TransactionTypeUndeposit             TransactionType = RegisterTransactionTypeCustom + 6
+	TransactionTypeUnlockDeposit         TransactionType = RegisterTransactionTypeCustom + 6
 	TransactionTypeRegisterNodeTx        TransactionType = RegisterTransactionTypeCustom + 7
 	TransactionTypePvmBase               TransactionType = RegisterTransactionTypeCustom + 8
 	TransactionTypeMultisigAlias         TransactionType = RegisterTransactionTypeCustom + 9
@@ -139,8 +139,8 @@ func (t TransactionType) String() string {
 		return "address_state"
 	case TransactionTypeDeposit:
 		return "deposit"
-	case TransactionTypeUndeposit:
-		return "undeposit"
+	case TransactionTypeUnlockDeposit:
+		return "unlock_deposit"
 	case TransactionTypeRegisterNodeTx:
 		return "register_node"
 	case TransactionTypeMultisigAlias:

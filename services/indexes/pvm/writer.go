@@ -387,12 +387,20 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	case *blocks.ApricotCommitBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffProposalBlock:
+		ctxTime = time.Unix(int64(blk.Time), 0)
+		pvmProposer.TimeStamp = &ctxTime
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffStandardBlock:
+		ctxTime = time.Unix(int64(blk.Time), 0)
+		pvmProposer.TimeStamp = &ctxTime
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffAbortBlock:
+		ctxTime = time.Unix(int64(blk.Time), 0)
+		pvmProposer.TimeStamp = &ctxTime
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffCommitBlock:
+		ctxTime = time.Unix(int64(blk.Time), 0)
+		pvmProposer.TimeStamp = &ctxTime
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	default:
 		return fmt.Errorf("unknown type %T", blk)
@@ -572,7 +580,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		typ = models.TransactionTypeDeposit
 	case *txs.UnlockDepositTx:
 		baseTx = castTx.BaseTx.BaseTx
-		typ = models.TransactionTypeUndeposit
+		typ = models.TransactionTypeUnlockDeposit
 	case *txs.AddressStateTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddAddressState
