@@ -374,6 +374,12 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	ctxTime := ctx.Time()
 	pvmProposer := models.NewBlockProposal(proposerBlock, &ctxTime)
 
+	adjustCtxTime := func(tm uint64) {
+		ctxTime := time.Unix(int64(tm), 0)
+		ctx.SetTime(ctxTime)
+		pvmProposer.TimeStamp = &ctxTime
+	}
+
 	errs := wrappers.Errs{}
 	switch blk := blk.(type) {
 	case *blocks.ApricotProposalBlock:
@@ -387,20 +393,16 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	case *blocks.ApricotCommitBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffProposalBlock:
-		ctxTime = time.Unix(int64(blk.Time), 0)
-		pvmProposer.TimeStamp = &ctxTime
+		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffStandardBlock:
-		ctxTime = time.Unix(int64(blk.Time), 0)
-		pvmProposer.TimeStamp = &ctxTime
+		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffAbortBlock:
-		ctxTime = time.Unix(int64(blk.Time), 0)
-		pvmProposer.TimeStamp = &ctxTime
+		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	case *blocks.BanffCommitBlock:
-		ctxTime = time.Unix(int64(blk.Time), 0)
-		pvmProposer.TimeStamp = &ctxTime
+		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	default:
 		return fmt.Errorf("unknown type %T", blk)

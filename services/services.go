@@ -60,3 +60,4 @@ func (ic *ConsumerCtx) DB() dbr.SessionRunner { return ic.db }
 func (ic *ConsumerCtx) Ctx() context.Context  { return ic.ctx }
 func (ic *ConsumerCtx) Persist() db.Persist   { return ic.persist }
 func (ic *ConsumerCtx) ChainID() string       { return ic.chainID }
+func (ic *ConsumerCtx) SetTime(tm time.Time)  { ic.time = tm }
