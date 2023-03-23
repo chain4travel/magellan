@@ -352,6 +352,42 @@ type Validator struct {
 	City       string     `json:"city"`
 }
 
+type StatisticsCache struct {
+	DateAt         string  `json:"dateAt"`
+	CvmTx          int     `json:"cvmTx"`
+	AvmTx          int     `json:"avmTx"`
+	ReceiveCount   int     `json:"receiveCount"`
+	SendCount      int     `json:"sendCount"`
+	ActiveAccounts int     `json:"activeAccounts"`
+	Blocks         int     `json:"blocks"`
+	GasPrice       float32 `json:"gasPrice"`
+	TokenTransfer  float32 `json:"tokenTransfer"`
+	GasUsed        float32 `json:"gasUsed"`
+	AvgBlockSize   float32 `json:"avgBlockSize"`
+}
+
+type CvmStatisticsCache struct {
+	DateAt         string  `json:"dateAt"`
+	CvmTx          int     `json:"cvmTx"`
+	ReceiveCount   int     `json:"receiveCount"`
+	SendCount      int     `json:"sendCount"`
+	ActiveAccounts int     `json:"activeAccounts"`
+	Blocks         int     `json:"blocks"`
+	GasPrice       float32 `json:"gasPrice"`
+	GasUsed        float32 `json:"gasUsed"`
+	TokenTransfer  float32 `json:"tokenTransfer"`
+}
+
+type AvmStatisticsCache struct {
+	DateAt string `json:"dateAt"`
+	AvmTx  int    `json:"avmTx"`
+}
+
+type CvmBlocksStatisticsCache struct {
+	DateAt       string  `json:"dateAt"`
+	AvgBlockSize float32 `json:"avgBlockSize"`
+}
+
 /*******************  Merging  ***********************/
 
 type AggregateMerge interface {

@@ -151,12 +151,15 @@ func (s *Control) StartStatisticsScheduler(config *cfg.Config) error {
 	if err != nil {
 		return err
 	}
-	MyTimer := time.NewTimer(time.Duration(config.CacheStatisticsInterval) * time.Hour)
+	if err != nil {
+		s.Logger().Info(err.Error())
+	}
+	MyTimer := time.NewTimer(time.Duration(config.CacheUpdateInterval) * time.Minute)
 
 	for range MyTimer.C {
 		MyTimer.Stop()
-		_ = s.AggregatesCache.UpdateStatisticsCache(connections)
-		MyTimer.Reset(time.Duration(config.CacheStatisticsInterval) * time.Hour)
+		_ = s.AggregatesCache.UpdateStatistics(connections)
+		MyTimer.Reset(time.Duration(config.CacheUpdateInterval) * time.Minute)
 	}
 	return nil
 }

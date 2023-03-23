@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/chain4travel/magellan/cfg"
@@ -29,7 +30,7 @@ type AggregatesCache interface {
 	InitCacheStorage(cfg.Chains)
 	GetAggregatesFeesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
 	GetAggregatesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
-	UpdateStatisticsCache(*utils.Connections) error
+	UpdateStatistics(*utils.Connections) error
 }
 
 type aggregatesCache struct {
@@ -453,13 +454,127 @@ func (ac *aggregatesCache) GetAggregatesFeesAndUpdate(chains map[string]cfg.Chai
 	return nil
 }
 
-func (ac *aggregatesCache) UpdateStatisticsCache(conns *utils.Connections) error {
-	dbRunner, err := conns.DB().NewSession("update_statistics_cache", cfg.RequestTimeout)
+func (ac *aggregatesCache) UpdateStatistics(conn *utils.Connections) error {
+	dbRunner, err := conn.DB().NewSession("update_statistics", cfg.RequestTimeout)
 	if err != nil {
 		return err
 	}
-	_, err = dbRunner.Exec("Call daily_statistics_update()")
-	return err
+	var latestResults []models.StatisticsCache
+	maxDate := getMaxCacheDate(dbRunner)
+	latestResults = getLatestTransactionsInfo(dbRunner, maxDate)
+	updateStatisticsCacheInfo(dbRunner, latestResults)
+	return nil
+}
+
+func getLatestTransactionsInfo(dbRunner *dbr.Session, maxDate time.Time) []models.StatisticsCache {
+	var transactionsCache []models.StatisticsCache
+
+	cvmTransactions := getLatestCvmTransactions(dbRunner, maxDate)
+	avmTransactions := getLatestAvmTransactions(dbRunner, maxDate)
+	cvmBlocks := getLatestCvmBlocks(dbRunner, maxDate)
+
+	transactionsCache = utils.UnionStatistics(cvmTransactions, cvmBlocks, avmTransactions)
+	return transactionsCache
+}
+
+func updateStatisticsCacheInfo(dbRunner *dbr.Session, transactionCache []models.StatisticsCache) {
+	result := []models.StatisticsCache{}
+	for _, transaction := range transactionCache {
+		_, err := dbRunner.Select("*").From("statistics").Where("date_at = ?", strings.Split(transaction.DateAt, "T")[0]).Load(&result)
+		if err != nil {
+			continue
+		}
+		if len(result) > 0 {
+			//TODO: change this .Set for SetMap
+			updateStatistics := dbRunner.Update("statistics")
+			updateStatistics.Set("cvm_tx", transaction.CvmTx)
+			updateStatistics.Set("avm_tx", transaction.AvmTx)
+			updateStatistics.Set("token_transfer", transaction.TokenTransfer)
+			updateStatistics.Set("gas_used", transaction.GasUsed)
+			updateStatistics.Set("receive_count", transaction.ReceiveCount)
+			updateStatistics.Set("send_count", transaction.SendCount)
+			updateStatistics.Set("active_accounts", transaction.ActiveAccounts)
+			updateStatistics.Set("gas_price", transaction.GasPrice)
+			updateStatistics.Set("blocks", transaction.Blocks)
+			updateStatistics.Set("avg_block_size", transaction.AvgBlockSize)
+			updateStatistics.Where("date_at = ?", transaction.DateAt)
+			_, err := updateStatistics.Exec()
+			if err != nil {
+				fmt.Println("Error update: ", err.Error())
+			}
+		} else {
+			_, err := dbRunner.InsertInto("statistics").
+				Columns("date_at", "cvm_tx", "avm_tx", "token_transfer", "gas_used",
+					"receive_count", "send_count", "active_accounts", "gas_price", "blocks", "avg_block_size").
+				Record(transaction).Exec()
+
+			if err != nil {
+				fmt.Println("Error insert: ", err.Error())
+			}
+		}
+	}
+}
+
+func getMaxCacheDate(dbRunner *dbr.Session) time.Time {
+	var cacheDate struct {
+		MaxDate time.Time `json:"maxDate"`
+	}
+	_, err := dbRunner.Select("MAX(date_at) as max_date").From("statistics").Load(&cacheDate)
+	if cacheDate.MaxDate.IsZero() && err != nil {
+		parsedTime, err := time.Parse(strings.Split(time.RFC3339, "T")[0], "1001-01-01")
+		if err != nil {
+			return cacheDate.MaxDate
+		}
+		cacheDate.MaxDate = parsedTime
+	}
+
+	return cacheDate.MaxDate
+}
+
+func getLatestCvmTransactions(dbRunner *dbr.Session, maxDate time.Time) []*models.CvmStatisticsCache {
+	cvmLatestTransactions := []*models.CvmStatisticsCache{}
+	_, err := dbRunner.Select("DATE(created_at) as date_at", "COUNT(*) as cvm_tx",
+		"COUNT(DISTINCT id_to_addr) as receive_count", "COUNT(DISTINCT id_from_addr) as send_count",
+		"GREATEST(COUNT(DISTINCT id_to_addr), COUNT(DISTINCT id_from_addr)) as active_accounts",
+		"SUM(amount) as token_transfer", "SUM(gas_used) as gas_used", "SUM(gas_price) as gas_price",
+		"COUNT(DISTINCT block_idx) as blocks").From("cvm_transactions_txdata").
+		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		GroupBy("DATE(created_at)").Load(&cvmLatestTransactions)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return []*models.CvmStatisticsCache{}
+	}
+
+	return cvmLatestTransactions
+}
+
+func getLatestAvmTransactions(dbRunner *dbr.Session, maxDate time.Time) []*models.AvmStatisticsCache {
+	avmLatestTransactions := []*models.AvmStatisticsCache{}
+
+	_, err := dbRunner.Select("DATE(created_at) as date_at", "COUNT(*) as avm_tx").
+		From("avm_transactions").Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		GroupBy("DATE(created_at)").Load(&avmLatestTransactions)
+
+	if err != nil {
+		return []*models.AvmStatisticsCache{}
+	}
+
+	return avmLatestTransactions
+}
+
+func getLatestCvmBlocks(dbRunner *dbr.Session, maxDate time.Time) []*models.CvmBlocksStatisticsCache {
+	cvmLatestBlocks := []*models.CvmBlocksStatisticsCache{}
+
+	_, err := dbRunner.Select("DATE(created_at) as date_at", "AVG(size) as avg_block_size").
+		From("cvm_blocks").Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		GroupBy("DATE(created_at)").Load(&cvmLatestBlocks)
+
+	if err != nil {
+		return []*models.CvmBlocksStatisticsCache{}
+	}
+
+	return cvmLatestBlocks
 }
 
 func getFirstTransactionTime(conns *utils.Connections, chainIDs []string) (time.Time, error) {

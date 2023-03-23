@@ -213,10 +213,12 @@ func createAPICmds(sc *servicesctrl.Control, config *cfg.Config, runErr *error) 
 				}
 			}()
 			go func() {
+				inicio := time.Now()
 				err := sc.StartStatisticsScheduler(config)
 				if err != nil {
 					return
 				}
+				fmt.Println("duro ejecutando:", time.Since(inicio))
 			}()
 			lc, err := api.NewServer(sc, *config)
 			if err != nil {
