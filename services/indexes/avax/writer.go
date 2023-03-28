@@ -566,7 +566,7 @@ func (w *Writer) ProcessStateOut(
 
 		var outType models.OutputType
 		switch {
-		case typedOut.LockState().IsStateDepositedBonded():
+		case typedOut.LockState().IsDepositedBonded():
 			outType = models.OutputTypesLockedOutDB
 		case typedOut.LockState().IsDeposited():
 			outType = models.OutputTypesLockedOutD
