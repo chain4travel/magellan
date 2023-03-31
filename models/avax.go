@@ -12,14 +12,14 @@ type Transaction struct {
 	ChainID StringID `json:"chainID"`
 	Type    string   `json:"type"`
 
-	Inputs  []*Input  `json:"inputs"`
-	Outputs []*Output `json:"outputs"`
+	Inputs  []*Input  `json:"inputs,omitempty"`
+	Outputs []*Output `json:"outputs,omitempty"`
 
-	Memo []byte `json:"memo"`
+	Memo []byte `json:"memo,omitempty"`
 
-	InputTotals         AssetTokenCounts `json:"inputTotals"`
-	OutputTotals        AssetTokenCounts `json:"outputTotals"`
-	ReusedAddressTotals AssetTokenCounts `json:"reusedAddressTotals"`
+	InputTotals         AssetTokenCounts `json:"inputTotals,omitempty"`
+	OutputTotals        AssetTokenCounts `json:"outputTotals,omitempty"`
+	ReusedAddressTotals AssetTokenCounts `json:"reusedAddressTotals,omitempty"`
 
 	CanonicalSerialization []byte    `json:"canonicalSerialization,omitempty"`
 	CreatedAt              time.Time `json:"timestamp"`
@@ -28,18 +28,18 @@ type Transaction struct {
 
 	Genesis bool `json:"genesis"`
 
-	Rewarded     bool       `json:"rewarded"`
-	RewardedTime *time.Time `json:"rewardedTime"`
+	Rewarded     bool       `json:"rewarded,omitempty"`
+	RewardedTime *time.Time `json:"rewardedTime,omitempty"`
 
-	Epoch uint64 `json:"epoch"`
+	Epoch uint64 `json:"epoch,omitempty"`
 
-	VertexID StringID `json:"vertexId"`
+	VertexID StringID `json:"vertexId,omitempty"`
 
-	ValidatorNodeID StringID `json:"validatorNodeID"`
-	ValidatorStart  uint64   `json:"validatorStart"`
-	ValidatorEnd    uint64   `json:"validatorEnd"`
+	ValidatorNodeID StringID `json:"validatorNodeID,omitempty"`
+	ValidatorStart  uint64   `json:"validatorStart,omitempty"`
+	ValidatorEnd    uint64   `json:"validatorEnd,omitempty"`
 
-	TxBlockID StringID `json:"txBlockId"`
+	TxBlockID StringID `json:"txBlockId,omitempty"`
 
 	Proposer *BlockProposal `json:"proposer,omitempty"`
 

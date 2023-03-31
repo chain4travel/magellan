@@ -736,6 +736,21 @@ func transactionQuery(dbRunner *dbr.Session) *dbr.SelectStmt {
 		LeftJoin("transactions_block", "avm_transactions.id = transactions_block.id")
 }
 
+func rawTransactionQuery(dbRunner *dbr.Session) *dbr.SelectStmt {
+	return dbRunner.
+		Select(
+			"avm_transactions.id",
+			"avm_transactions.chain_id",
+			"avm_transactions.type",
+			"avm_transactions.memo",
+			"avm_transactions.created_at",
+			"avm_transactions.txfee",
+			"avm_transactions.genesis",
+			"avm_transactions.canonical_serialization",
+		).
+		From("avm_transactions")
+}
+
 func (r *Reader) chainWriter(chainID string) (services.Consumer, error) {
 	r.avmLock.RLock()
 	w, ok := r.chainConsumers[chainID]

@@ -184,7 +184,9 @@ type ListTransactionsParams struct {
 	OutputGroupIDs    []uint64
 
 	DisableGenesis bool
-	Sort           TransactionSort
+	Raw            bool
+
+	Sort TransactionSort
 }
 
 func (p *ListTransactionsParams) ForValues(v uint8, q url.Values) error {
@@ -234,6 +236,11 @@ func (p *ListTransactionsParams) ForValues(v uint8, q url.Values) error {
 	}
 
 	p.DisableGenesis, err = GetQueryBool(q, KeyDisableGenesis, false)
+	if err != nil {
+		return err
+	}
+
+	p.Raw, err = GetQueryBool(q, KeyRaw, false)
 	if err != nil {
 		return err
 	}

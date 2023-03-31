@@ -189,9 +189,14 @@ func (r *Reader) listTxs(
 			builderBase.Offset(uint64(p.ListParams.Offset))
 		}
 
+		txQuery := transactionQuery
+		if p.Raw {
+			txQuery = rawTransactionQuery
+		}
+
 		builder := applySort(
 			p.Sort,
-			transactionQuery(dbRunner).
+			txQuery(dbRunner).
 				Join(builderBase.As("avm_transactions_id"), "avm_transactions.id = avm_transactions_id.id"),
 		)
 
@@ -261,7 +266,7 @@ func (r *Reader) ListTransactions(ctx context.Context, p *params.ListTransaction
 		return nil, err
 	}
 
-	if !dressed {
+	if !dressed && !p.Raw {
 		if err := dressTransactions(ctx, dbRunner, txs, avaxAssetID, p.ListParams.ID, p.DisableGenesis); err != nil {
 			return nil, err
 		}
