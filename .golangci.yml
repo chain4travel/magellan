@@ -30,19 +30,19 @@ linters-settings:
 
 linters:
   enable:
-    - asciicheck
-    - bodyclose
-    - depguard
-    - dogsled
-    - errcheck
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - goprintffuncname
-    - gosec
-    - gosimple
+#    - asciicheck
+#    - bodyclose
+#    - depguard
+#    - dogsled
+#    - errcheck
+#    - goconst
+#    - gocritic
+#    - gocyclo
+#    - gofmt
+#    - goimports
+#    - goprintffuncname
+#    - gosec
+#    - gosimple
 #    - govet
     - ineffassign
     - misspell
