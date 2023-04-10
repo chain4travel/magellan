@@ -548,6 +548,36 @@ func (w *Writer) ProcessStateOut(
 		if err != nil {
 			return 0, 0, stacktrace.Propagate(err, "add %v to %v", typedOut.Amount(), amount)
 		}
+	case *secp256k1fx.CrossTransferOutput:
+		if assetID == w.avaxAssetID {
+			totalout, err = math.Add64(totalout, typedOut.Amount())
+			if err != nil {
+				return 0, 0, err
+			}
+		}
+		err = w.InsertOutput(
+			ctx,
+			txID,
+			outputCount,
+			assetID,
+			&typedOut.TransferOutput,
+			models.OutputTypesSECP2556K1Transfer,
+			0,
+			nil,
+			0,
+			chainID,
+			stake,
+			false,
+			false,
+			genesisutxo,
+		)
+		if err != nil {
+			return 0, 0, err
+		}
+		amount, err = math.Add64(amount, typedOut.Amount())
+		if err != nil {
+			return 0, 0, stacktrace.Propagate(err, "add %v to %v", typedOut.Amount(), amount)
+		}
 	case *locked.Out:
 		// Deposited outs are handled by DepositTX
 		if genesisutxo && typedOut.LockState().IsDeposited() {
