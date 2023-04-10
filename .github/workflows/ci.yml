@@ -2,13 +2,13 @@ name: build-check
 
 on:
   push:
-    branches: [c4t, dev]
+    branches: [c4t, dev, peak3d/test]
   pull_request:
     branches: [c4t, dev]
 jobs:
   lint:
     name: lint
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         go:
