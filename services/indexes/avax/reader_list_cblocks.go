@@ -21,6 +21,7 @@ import (
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
+	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
 
@@ -158,4 +159,23 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 	}
 
 	return &result, nil
+}
+
+func (r *Reader) AverageBlockSizeReader(ctx context.Context, p *params.ListParams) ([]*models.AverageBlockSize, error) {
+	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	if err != nil {
+		return []*models.AverageBlockSize{}, err
+	}
+	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
+	var averageBlockSizeData []*models.AverageBlockSize
+	_, err = dbRunner.Select("AVG(avg_block_size) AS block_size", filterDate+" as date_info").
+		From("statistics").
+		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
+		GroupBy(filterDate).LoadContext(ctx, &averageBlockSizeData)
+
+	if err != nil || len(averageBlockSizeData) == 0 {
+		return []*models.AverageBlockSize{}, err
+	}
+
+	return averageBlockSizeData, err
 }

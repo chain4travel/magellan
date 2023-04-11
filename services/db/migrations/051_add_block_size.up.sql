@@ -1,0 +1,1 @@
+ALTER TABLE cvm_blocks ADD COLUMN `size` FLOAT default 0 AFTER `proposer_time`;

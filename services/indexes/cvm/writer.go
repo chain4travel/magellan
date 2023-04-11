@@ -297,7 +297,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 	if err != nil {
 		return err
 	}
-
+	size := utils.GetSizeFromStringtoFloat(block.Size().String())
 	cvmBlocks := &db.CvmBlocks{
 		Block:         block.Header().Number.String(),
 		Hash:          block.Hash().String(),
@@ -308,6 +308,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		CreatedAt:     ctx.Time(),
 		Proposer:      proposer.Proposer,
 		ProposerTime:  proposer.TimeStamp,
+		Size:          size,
 	}
 	err = ctx.Persist().InsertCvmBlocks(ctx.Ctx(), ctx.DB(), cvmBlocks)
 

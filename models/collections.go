@@ -153,6 +153,59 @@ type CResult struct {
 	Hash   string `json:"hash"`
 }
 
+type StatisticsStruct struct {
+	HighestNumber float64     `json:"highestValue"`
+	HighestDate   string      `json:"highestDate"`
+	LowestNumber  float64     `json:"lowerValue"`
+	LowestDate    string      `json:"lowerDate"`
+	TxInfo        interface{} `json:"txInfo"`
+}
+
+type TransactionsInfo struct {
+	Date              string  `json:"date"`
+	TotalTransactions int     `json:"totalTransactions"`
+	AvgBlockTime      float32 `json:"avgBlockTime"`
+	AvgBlockSize      float32 `json:"avgBlockSize"`
+	TotalBlockCount   int     `json:"totalBlockCount"`
+	TotalUnclesCount  int     `json:"totalUnclesCount"`
+	NewAddressSeen    string  `json:"newAddressSeen"`
+}
+
+type TransactionsPerDate struct {
+	Counter float64 `json:"counter"`
+	DateAt  string  `json:"dateAt"`
+}
+
+type GasUsedPerDate struct {
+	Gas  float32 `json:"avgGas"`
+	Date string  `json:"date"`
+}
+
+type AverageBlockSize struct {
+	BlockSize float64 `json:"blockSize"`
+	DateInfo  string  `json:"dateInfo"`
+}
+
+type AddressStruct struct {
+	HighestNumber int         `json:"highestValue"`
+	HighestDate   string      `json:"highestDate"`
+	LowestNumber  int         `json:"lowestValue"`
+	LowestDate    string      `json:"lowestDate"`
+	AddressInfo   interface{} `json:"addressInfo"`
+}
+type UniqueAddresses struct {
+	TotalAddresses int    `json:"totalAddresses"`
+	DateAt         string `json:"dateAt"`
+	DailyIncrease  int    `json:"dailyIncrease"`
+}
+
+type ActiveAddresses struct {
+	Total        int    `json:"total"`
+	ReceiveCount int    `json:"receiveCount"`
+	SendCount    int    `json:"sendCount"`
+	DateAt       string `json:"dateAt"`
+}
+
 // SearchResults represents a set of items returned for a search query.
 type SearchResults struct {
 	// Count is the total number of matching results
@@ -297,6 +350,42 @@ type Validator struct {
 	Country    string     `json:"country"`
 	CountryISO string     `json:"countryISO"`
 	City       string     `json:"city"`
+}
+
+type StatisticsCache struct {
+	DateAt         string  `json:"dateAt"`
+	CvmTx          int     `json:"cvmTx"`
+	AvmTx          int     `json:"avmTx"`
+	ReceiveCount   int     `json:"receiveCount"`
+	SendCount      int     `json:"sendCount"`
+	ActiveAccounts int     `json:"activeAccounts"`
+	Blocks         int     `json:"blocks"`
+	GasPrice       float32 `json:"gasPrice"`
+	TokenTransfer  float32 `json:"tokenTransfer"`
+	GasUsed        float32 `json:"gasUsed"`
+	AvgBlockSize   float32 `json:"avgBlockSize"`
+}
+
+type CvmStatisticsCache struct {
+	DateAt         string  `json:"dateAt"`
+	CvmTx          int     `json:"cvmTx"`
+	ReceiveCount   int     `json:"receiveCount"`
+	SendCount      int     `json:"sendCount"`
+	ActiveAccounts int     `json:"activeAccounts"`
+	Blocks         int     `json:"blocks"`
+	GasPrice       float32 `json:"gasPrice"`
+	GasUsed        float32 `json:"gasUsed"`
+	TokenTransfer  float32 `json:"tokenTransfer"`
+}
+
+type AvmStatisticsCache struct {
+	DateAt string `json:"dateAt"`
+	AvmTx  int    `json:"avmTx"`
+}
+
+type CvmBlocksStatisticsCache struct {
+	DateAt       string  `json:"dateAt"`
+	AvgBlockSize float32 `json:"avgBlockSize"`
 }
 
 /*******************  Merging  ***********************/

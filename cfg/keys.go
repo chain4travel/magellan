@@ -43,5 +43,6 @@ const (
 
 	keysStreamProducerCchainID = "cchainID"
 
-	keysCacheUpdateInterval = "cacheUpdateInterval"
+	keysCacheUpdateInterval     = "cacheUpdateInterval"
+	keysCacheStatisticsInterval = "cacheStatisticsInterval"
 )
