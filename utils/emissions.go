@@ -11,17 +11,22 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/models"
 )
 
 const (
-	perYear  string = "Per Year"
-	perMonth string = "Per Month"
-	perDay   string = "Per Day"
+	perYear         string = "Per Year"
+	perMonth        string = "Per Month"
+	perDay          string = "Per Day"
+	createReqErrMsg string = "Fail to create the request"
+	sendReqErrMsg   string = "Fail to send the request"
+	reqBodyErrMsg   string = "Fail to read request body"
+	jsonErrMsg      string = "Fail to json unmarshal in struct"
 )
 
-var countryIDs = []string{"TAIWAN", "UNITED_STATES", "GERMANY", "NETHERLANDS", "BELGIUM", "FINLAND"}
+var countryIDs = []string{"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN", "ICELAND", "NORWAY", "CHINA", "SWEDEN"}
 
 func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string) models.Emissions {
 	dailyEmissions := []models.EmissionsResult{}
@@ -61,14 +66,22 @@ func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	return emissions, err
 }
 
-func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string) (models.Emissions, error) {
+func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string, logger logging.Logger) (models.Emissions, error) {
 	startDatef := strings.Split(startDate.String(), " ")[0]
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
+	networkInmutable, _ := getNetworkNameInmutable(networkName, config)
 	emissionsInfo := []*models.CountryEmissionsResult{}
+	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config, logger)
+	if err == nil {
+		emissionsInfo = append(emissionsInfo, &models.CountryEmissionsResult{
+			Country: networkName,
+			Value:   getAvgEmissionsValue(networkInfo),
+		})
+	}
 	for _, countryID := range countryIDs {
-		countryInfo, err := country(countryID, startDatef, endDatef, config)
+		countryInfo, err := country(countryID, startDatef, endDatef, config, logger)
 		if err == nil {
 			emissionsInfo = append(emissionsInfo, &models.CountryEmissionsResult{
 				Country: countryID,
@@ -176,13 +189,14 @@ func transaction(chain string, startDate string, endDate string, config cfg.Endp
 	return response, nil
 }
 
-func country(country string, startDate string, endDate string, config cfg.EndpointService) ([]*models.EmissionsResult, error) {
+func country(country string, startDate string, endDate string, config cfg.EndpointService, logger logging.Logger) ([]*models.EmissionsResult, error) {
 	response := []*models.EmissionsResult{}
 	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/country?from=%s&to=%s&country=%s", config.URLEndpoint, startDate, endDate, country)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 
 	if err != nil {
+		logger.Warn(createReqErrMsg + " in country intensity factor: " + err.Error())
 		return response, err
 	}
 
@@ -190,16 +204,19 @@ func country(country string, startDate string, endDate string, config cfg.Endpoi
 
 	res, err := client.Do(req)
 	if err != nil {
+		logger.Warn(sendReqErrMsg + " in country intensity factor: " + err.Error())
 		return response, err
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
+		logger.Warn(reqBodyErrMsg + " in country intensity factor: " + err.Error())
 		return response, err
 	}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
+		logger.Warn(jsonErrMsg + " in country intensity factor: " + err.Error())
 		return response, err
 	}
 
@@ -332,4 +349,37 @@ func getEmissionsResults(emissions *models.Emissions, emissionsResult []*models.
 		emissions.Value = emissionsResult
 	}
 	return nil
+}
+
+func carbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService, logger logging.Logger) ([]*models.EmissionsResult, error) {
+	response := []*models.EmissionsResult{}
+	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		logger.Warn(createReqErrMsg + " in carbon intensity factor: " + err.Error())
+		return response, err
+	}
+	req.Header.Add("Authorization", config.AuthorizationToken)
+
+	res, err := client.Do(req)
+	if err != nil {
+		logger.Warn(sendReqErrMsg + " in carbon intensity factor: " + err.Error())
+		return response, err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		logger.Warn(reqBodyErrMsg + " in carbon intensity factor: " + err.Error())
+		return response, err
+	}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		logger.Warn(jsonErrMsg + " in carbon intensity factor: " + err.Error())
+		return response, err
+	}
+
+	return response, nil
 }

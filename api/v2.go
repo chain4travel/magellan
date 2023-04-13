@@ -371,7 +371,7 @@ func (c *V2Context) DailyEmissions(w web.ResponseWriter, r *web.Request) {
 	}
 	key := fmt.Sprintf("Daily Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
-		TTL: 24 * time.Hour,
+		TTL: time.Duration(c.sc.ServicesCfg.CacheEmissionsInterval) * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetDailyEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode), nil
@@ -387,10 +387,10 @@ func (c *V2Context) CountryEmissions(w web.ResponseWriter, r *web.Request) {
 	}
 	key := fmt.Sprintf("Country Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
-		TTL: 24 * time.Hour,
+		TTL: time.Duration(c.sc.ServicesCfg.CacheEmissionsInterval) * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetCountryEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
+			return utils.GetCountryEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode, c.sc.Log)
 		},
 	})
 }
@@ -404,7 +404,7 @@ func (c *V2Context) NetworkEmissions(w web.ResponseWriter, r *web.Request) {
 
 	key := fmt.Sprintf("Network Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
-		TTL: 24 * time.Hour,
+		TTL: time.Duration(c.sc.ServicesCfg.CacheEmissionsInterval) * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetNetworkEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
@@ -420,7 +420,7 @@ func (c *V2Context) TransactionEmissions(w web.ResponseWriter, r *web.Request) {
 	}
 	key := fmt.Sprintf("Transaction Emissions %s", p.ListParams.EndTime)
 	c.WriteCacheable(w, caching.Cacheable{
-		TTL: 24 * time.Hour,
+		TTL: time.Duration(c.sc.ServicesCfg.CacheEmissionsInterval) * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return utils.GetNetworkEmissionsPerTransaction(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)

@@ -17,6 +17,7 @@ const defaultJSON = `{
   "networkID": 1001,
   "cacheUpdateInterval": "5",
   "cacheStatisticsInterval": "1",
+  "cacheEmissionsInterval": "1",
   "logDirectory": "/tmp/magellan/logs",
   "listenAddr": ":8080",
   "chains": {},
