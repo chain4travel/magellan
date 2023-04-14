@@ -15,6 +15,7 @@ package avax
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -367,6 +368,55 @@ func TestAggregates(t *testing.T) {
 	}
 }
 
+func TestDailyTransactionsStatistics(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	persist := db.NewPersist()
+	sessTx, _ := reader.conns.DB().NewSession("test_daily_tx_statistics", cfg.RequestTimeout)
+
+	_, _ = sessTx.DeleteFrom("avm_transactions").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("cvm_transactions_txdata").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("cvm_blocks").ExecContext(ctx)
+
+	sessOuts, _ := reader.conns.DB().NewSession("test_daily_tx_statistics", cfg.RequestTimeout)
+	_, _ = sessOuts.DeleteFrom("cvm_transactions_txdata").ExecContext(ctx)
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	// yesterdayDateTime := time.Now().UTC().AddDate(0, 0, -1)
+	// prevWeekDateTime := time.Now().UTC().AddDate(0, 0, -7)
+	// prevMonthDateTime := time.Now().UTC().AddDate(0, -1, 0)
+
+	startTime := timeNow.Add(-365 * time.Hour)
+	endTime := timeNow.Add(1 * time.Hour)
+	statisticsParams := &params.StatisticsParams{
+		ListParams: params.ListParams{StartTime: startTime, EndTime: endTime},
+	}
+
+	transaction := &db.Transactions{
+		ID:        "id3",
+		ChainID:   "cid",
+		Type:      "type",
+		Txfee:     20,
+		CreatedAt: timeNow.Add(-200 * time.Hour),
+	}
+	_ = persist.InsertTransactions(ctx, sessTx, transaction, false)
+	cvmTransactionTxdata := &db.CvmTransactionsTxdata{
+		Hash:          "0x0a8fc037d05e301b93a6db64f80b9c7e28fb8ad2af5e7e18d0fc1644720be2f7",
+		Block:         "95",
+		FromAddr:      "2",
+		ToAddr:        "2",
+		Idx:           uint64(2),
+		Nonce:         94,
+		Amount:        1000000000000000,
+		Serialization: nil,
+		CreatedAt:     timeNow.Add(-200 * time.Hour),
+	}
+	_ = persist.InsertCvmTransactionsTxdata(ctx, sessTx, cvmTransactionTxdata, false)
+	fmt.Println(statisticsParams)
+}
+
 func newTestIndex(t *testing.T) (*Reader, func()) {
 	logConf := logging.Config{
 		DisplayLevel: logging.Info,
@@ -385,6 +435,10 @@ func newTestIndex(t *testing.T) (*Reader, func()) {
 		"cid": {
 			ID:     "cid",
 			VMType: models.AVMName,
+		},
+		"cid2": {
+			ID:     "cid2",
+			VMType: models.CVMName,
 		},
 	}
 
