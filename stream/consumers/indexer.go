@@ -110,7 +110,7 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 				zap.String("chainID", chain.ID),
 			)
 			wg.Add(1)
-			go func() {
+			go func(chain cfg.Chain) {
 				defer wg.Done()
 				err = bootstrapfactory.Bootstrap(ctx, conns, sc.Persist, sc.GenesisContainer)
 				if err != nil {
@@ -121,7 +121,7 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 					zap.String("vmType", chain.VMType),
 					zap.String("chainID", chain.ID),
 				)
-			}()
+			}(chain)
 		}
 	}
 
