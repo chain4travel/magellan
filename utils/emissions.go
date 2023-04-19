@@ -21,7 +21,7 @@ const (
 	perDay   string = "Per Day"
 )
 
-var countryIDs = []string{"TAIWAN", "UNITED_STATES", "GERMANY", "NETHERLANDS", "BELGIUM", "FINLAND"}
+var countryIDs = []string{"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN", "ICELAND", "NORWAY", "CHINA", "SWEDEN"}
 
 func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string) models.Emissions {
 	dailyEmissions := []models.EmissionsResult{}
@@ -66,7 +66,15 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
+	networkInmutable, _ := getNetworkNameInmutable(networkName, config)
 	emissionsInfo := []*models.CountryEmissionsResult{}
+	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config)
+	if err == nil {
+		emissionsInfo = append(emissionsInfo, &models.CountryEmissionsResult{
+			Country: networkName,
+			Value:   getAvgEmissionsValue(networkInfo),
+		})
+	}
 	for _, countryID := range countryIDs {
 		countryInfo, err := country(countryID, startDatef, endDatef, config)
 		if err == nil {
@@ -332,4 +340,33 @@ func getEmissionsResults(emissions *models.Emissions, emissionsResult []*models.
 		emissions.Value = emissionsResult
 	}
 	return nil
+}
+
+func carbonIntensityFactor(chain string, startDate string, endDate string, config cfg.EndpointService) ([]*models.EmissionsResult, error) {
+	response := []*models.EmissionsResult{}
+	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		return response, err
+	}
+	req.Header.Add("Authorization", config.AuthorizationToken)
+
+	res, err := client.Do(req)
+	if err != nil {
+		return response, err
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return response, err
+	}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
 }
