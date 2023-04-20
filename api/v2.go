@@ -390,7 +390,7 @@ func (c *V2Context) CountryEmissions(w web.ResponseWriter, r *web.Request) {
 		TTL: time.Duration(c.sc.ServicesCfg.CacheEmissionsInterval) * time.Hour,
 		Key: c.cacheKeyForParams(key, p),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
-			return utils.GetCountryEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode, c.sc.Log)
+			return utils.GetCountryEmissions(p.ListParams.StartTime, p.ListParams.EndTime, c.sc.Services.InmutableInsights, c.sc.ServicesCfg.CaminoNode)
 		},
 	})
 }
