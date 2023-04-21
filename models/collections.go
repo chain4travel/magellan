@@ -156,8 +156,8 @@ type CResult struct {
 type StatisticsStruct struct {
 	HighestNumber float64     `json:"highestValue"`
 	HighestDate   string      `json:"highestDate"`
-	LowestNumber  float64     `json:"lowerValue"`
-	LowestDate    string      `json:"lowerDate"`
+	LowestNumber  float64     `json:"lowestValue"`
+	LowestDate    string      `json:"lowestDate"`
 	TxInfo        interface{} `json:"txInfo"`
 }
 

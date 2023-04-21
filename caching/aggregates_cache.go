@@ -525,6 +525,7 @@ func updateStatisticsCacheInfo(dbRunner *dbr.Session, transactionCache []models.
 				fmt.Println("Error insert: ", err.Error())
 			}
 		}
+		result = []models.StatisticsCache{}
 	}
 }
 
