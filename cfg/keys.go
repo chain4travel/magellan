@@ -45,4 +45,5 @@ const (
 
 	keysCacheUpdateInterval     = "cacheUpdateInterval"
 	keysCacheStatisticsInterval = "cacheStatisticsInterval"
+	keysCacheEmissionsInterval  = "cacheEmissionsInterval"
 )

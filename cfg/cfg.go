@@ -76,6 +76,7 @@ type Config struct {
 	NodeInstance            string `json:"nodeInstance"`
 	CacheUpdateInterval     uint64 `json:"cacheUpdateInterval"`
 	CacheStatisticsInterval uint64 `json:"cacheStatisticsInterval"`
+	CacheEmissionsInterval  uint64 `json:"cacheEmissionsInterval"`
 	AP5Activation           uint64 `json:"ap5Activation"`
 	BanffActivation         uint64 `json:"banffActivation"`
 }
@@ -198,6 +199,7 @@ func NewFromFile(filePath string) (*Config, error) {
 		NodeInstance:            v.GetString(keysStreamProducerNodeInstance),
 		CacheUpdateInterval:     uint64(v.GetInt(keysCacheUpdateInterval)),
 		CacheStatisticsInterval: uint64(v.GetInt(keysCacheStatisticsInterval)),
+		CacheEmissionsInterval:  uint64(v.GetInt(keysCacheEmissionsInterval)),
 		AP5Activation:           uint64(ap5Activation),
 		BanffActivation:         uint64(banffActivation),
 	}, nil

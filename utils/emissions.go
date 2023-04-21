@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -71,7 +72,7 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config)
 	if err == nil {
 		emissionsInfo = append(emissionsInfo, &models.CountryEmissionsResult{
-			Country: networkName,
+			Country: strings.ToUpper(networkName),
 			Value:   getAvgEmissionsValue(networkInfo),
 		})
 	}
@@ -248,7 +249,7 @@ func getAvgEmissionsValue(e []*models.EmissionsResult) float64 {
 	Avg := Total / float64(len(e))
 	formatValue := strconv.FormatFloat(Avg, 'f', 2, 64)
 	parsedValue, err := strconv.ParseFloat(formatValue, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(parsedValue) {
 		return 0.0
 	}
 	return parsedValue
