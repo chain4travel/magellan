@@ -832,7 +832,7 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
 	dbRunner, err := r.conns.DB().NewSession("avg_gas_price", cfg.RequestTimeout)
 	if err != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 	var gasPrice []*models.GasUsedPerDate
 	var statisticsStruct models.StatisticsStruct
@@ -846,7 +846,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 
 	_, err = sa.LoadContext(ctx, &gasPrice)
 	if err != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 
 	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
@@ -855,7 +855,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 		LoadContext(ctx, &statisticsStruct)
 
 	if err != nil {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 
 	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
@@ -864,7 +864,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 		LoadContext(ctx, &statisticsStruct)
 
 	if err != nil || len(gasPrice) == 0 {
-		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
+		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 
 	statisticsStruct.TxInfo = gasPrice

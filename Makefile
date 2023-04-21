@@ -40,7 +40,7 @@ test_env_start: ## Start up backing services in test mode
 	@docker-compose -f docker/test_env/docker-compose.yml up --remove-orphans -d
 
 test_env_rm: ## Stop and remove all test mode services
-	@docker-compose -f docker/standalone/docker-compose.yml down --remove-orphans --volumes
+	@docker-compose -f docker/test_env/docker-compose.yml down --remove-orphans --volumes
 
 standalone_run: ## Run standalone mode
 	@docker-compose -f docker/standalone/docker-compose.yml up --remove-orphans
