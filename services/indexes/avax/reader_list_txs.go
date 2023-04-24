@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"time"
@@ -873,6 +874,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 
 func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) ([]*models.TransactionsPerDate, error) {
 	dbRunner, err := r.conns.DB().NewSession("daily_token", cfg.RequestTimeout)
+	ether := 1e18
 	if err != nil {
 		return []*models.TransactionsPerDate{}, err
 	}
@@ -889,6 +891,9 @@ func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) (
 
 	if err != nil || len(camCount) == 0 {
 		return []*models.TransactionsPerDate{}, err
+	}
+	for _, token := range camCount {
+		token.Counter = math.RoundToEven(token.Counter/ether*1000) / 1000
 	}
 	return camCount, err
 }
