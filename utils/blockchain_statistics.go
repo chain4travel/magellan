@@ -9,12 +9,15 @@ import (
 func UnionStatistics(
 	cvmLatestTx []*models.CvmStatisticsCache,
 	cvmLatestBlocks []*models.CvmBlocksStatisticsCache,
-	avmLatestTx []*models.AvmStatisticsCache) []models.StatisticsCache {
+	avmLatestTx []*models.AvmStatisticsCache,
+	addressesFrom []*models.AddressesCache,
+	addressesTo []*models.AddressesCache) []models.StatisticsCache {
 	statisticsCache := []models.StatisticsCache{}
 	// set all the information from cvmTx in statisticsCache variable
 	setCvmTxStatistics(&statisticsCache, cvmLatestTx)
 	setCvmBlockStatistics(&statisticsCache, cvmLatestBlocks)
 	setAvmTxStatistics(&statisticsCache, avmLatestTx)
+	setActiveAddressStatistics(&statisticsCache, addressesFrom, addressesTo)
 	return statisticsCache
 }
 
@@ -23,15 +26,14 @@ func setCvmTxStatistics(statistics *[]models.StatisticsCache, cvmLatestTx []*mod
 		dateAt := strings.Split(cvmTx.DateAt, "T")[0]
 		*statistics = append(*statistics,
 			models.StatisticsCache{
-				DateAt:         dateAt,
-				CvmTx:          cvmTx.CvmTx,
-				ReceiveCount:   cvmTx.ReceiveCount,
-				SendCount:      cvmTx.SendCount,
-				ActiveAccounts: cvmTx.ActiveAccounts,
-				Blocks:         cvmTx.Blocks,
-				GasPrice:       cvmTx.GasPrice,
-				GasUsed:        cvmTx.GasUsed,
-				TokenTransfer:  cvmTx.TokenTransfer,
+				DateAt:        dateAt,
+				CvmTx:         cvmTx.CvmTx,
+				ReceiveCount:  cvmTx.ReceiveCount,
+				SendCount:     cvmTx.SendCount,
+				Blocks:        cvmTx.Blocks,
+				GasPrice:      cvmTx.GasPrice,
+				GasUsed:       cvmTx.GasUsed,
+				TokenTransfer: cvmTx.TokenTransfer,
 			})
 	}
 }
@@ -71,6 +73,35 @@ func setAvmTxStatistics(statistics *[]models.StatisticsCache, avmLatestTx []*mod
 func getLatestTxIndex(statistics *[]models.StatisticsCache, date string) int {
 	for idx, statistic := range *statistics {
 		if statistic.DateAt == date {
+			return idx
+		}
+	}
+	return -1
+}
+
+func getActiveAddresses(addressesFrom []*models.AddressesCache, addressesTo []*models.AddressesCache) []*models.AddressesCache {
+	unionActive := addressesFrom
+	for _, address := range addressesTo {
+		if getLatestAddrIndex(unionActive, address.Address, address.DateAt) < 0 {
+			unionActive = append(unionActive, address)
+		}
+	}
+	return unionActive
+}
+
+func setActiveAddressStatistics(statistics *[]models.StatisticsCache, addressesFrom []*models.AddressesCache, addressesTo []*models.AddressesCache) {
+	union := getActiveAddresses(addressesFrom, addressesTo)
+	for _, Addr := range union {
+		idx := getLatestTxIndex(statistics, strings.Split(Addr.DateAt, "T")[0])
+		if idx > 0 {
+			(*statistics)[idx].ActiveAccounts++
+		}
+	}
+}
+
+func getLatestAddrIndex(addresses []*models.AddressesCache, addressTo string, date string) int {
+	for idx, address := range addresses {
+		if address.DateAt == date && address.Address == addressTo {
 			return idx
 		}
 	}

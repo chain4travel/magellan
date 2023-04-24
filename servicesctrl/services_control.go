@@ -158,7 +158,7 @@ func (s *Control) StartStatisticsScheduler(config *cfg.Config) error {
 
 	for range MyTimer.C {
 		MyTimer.Stop()
-		_ = s.AggregatesCache.UpdateStatistics(connections)
+		_ = s.AggregatesCache.UpdateStatistics(connections, config.Chains)
 		MyTimer.Reset(time.Duration(config.CacheStatisticsInterval) * time.Hour)
 	}
 	return nil
