@@ -22,21 +22,38 @@ const (
 	perDay   string = "Per Day"
 )
 
-var countryIDs = []string{"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN", "ICELAND", "NORWAY", "CHINA", "SWEDEN"}
+var countryIDs = []string{"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN",
+	"ICELAND", "NORWAY", "CHINA", "SWEDEN"}
+
+var networkMap = map[string]string{
+	"camino":     "mainnet",
+	"columbus":   "columbus",
+	"kopernikus": "kopernikus",
+}
 
 func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string) models.Emissions {
 	dailyEmissions := []models.EmissionsResult{}
+	var value float64
 	startDatef := strings.Split(startDate.String(), " ")[0]
 	endDatef := strings.Split(endDate.String(), " ")[0]
+	infoClient := info.NewClient(rpc)
+	networkName, _ := infoClient.GetNetworkName(context.Background())
 	chainIDs, _ := accessibleChains(config)
+	chainIDs = deleteNotSelectedNetwork(chainIDs, networkName)
 	for _, chain := range chainIDs {
 		networkEmissions, err := network(chain, startDatef, endDatef, config)
-		if len(networkEmissions) > 0 && err == nil {
-			dailyEmissions = append(dailyEmissions, models.EmissionsResult{
-				Chain: chain,
-				Value: getAvgEmissionsValue(networkEmissions),
-			})
+		if strings.Contains(strings.ToLower(chain), "camino") {
+			chain = networkName
 		}
+		if len(networkEmissions) > 0 && err == nil {
+			value = getAvgEmissionsValue(networkEmissions)
+		} else {
+			value = 0.0
+		}
+		dailyEmissions = append(dailyEmissions, models.EmissionsResult{
+			Chain: chain,
+			Value: value,
+		})
 	}
 	return models.Emissions{Name: "Daily emissions", Value: dailyEmissions}
 }
@@ -51,7 +68,7 @@ func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 		Name:  "Network Emissions",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkName, config)
+	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = network(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -67,7 +84,7 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
-	networkInmutable, _ := getNetworkNameInmutable(networkName, config)
+	networkInmutable, _ := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
 	emissionsInfo := []*models.CountryEmissionsResult{}
 	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config)
 	if err == nil {
@@ -97,7 +114,7 @@ func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, c
 		Name:  "Network Emissions Per Transaction",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkName, config)
+	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = transaction(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -314,6 +331,18 @@ func getNetworkNameInmutable(networkName string, config cfg.EndpointService) (st
 		}
 	}
 	return "", err
+}
+
+func deleteNotSelectedNetwork(chainIDs []string, networkName string) []string {
+	chains := []string{}
+	for _, chain := range chainIDs {
+		if (strings.Contains(strings.ToLower(chain), "camino") &&
+			strings.Contains(strings.ToLower(chain), networkMap[strings.ToLower(networkName)])) ||
+			(!strings.Contains(strings.ToLower(chain), "camino")) {
+			chains = append(chains, chain)
+		}
+	}
+	return chains
 }
 
 func getEmissionsResults(emissions *models.Emissions, emissionsResult []*models.EmissionsResult, endDate time.Time, startDate time.Time) error {
