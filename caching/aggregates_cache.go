@@ -30,7 +30,7 @@ type AggregatesCache interface {
 	InitCacheStorage(cfg.Chains)
 	GetAggregatesFeesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
 	GetAggregatesAndUpdate(map[string]cfg.Chain, *utils.Connections, string, time.Time, time.Time, string) error
-	UpdateStatistics(*utils.Connections) error
+	UpdateStatistics(*utils.Connections, map[string]cfg.Chain) error
 }
 
 type aggregatesCache struct {
@@ -454,7 +454,7 @@ func (ac *aggregatesCache) GetAggregatesFeesAndUpdate(chains map[string]cfg.Chai
 	return nil
 }
 
-func (ac *aggregatesCache) UpdateStatistics(conn *utils.Connections) error {
+func (ac *aggregatesCache) UpdateStatistics(conn *utils.Connections, chains map[string]cfg.Chain) error {
 	dbRunner, err := conn.DB().NewSession("update_statistics", cfg.RequestTimeout)
 	if err != nil {
 		return err
@@ -462,12 +462,12 @@ func (ac *aggregatesCache) UpdateStatistics(conn *utils.Connections) error {
 	var latestResults []models.StatisticsCache
 	// Get the max Date from table statistics to use it in Latest Transactions querys
 	maxDate := getMaxCacheDate(dbRunner)
-	latestResults = getLatestTransactionsInfo(dbRunner, maxDate)
+	latestResults = getLatestTransactionsInfo(dbRunner, maxDate, chains)
 	updateStatisticsCacheInfo(dbRunner, latestResults)
 	return nil
 }
 
-func getLatestTransactionsInfo(dbRunner *dbr.Session, maxDate time.Time) []models.StatisticsCache {
+func getLatestTransactionsInfo(dbRunner *dbr.Session, maxDate time.Time, chains map[string]cfg.Chain) []models.StatisticsCache {
 	var transactionsCache []models.StatisticsCache
 
 	// Get statistics values from cvm transactions txData: total number of transactions, total token transfer
@@ -476,12 +476,15 @@ func getLatestTransactionsInfo(dbRunner *dbr.Session, maxDate time.Time) []model
 	cvmTransactions := getLatestCvmTransactions(dbRunner, maxDate)
 
 	// Get statistics values from avm transactions: total number of transactions
-	avmTransactions := getLatestAvmTransactions(dbRunner, maxDate)
+	avmTransactions := getLatestAvmTransactions(dbRunner, maxDate, chains)
 
 	// Get statistics values from cvm blocks: avg block size
 	cvmBlocks := getLatestCvmBlocks(dbRunner, maxDate)
 
-	transactionsCache = utils.UnionStatistics(cvmTransactions, cvmBlocks, avmTransactions)
+	// Get address from and address to cache from cvm_transactions_txdata
+	addressesFrom, addressesTo := getLatestAddressActive(dbRunner, maxDate)
+
+	transactionsCache = utils.UnionStatistics(cvmTransactions, cvmBlocks, avmTransactions, addressesFrom, addressesTo)
 	return transactionsCache
 }
 
@@ -566,13 +569,21 @@ func getLatestCvmTransactions(dbRunner *dbr.Session, maxDate time.Time) []*model
 	return cvmLatestTransactions
 }
 
-func getLatestAvmTransactions(dbRunner *dbr.Session, maxDate time.Time) []*models.AvmStatisticsCache {
+func getLatestAvmTransactions(dbRunner *dbr.Session, maxDate time.Time, chains map[string]cfg.Chain) []*models.AvmStatisticsCache {
 	avmLatestTransactions := []*models.AvmStatisticsCache{}
+	chainIds := []string{}
+
+	for _, test := range chains {
+		if test.VMType != "cvm" {
+			chainIds = append(chainIds, test.ID)
+		}
+	}
 
 	_, err := dbRunner.
 		Select("DATE(created_at) as date_at", "COUNT(*) as avm_tx").
 		From("avm_transactions").
 		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		Where("avm_transactions.chain_id IN ?", chainIds).
 		GroupBy("DATE(created_at)").
 		Load(&avmLatestTransactions)
 
@@ -595,6 +606,28 @@ func getLatestCvmBlocks(dbRunner *dbr.Session, maxDate time.Time) []*models.CvmB
 	}
 
 	return cvmLatestBlocks
+}
+
+func getLatestAddressActive(dbRunner *dbr.Session, maxDate time.Time) ([]*models.AddressesCache, []*models.AddressesCache) {
+	addressFrom := []*models.AddressesCache{}
+	addressTo := []*models.AddressesCache{}
+	_, _ = dbRunner.Select("distinct(id_from_addr) as address", "date(created_at) as date_at").
+		From("cvm_transactions_txdata").
+		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		OrderBy("date_at ASC").
+		Load(&addressFrom)
+
+	_, err := dbRunner.Select("distinct(id_to_addr) as address", "date(created_at) as date_at").
+		From("cvm_transactions_txdata").
+		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
+		OrderBy("date_at ASC").
+		Load(&addressTo)
+
+	if err != nil {
+		return []*models.AddressesCache{}, []*models.AddressesCache{}
+	}
+
+	return addressFrom, addressTo
 }
 
 func getFirstTransactionTime(conns *utils.Connections, chainIDs []string) (time.Time, error) {

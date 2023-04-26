@@ -388,6 +388,11 @@ type CvmBlocksStatisticsCache struct {
 	AvgBlockSize float32 `json:"avgBlockSize"`
 }
 
+type AddressesCache struct {
+	Address string `json:"address"`
+	DateAt  string `json:"dateAt"`
+}
+
 /*******************  Merging  ***********************/
 
 type AggregateMerge interface {
