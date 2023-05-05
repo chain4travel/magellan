@@ -710,6 +710,15 @@ func (m *MockPersist) InsertMultisigAlias(ctx context.Context, runner dbr.Sessio
 	return nil
 }
 
+func (m *MockPersist) QueryMultisigAlias(ctx context.Context, runner dbr.SessionRunner, v string) (*[]MultisigAlias, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if v, present := m.MultisigAlias[v]; present {
+		return &[]MultisigAlias{*v}, nil
+	}
+	return nil, nil
+}
+
 func (m *MockPersist) QueryMultisigAliasesForOwners(ctx context.Context, runner dbr.SessionRunner, v []string) (*[]MultisigAlias, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
