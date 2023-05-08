@@ -11,6 +11,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gocraft/dbr/v2"
+
 	"github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -278,10 +280,10 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 						BlockchainID: ChainID,
 					},
 				},
-				OldNodeID:               ids.EmptyNodeID,
-				NewNodeID:               cm.NodeID,
-				ConsortiumMemberAddress: cm.ConsortiumMemberAddress,
-				ConsortiumMemberAuth:    &secp256k1fx.Input{},
+				OldNodeID:        ids.EmptyNodeID,
+				NewNodeID:        cm.NodeID,
+				NodeOwnerAddress: cm.ConsortiumMemberAddress,
+				NodeOwnerAuth:    &secp256k1fx.Input{},
 			},
 		}
 
@@ -304,7 +306,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 					},
 				},
 				MultisigAlias: *ma,
-				ChangeAuth:    &secp256k1fx.Input{},
+				Auth:          &secp256k1fx.Input{},
 			},
 		}
 		if tx.Sign(txs.GenesisCodec, nil) == nil {
@@ -595,7 +597,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.MultisigAliasTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeMultisigAlias
-		err := w.InsertMultisigAlias(ctx, &castTx.MultisigAlias, castTx.ChangeAuth, txID)
+		err := w.InsertMultisigAlias(ctx, &castTx.MultisigAlias, castTx.Auth, txID)
 		if err != nil {
 			return err
 		}
@@ -706,14 +708,23 @@ func (w *Writer) InsertTransactionBlock(ctx services.ConsumerCtx, txID ids.ID, b
 func (w *Writer) InsertMultisigAlias(
 	ctx services.ConsumerCtx,
 	alias *multisig.Alias,
-	changeAuth verify.Verifiable,
+	auth verify.Verifiable,
 	txID ids.ID,
 ) error {
 	var err error
 
-	// If changeAuth is nil, then delete all aliases for this multisig
-	if changeAuth == nil {
-		// Delete any existing multisig alias first
+	// If alias.ID is an empty ID, then it's a new alias, and we need to generate the aliasID from the txID
+	if alias.ID == ids.ShortEmpty {
+		alias.ID = multisig.ComputeAliasID(txID)
+	}
+
+	_, err = ctx.Persist().QueryMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
+	if err != nil && err != dbr.ErrNotFound {
+		return err
+	}
+
+	// if there is an already existing alias with this aliasID or auth is nil, then we need to delete it
+	if auth == nil || err == nil {
 		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
 		if err != nil {
 			return err

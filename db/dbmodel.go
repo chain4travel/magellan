@@ -466,6 +466,12 @@ type Persist interface {
 		*MultisigAlias,
 	) error
 
+	QueryMultisigAlias(
+		context.Context,
+		dbr.SessionRunner,
+		string,
+	) (*[]MultisigAlias, error)
+
 	QueryMultisigAliasesForOwners(
 		context.Context,
 		dbr.SessionRunner,
@@ -2557,10 +2563,29 @@ func (p *persist) InsertMultisigAlias(ctx context.Context, session dbr.SessionRu
 	return nil
 }
 
+func (p *persist) QueryMultisigAlias(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	alias string,
+) (*[]MultisigAlias, error) {
+	v := &[]MultisigAlias{}
+	err := session.Select(
+		"alias",
+		"memo",
+		"owner",
+		"transaction_id",
+		"created_at",
+	).From(TableMultisigAliases).
+		Where("alias=?", alias).
+		LoadOneContext(ctx, v)
+	return v, err
+}
+
 func (p *persist) QueryMultisigAliasesForOwners(
 	ctx context.Context,
 	session dbr.SessionRunner,
-	owners []string) (*[]MultisigAlias, error) {
+	owners []string,
+) (*[]MultisigAlias, error) {
 	v := &[]MultisigAlias{}
 	_, err := session.Select(
 		"bech32_address",
@@ -2574,7 +2599,8 @@ func (p *persist) QueryMultisigAliasesForOwners(
 func (p *persist) DeleteMultisigAlias(
 	ctx context.Context,
 	session dbr.SessionRunner,
-	alias string) error {
+	alias string,
+) error {
 	_, err := session.DeleteFrom(TableMultisigAliases).Where("alias=?", alias).ExecContext(ctx)
 	if err != nil {
 		return EventErr(TableMultisigAliases, false, err)
