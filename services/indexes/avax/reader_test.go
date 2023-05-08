@@ -15,6 +15,7 @@ package avax
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,8 @@ import (
 	"github.com/chain4travel/magellan/services"
 	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/chain4travel/magellan/servicesctrl"
+	"github.com/chain4travel/magellan/utils"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCollectInsAndOuts(t *testing.T) {
@@ -367,6 +370,619 @@ func TestAggregates(t *testing.T) {
 	}
 }
 
+func TestDailyTransactionsStatistics(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   *models.StatisticsStruct
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.StatisticsStruct{
+				HighestNumber: 2,
+				HighestDate:   getWantedDate(prevDays, timeNow, timeNow),
+				LowestNumber:  2,
+				LowestDate:    getWantedDate(prevDays, timeNow, timeNow),
+				TxInfo: []*models.TransactionsInfo{{
+					Date:              getWantedDate(prevDays, timeNow, timeNow),
+					TotalTransactions: 2,
+					AvgBlockSize:      1024,
+					TotalBlockCount:   1,
+				}},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.StatisticsStruct{
+				HighestNumber: 2,
+				HighestDate:   getWantedDate(prevMonth, timeNow, timeNow),
+				LowestNumber:  2,
+				LowestDate:    getWantedDate(prevMonth, timeNow, timeNow),
+				TxInfo: []*models.TransactionsInfo{{
+					Date:              getWantedDate(prevMonth, timeNow, timeNow),
+					TotalTransactions: 2,
+					AvgBlockSize:      1024,
+					TotalBlockCount:   1,
+				}},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.StatisticsStruct{
+				HighestNumber: 2,
+				HighestDate:   getWantedDate(prevYear, timeNow, timeNow),
+				LowestNumber:  2,
+				LowestDate:    getWantedDate(prevYear, timeNow, timeNow),
+				TxInfo: []*models.TransactionsInfo{{
+					Date:              getWantedDate(prevYear, timeNow, timeNow),
+					TotalTransactions: 2,
+					AvgBlockSize:      1024,
+					TotalBlockCount:   1,
+				}},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.DailyTransactions(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func TestActiveAddresses(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   *models.AddressStruct
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.AddressStruct{
+				HighestNumber: 1,
+				HighestDate:   getWantedDate(prevDays, timeNow, timeNow),
+				LowestNumber:  1,
+				LowestDate:    getWantedDate(prevDays, timeNow, timeNow),
+				AddressInfo: []*models.ActiveAddresses{{
+					Total:        1,
+					ReceiveCount: 1,
+					SendCount:    1,
+					DateAt:       getWantedDate(prevDays, timeNow, timeNow),
+				}},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.AddressStruct{
+				HighestNumber: 1,
+				HighestDate:   getWantedDate(prevMonth, timeNow, timeNow),
+				LowestNumber:  1,
+				LowestDate:    getWantedDate(prevMonth, timeNow, timeNow),
+				AddressInfo: []*models.ActiveAddresses{{
+					Total:        1,
+					ReceiveCount: 1,
+					SendCount:    1,
+					DateAt:       getWantedDate(prevMonth, timeNow, timeNow),
+				}},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: &models.AddressStruct{
+				HighestNumber: 1,
+				HighestDate:   getWantedDate(prevYear, timeNow, timeNow),
+				LowestNumber:  1,
+				LowestDate:    getWantedDate(prevYear, timeNow, timeNow),
+				AddressInfo: []*models.ActiveAddresses{{
+					Total:        1,
+					ReceiveCount: 1,
+					SendCount:    1,
+					DateAt:       getWantedDate(prevYear, timeNow, timeNow),
+				}},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.ActiveAddresses(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func TestAvgGasPrice(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+
+	var gasPrice = 50000
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   models.StatisticsStruct
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasPrice),
+				HighestDate:   getWantedDate(prevDays, timeNow, timeNow),
+				LowestNumber:  float64(gasPrice),
+				LowestDate:    getWantedDate(prevDays, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(50000),
+					Date: getWantedDate(prevDays, timeNow, timeNow),
+				}},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasPrice),
+				HighestDate:   getWantedDate(prevMonth, timeNow, timeNow),
+				LowestNumber:  float64(gasPrice),
+				LowestDate:    getWantedDate(prevMonth, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(50000),
+					Date: getWantedDate(prevMonth, timeNow, timeNow),
+				}},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasPrice),
+				HighestDate:   getWantedDate(prevYear, timeNow, timeNow),
+				LowestNumber:  float64(gasPrice),
+				LowestDate:    getWantedDate(prevYear, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(50000),
+					Date: getWantedDate(prevYear, timeNow, timeNow),
+				}},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.AvgGasPriceUsed(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func TestBlockSize(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   []*models.AverageBlockSize
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.AverageBlockSize{{
+				BlockSize: 1024,
+				DateInfo:  getWantedDate(prevDays, timeNow, timeNow),
+			},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.AverageBlockSize{{
+				BlockSize: 1024,
+				DateInfo:  getWantedDate(prevMonth, timeNow, timeNow),
+			},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.AverageBlockSize{{
+				BlockSize: 1024,
+				DateInfo:  getWantedDate(prevYear, timeNow, timeNow),
+			},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.AverageBlockSizeReader(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func TestGasUsed(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+	gasUsed := 21000
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   models.StatisticsStruct
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasUsed),
+				HighestDate:   getWantedDate(prevDays, timeNow, timeNow),
+				LowestNumber:  float64(gasUsed),
+				LowestDate:    getWantedDate(prevDays, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(gasUsed),
+					Date: getWantedDate(prevDays, timeNow, timeNow),
+				}},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasUsed),
+				HighestDate:   getWantedDate(prevMonth, timeNow, timeNow),
+				LowestNumber:  float64(gasUsed),
+				LowestDate:    getWantedDate(prevMonth, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(gasUsed),
+					Date: getWantedDate(prevMonth, timeNow, timeNow),
+				}},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: models.StatisticsStruct{
+				HighestNumber: float64(gasUsed),
+				HighestDate:   getWantedDate(prevYear, timeNow, timeNow),
+				LowestNumber:  float64(gasUsed),
+				LowestDate:    getWantedDate(prevYear, timeNow, timeNow),
+				TxInfo: []*models.GasUsedPerDate{{
+					Gas:  float32(gasUsed),
+					Date: getWantedDate(prevYear, timeNow, timeNow),
+				}},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.GasUsedPerDay(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func TestTokenTransfer(t *testing.T) {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	require := require.New(t)
+	err := initDataTest(t)
+	if err != nil {
+		t.Error("Fail to init tables in test database")
+	}
+
+	err = reader.sc.AggregatesCache.UpdateStatistics(reader.conns, reader.sc.Chains)
+	if err != nil {
+		t.Error("Fail to update the table statistics")
+	}
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+	prevDays := time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
+	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
+	token := 0
+	tests := map[string]struct {
+		params params.StatisticsParams
+		want   []*models.TransactionsPerDate
+	}{
+		"dailyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevDays,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.TransactionsPerDate{{
+				Counter: float64(token),
+				DateAt:  getWantedDate(prevDays, timeNow, timeNow),
+			},
+			},
+		},
+		"monthlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevMonth,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.TransactionsPerDate{{
+				Counter: float64(token),
+				DateAt:  getWantedDate(prevMonth, timeNow, timeNow),
+			},
+			},
+		},
+		"yearlyResults": {
+			params: params.StatisticsParams{
+				ListParams: params.ListParams{
+					StartTime: prevYear,
+					EndTime:   timeNow,
+				},
+			},
+			want: []*models.TransactionsPerDate{{
+				Counter: float64(token),
+				DateAt:  getWantedDate(prevYear, timeNow, timeNow),
+			},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		testCase := tt
+		t.Run(name, func(t *testing.T) {
+			got, _ := reader.DailyTokenTransfer(ctx, &testCase.params.ListParams)
+			require.EqualValues(testCase.want, got)
+		})
+	}
+}
+
+func initDataTest(t *testing.T) error {
+	reader, closeFn := newTestIndex(t)
+	defer closeFn()
+
+	ctx := newTestContext()
+	persist := db.NewPersist()
+	sessTx, _ := reader.conns.DB().NewSession("test_gas_price_statistics", cfg.RequestTimeout)
+
+	// Clean all the information in magellan test included in blockchain statistics
+	_, _ = sessTx.DeleteFrom("statistics").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("avm_transactions").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("cvm_accounts").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("cvm_blocks").ExecContext(ctx)
+	_, _ = sessTx.DeleteFrom("cvm_transactions_txdata").ExecContext(ctx)
+
+	timeNow := time.Now().UTC().Truncate(1 * time.Second)
+
+	transaction := &db.Transactions{
+		ID:        "id3",
+		ChainID:   "cid",
+		Type:      "type",
+		Txfee:     20,
+		CreatedAt: timeNow,
+	}
+	err := persist.InsertTransactions(ctx, sessTx, transaction, false)
+	if err != nil {
+		return err
+	}
+
+	address := &db.CvmAccount{
+		Address:    "0x1234",
+		TxCount:    2,
+		CreationTx: nil,
+	}
+	err = persist.InsertCvmAccount(ctx, sessTx, address, false)
+	if err != nil {
+		return err
+	}
+
+	cvmBlocks := &db.CvmBlocks{
+		Block:         "95",
+		Hash:          "0x0a8fc037d05e",
+		ChainID:       "cid2",
+		EvmTx:         int16(1),
+		AtomicTx:      int16(0),
+		Serialization: nil,
+		CreatedAt:     timeNow,
+		Proposer:      "",
+		ProposerTime:  &timeNow,
+		Size:          1024,
+	}
+	err = persist.InsertCvmBlocks(ctx, sessTx, cvmBlocks)
+	if err != nil {
+		return err
+	}
+
+	cvmTransactionTxdata := &db.CvmTransactionsTxdata{
+		Hash:          "0x0a8fc037d05e",
+		Block:         "95",
+		FromAddr:      "0x1234",
+		ToAddr:        "0x1234",
+		Idx:           uint64(2),
+		Nonce:         94,
+		Amount:        uint64(10000),
+		Status:        1,
+		GasPrice:      uint64(50000),
+		GasUsed:       uint64(21000),
+		Serialization: nil,
+		Receipt:       nil,
+		CreatedAt:     timeNow,
+	}
+	err = persist.InsertCvmTransactionsTxdata(ctx, sessTx, cvmTransactionTxdata, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getWantedDate(startTime time.Time, endTime time.Time, timeNow time.Time) string {
+	dateFilter := utils.DateFilter(startTime, endTime, "")
+	var date string
+
+	switch {
+	case strings.Contains(dateFilter, "%Y-%m-01"):
+		date = strings.Split(time.Date(timeNow.Year(), timeNow.Month(), 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339), "T")[0]
+	case strings.Contains(dateFilter, "%Y-01-01"):
+		date = strings.Split(time.Date(timeNow.Year(), 1, 1, 0, 0, 0, 0, time.UTC).Format(time.RFC3339), "T")[0]
+	default:
+		date = strings.Split(timeNow.Format(time.RFC3339), "T")[0]
+	}
+	return date
+}
+
 func newTestIndex(t *testing.T) (*Reader, func()) {
 	logConf := logging.Config{
 		DisplayLevel: logging.Info,
@@ -385,6 +1001,14 @@ func newTestIndex(t *testing.T) (*Reader, func()) {
 		"cid": {
 			ID:     "cid",
 			VMType: models.AVMName,
+		},
+		"cid2": {
+			ID:     "cid2",
+			VMType: models.CVMName,
+		},
+		"cid3": {
+			ID:     "cid3",
+			VMType: models.PVMName,
 		},
 	}
 

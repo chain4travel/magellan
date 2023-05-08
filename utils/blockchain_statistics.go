@@ -93,7 +93,7 @@ func setActiveAddressStatistics(statistics *[]models.StatisticsCache, addressesF
 	union := getActiveAddresses(addressesFrom, addressesTo)
 	for _, Addr := range union {
 		idx := getLatestTxIndex(statistics, strings.Split(Addr.DateAt, "T")[0])
-		if idx > 0 {
+		if idx >= 0 {
 			(*statistics)[idx].ActiveAccounts++
 		}
 	}
