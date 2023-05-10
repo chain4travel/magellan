@@ -469,6 +469,10 @@ func (c *V2Context) TxfeeAggregate(w web.ResponseWriter, r *web.Request) {
 	}
 
 	p.ChainIDs = params.ForValueChainID(c.chainID, p.ChainIDs)
+	if len(p.ChainIDs) == 0 {
+		c.WriteErr(w, 400, fmt.Errorf("chainID is required"))
+		return
+	}
 
 	c.WriteCacheable(w, caching.Cacheable{
 		Key: c.cacheKeyForParams("aggregate_txfee", p),
@@ -496,6 +500,10 @@ func (c *V2Context) Aggregate(w web.ResponseWriter, r *web.Request) {
 	}
 
 	p.ChainIDs = params.ForValueChainID(c.chainID, p.ChainIDs)
+	if len(p.ChainIDs) == 0 {
+		c.WriteErr(w, 400, fmt.Errorf("chainID is required"))
+		return
+	}
 
 	c.WriteCacheable(w, caching.Cacheable{
 		Key: c.cacheKeyForParams("aggregate", p),
