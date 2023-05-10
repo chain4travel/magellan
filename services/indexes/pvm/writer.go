@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -463,31 +464,9 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
-		if castTx.RewardsOwner != nil {
-			err = w.insertTransactionsRewardsOwners(ctx, txID, castTx.RewardsOwner, baseTx, castTx.StakeOuts)
-			if err != nil {
-				return err
-			}
-		}
 	case *txs.AddSubnetValidatorTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddSubnetValidator
-	case *txs.AddDelegatorTx:
-		baseTx = castTx.BaseTx.BaseTx
-		outs = &avaxIndexer.AddOutsContainer{
-			Outs:    castTx.StakeOuts,
-			Stake:   true,
-			ChainID: w.chainID,
-		}
-		typ = models.TransactionTypeAddDelegator
-		err := w.InsertTransactionValidator(ctx, txID, castTx.Validator)
-		if err != nil {
-			return err
-		}
-		err = w.insertTransactionsRewardsOwners(ctx, txID, castTx.DelegationRewardsOwner, baseTx, castTx.StakeOuts)
-		if err != nil {
-			return err
-		}
 	case *txs.CreateSubnetTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeCreateSubnet
@@ -534,11 +513,6 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
-		// TODO: What to do about the different rewards owners?
-		err = w.insertTransactionsRewardsOwners(ctx, txID, castTx.ValidatorRewardsOwner, baseTx, castTx.StakeOuts)
-		if err != nil {
-			return err
-		}
 	case *txs.AddPermissionlessDelegatorTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddPermissionlessDelegator
@@ -557,19 +531,6 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
-		err = w.insertTransactionsRewardsOwners(ctx, txID, castTx.DelegationRewardsOwner, baseTx, castTx.StakeOuts)
-		if err != nil {
-			return err
-		}
-	case *txs.RewardValidatorTx:
-		rewards := &db.Rewards{
-			ID:                 txID.String(),
-			BlockID:            blkID.String(),
-			Txid:               castTx.TxID.String(),
-			Shouldprefercommit: castTx.ShouldPreferCommit,
-			CreatedAt:          ctx.Time(),
-		}
-		return ctx.Persist().InsertRewards(ctx.Ctx(), ctx.DB(), rewards, cfg.PerformUpdates)
 	case *txs.CaminoAddValidatorTx:
 		innerTx := castTx.AddValidatorTx
 		baseTx = innerTx.BaseTx.BaseTx
@@ -578,9 +539,21 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 		if err != nil {
 			return err
 		}
+		if castTx.RewardsOwner != nil {
+			err = w.insertReward(ctx, txID, castTx.RewardsOwner, db.Validator)
+			if err != nil {
+				return err
+			}
+		}
 	case *txs.DepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeDeposit
+		if castTx.RewardsOwner != nil {
+			err := w.insertReward(ctx, txID, castTx.RewardsOwner, db.Deposit)
+			if err != nil {
+				return err
+			}
+		}
 	case *txs.UnlockDepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeUnlockDeposit
@@ -638,58 +611,49 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	)
 }
 
-func (w *Writer) insertTransactionsRewardsOwners(ctx services.ConsumerCtx, txID ids.ID, rewardsOwner verify.Verifiable, baseTx avax.BaseTx, stakeOuts []*avax.TransferableOutput) error {
-	var err error
-
-	owner, ok := rewardsOwner.(*secp256k1fx.OutputOwners)
+func (w *Writer) insertReward(ctx services.ConsumerCtx, txID ids.ID, rewardOwner verify.Verifiable, rewardType db.RewardType) error {
+	owner, ok := rewardOwner.(*secp256k1fx.OutputOwners)
 	if !ok {
-		return fmt.Errorf("rewards owner %T", rewardsOwner)
+		return fmt.Errorf("rewardOwner %T", rewardOwner)
+	}
+	ownerID, err := txs.GetOwnerID(rewardOwner)
+	if err != nil {
+		return fmt.Errorf("rewardOwner hash %v", err)
+	}
+	ownerIDStr := ownerID.String()
+	ownerBytes, err := blocks.GenesisCodec.Marshal(txs.Version, rewardOwner)
+	if err != nil {
+		return fmt.Errorf("rewardOwner bytes %v", err)
+	}
+
+	err = ctx.Persist().InsertReward(ctx.Ctx(), ctx.DB(), &db.Reward{
+		RewardOwnerBytes: ownerBytes,
+		RewardOwnerHash:  ownerIDStr,
+		TxID:             txID.String(),
+		Type:             rewardType,
+		CreatedAt:        ctx.Time(),
+	})
+	if err != nil {
+		return fmt.Errorf("rewardOwner insertReward %v", err)
 	}
 
 	// Ingest each Output Address
-	for ipos, addr := range owner.Addresses() {
-		addrid := ids.ShortID{}
-		copy(addrid[:], addr)
-		txRewardsOwnerAddress := &db.TransactionsRewardsOwnersAddress{
-			ID:          txID.String(),
-			Address:     addrid.String(),
-			OutputIndex: uint32(ipos),
-			UpdatedAt:   time.Now().UTC(),
+	for _, addr := range owner.Addresses() {
+		addrStr, err := cb58.Encode(addr)
+		if err != nil {
+			return fmt.Errorf("rewardOwner %v", err)
 		}
 
-		err = ctx.Persist().InsertTransactionsRewardsOwnersAddress(ctx.Ctx(), ctx.DB(), txRewardsOwnerAddress, cfg.PerformUpdates)
+		err = ctx.Persist().InsertRewardOwner(ctx.Ctx(), ctx.DB(), &db.RewardOwner{
+			Address:   addrStr,
+			Hash:      ownerIDStr,
+			CreatedAt: ctx.Time(),
+		})
 		if err != nil {
 			return err
 		}
 	}
-
-	// write out outputs in the len(outs) and len(outs)+1 positions to identify these rewards
-	outcnt := len(baseTx.Outs) + len(stakeOuts)
-	for ipos := outcnt; ipos < outcnt+2; ipos++ {
-		outputID := txID.Prefix(uint64(ipos))
-
-		txRewardsOutputs := &db.TransactionsRewardsOwnersOutputs{
-			ID:            outputID.String(),
-			TransactionID: txID.String(),
-			OutputIndex:   uint32(ipos),
-			CreatedAt:     ctx.Time(),
-		}
-
-		err = ctx.Persist().InsertTransactionsRewardsOwnersOutputs(ctx.Ctx(), ctx.DB(), txRewardsOutputs, cfg.PerformUpdates)
-		if err != nil {
-			return err
-		}
-	}
-
-	txRewardsOwner := &db.TransactionsRewardsOwners{
-		ID:        txID.String(),
-		ChainID:   w.chainID,
-		Threshold: owner.Threshold,
-		Locktime:  owner.Locktime,
-		CreatedAt: ctx.Time(),
-	}
-
-	return ctx.Persist().InsertTransactionsRewardsOwners(ctx.Ctx(), ctx.DB(), txRewardsOwner, cfg.PerformUpdates)
+	return nil
 }
 
 func (w *Writer) InsertTransactionValidator(ctx services.ConsumerCtx, txID ids.ID, validator txs.Validator) error {

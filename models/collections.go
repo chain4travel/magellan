@@ -25,6 +25,13 @@ type MultisigAliasList struct {
 	Alias []string `json:"alias"`
 }
 
+type Reward struct {
+	RewardOwnerBytes []byte `json:"rewardOwner"`
+	RewardOwnerHash  string `json:"rewardOwnerHash"`
+	TxID             string `json:"txID,omitempty"`
+	Type             uint32 `json:"type"`
+}
+
 type ListMetadata struct {
 	Count *uint64 `json:"count,omitempty"`
 }

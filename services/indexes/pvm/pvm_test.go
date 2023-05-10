@@ -124,36 +124,6 @@ func TestInsertTxInternal(t *testing.T) {
 	}
 }
 
-func TestInsertTxInternalRewards(t *testing.T) {
-	conns, writer, _, closeFn := newTestIndex(t, 5, testXChainID)
-	defer closeFn()
-	ctx := context.Background()
-
-	tx := txs.Tx{}
-	validatorTx := &txs.RewardValidatorTx{}
-	tx.Unsigned = validatorTx
-
-	persist := db.NewPersistMock()
-	session, _ := conns.DB().NewSession("pvm_test_tx", cfg.RequestTimeout)
-	cCtx := services.NewConsumerContext(ctx, session, time.Now().Unix(), 0, persist, testXChainID.String())
-	err := writer.indexTransaction(cCtx, tx.ID(), &tx, false)
-	if err != nil {
-		t.Fatal("insert failed", err)
-	}
-	if len(persist.Transactions) != 0 {
-		t.Fatal("insert failed")
-	}
-	if len(persist.TransactionsBlock) != 0 {
-		t.Fatal("insert failed")
-	}
-	if len(persist.TransactionsValidator) != 0 {
-		t.Fatal("insert failed")
-	}
-	if len(persist.Rewards) != 1 {
-		t.Fatal("insert failed")
-	}
-}
-
 func TestCommonBlock(t *testing.T) {
 	conns, writer, _, closeFn := newTestIndex(t, 5, testXChainID)
 	defer closeFn()

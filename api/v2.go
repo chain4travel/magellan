@@ -152,7 +152,8 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cacheassets", (*V2Context).CacheAssets).
 		Get("/cacheassetaggregates", (*V2Context).CacheAssetAggregates).
 		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates).
-		Get("/multisigalias/:owners", (*V2Context).GetMultisigAlias)
+		Get("/multisigalias/:owners", (*V2Context).GetMultisigAlias).
+		Post("/rewards", (*V2Context).GetRewardPost)
 }
 
 // AVAX
@@ -542,6 +543,50 @@ func (c *V2Context) GetMultisigAlias(w web.ResponseWriter, r *web.Request) {
 		Key: c.cacheKeyForID("multisig_alias", cacheKey),
 		CacheableFn: func(ctx context.Context) (interface{}, error) {
 			return c.avaxReader.GetMultisigAlias(ctx, ownerAddresses)
+		},
+	})
+}
+
+func (c *V2Context) GetRewardPost(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+		utils.NewCounterObserveMillisCollect(MetricAggregateMillis),
+		utils.NewCounterIncCollect(MetricAggregateCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	p := &params.ListTransactionsParams{}
+	q, err := ParseGetJSON(r, cfg.RequestGetMaxSize)
+	if err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+	if err := p.ForValues(c.version, q); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	addrsParam := q["addresses"]
+	addresses := []string{}
+	for _, addrParam := range addrsParam {
+		// convert owner address from bech32 to be used internally
+		addr, err := address.ParseToID(addrParam)
+		if err != nil {
+			c.WriteErr(w, 400, err)
+			return
+		}
+		addresses = append(addresses, addr.String())
+	}
+	// calculate cache key from addresses
+	cacheKey := fmt.Sprintf("%x", sha256.Sum256([]byte(strings.Join(addrsParam, ""))))
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForID("reward", cacheKey),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GetReward(ctx, addresses)
 		},
 	})
 }

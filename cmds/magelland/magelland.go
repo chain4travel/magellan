@@ -24,7 +24,6 @@ import (
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
-	"github.com/chain4travel/magellan/services/rewards"
 	"github.com/chain4travel/magellan/servicesctrl"
 	"github.com/chain4travel/magellan/stream"
 	"github.com/chain4travel/magellan/stream/consumers"
@@ -356,16 +355,6 @@ func runStreamProcessorManagers(
 		}
 		defer func() {
 			bm.Close()
-		}()
-
-		rh := &rewards.Handler{}
-		err = rh.Start(sc)
-		if err != nil {
-			*runError = err
-			return
-		}
-		defer func() {
-			rh.Close()
 		}()
 
 		err = consumers.Bootstrap(sc, config.NetworkID, config, consumerFactories)

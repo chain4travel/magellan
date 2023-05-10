@@ -348,12 +348,6 @@ type compositeRecord struct {
 	models.OutputAddress
 }
 
-type rewardsTypeModel struct {
-	Txid      models.StringID  `json:"txid"`
-	Type      models.BlockType `json:"type"`
-	CreatedAt time.Time        `json:"created_at"`
-}
-
 func newBlockProposal(pvmBlock db.PvmBlocks) *models.BlockProposal {
 	return &models.BlockProposal{
 		Proposer:  pvmBlock.Proposer,
@@ -398,11 +392,6 @@ func dressTransactions(
 		if proposer, ok := proposersMap[tx.TxBlockID]; ok {
 			tx.Proposer = proposer
 		}
-	}
-
-	rewardsTypesMap, err := resolveRewarded(ctx, dbRunner, txIDs)
-	if err != nil {
-		return err
 	}
 
 	outputs, err := collectInsAndOuts(ctx, dbRunner, txIDs)
@@ -496,7 +485,7 @@ func dressTransactions(
 		return err
 	}
 
-	dressTransactionsTx(txs, disableGenesis, txID, avaxAssetID, inputsMap, outputsMap, inputTotalsMap, outputTotalsMap, rewardsTypesMap, cvmin, cvmout)
+	dressTransactionsTx(txs, disableGenesis, txID, avaxAssetID, inputsMap, outputsMap, inputTotalsMap, outputTotalsMap, cvmin, cvmout)
 	return nil
 }
 
@@ -509,7 +498,6 @@ func dressTransactionsTx(
 	outputsMap map[models.StringID]map[models.StringID]*models.Output,
 	inputTotalsMap map[models.StringID]map[models.StringID]*big.Int,
 	outputTotalsMap map[models.StringID]map[models.StringID]*big.Int,
-	rewardsTypesMap map[models.StringID]rewardsTypeModel,
 	cvmins map[models.StringID][]models.Output,
 	cvmouts map[models.StringID][]models.Output,
 ) {
@@ -553,11 +541,6 @@ func dressTransactionsTx(
 		for k, v := range outputTotalsMap[tx.ID] {
 			tx.OutputTotals[k] = models.TokenAmount(v.String())
 		}
-
-		if rewardsType, ok := rewardsTypesMap[tx.ID]; ok {
-			tx.Rewarded = rewardsType.Type == models.BlockTypeCommit
-			tx.RewardedTime = &rewardsType.CreatedAt
-		}
 	}
 }
 
@@ -582,28 +565,6 @@ func resolveProposers(ctx context.Context, dbRunner dbr.SessionRunner, blockIds 
 		pvmProposerModels[models.StringID(pvmBlock.ID)] = newBlockProposal(pvmBlock)
 	}
 	return pvmProposerModels, nil
-}
-
-func resolveRewarded(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []models.StringID) (map[models.StringID]rewardsTypeModel, error) {
-	rewardsTypes := []rewardsTypeModel{}
-	blocktypes := []models.BlockType{models.BlockTypeAbort, models.BlockTypeCommit}
-	_, err := dbRunner.Select("rewards.txid",
-		"pvm_blocks.type",
-		"pvm_blocks.created_at",
-	).
-		From("rewards").
-		LeftJoin("pvm_blocks", "rewards.block_id = pvm_blocks.parent_id").
-		Where("rewards.txid IN ? and pvm_blocks.type IN ?", txIDs, blocktypes).
-		LoadContext(ctx, &rewardsTypes)
-	if err != nil {
-		return nil, err
-	}
-
-	rewardsTypesMap := make(map[models.StringID]rewardsTypeModel)
-	for _, rewardsType := range rewardsTypes {
-		rewardsTypesMap[rewardsType.Txid] = rewardsType
-	}
-	return rewardsTypesMap, nil
 }
 
 func collectInsAndOuts(ctx context.Context, dbRunner dbr.SessionRunner, txIDs []models.StringID) ([]*compositeRecord, error) {
@@ -739,7 +700,7 @@ func selectOutputs(dbRunner dbr.SessionRunner, redeem bool) *dbr.SelectBuilder {
 	cols = append(cols, "case when avm_outputs.stakeableout is null then 0 else avm_outputs.stakeableout end as stakeableout")
 	cols = append(cols, "case when avm_outputs.genesisutxo is null then 0 else avm_outputs.genesisutxo end as genesisutxo")
 	cols = append(cols, "case when avm_outputs.frozen is null then 0 else avm_outputs.frozen end as frozen")
-	cols = append(cols, "case when transactions_rewards_owners_outputs.id is null then false else true end as reward_utxo")
+	cols = append(cols, "false")
 
 	sq := dbRunner.Select(cols...).From(tbl)
 
@@ -751,7 +712,6 @@ func selectOutputs(dbRunner dbr.SessionRunner, redeem bool) *dbr.SelectBuilder {
 
 	return sq.
 		LeftJoin("avm_output_addresses", tbl+".id = avm_output_addresses.output_id").
-		LeftJoin("transactions_rewards_owners_outputs", tbl+".id = transactions_rewards_owners_outputs.id").
 		LeftJoin("addresses", "addresses.address = avm_output_addresses.address")
 }
 

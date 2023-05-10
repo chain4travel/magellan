@@ -236,6 +236,24 @@ func (r *Reader) GetMultisigAlias(ctx context.Context, ownersAddresses []string)
 	return multisigAliasList, err
 }
 
+func (r *Reader) GetReward(ctx context.Context, addresses []string) (*[]models.Reward, error) {
+	dbRunner, err := r.conns.DB().NewSession("reward", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	v := &[]models.Reward{}
+	_, err = dbRunner.
+		Select("reward_owner_bytes", "reward_owner_hash", "tx_id", "type").
+		Distinct().
+		From("reward").
+		Join("reward_owner", "reward.reward_owner_hash = reward_owner.hash").
+		Where("address in ?", addresses).
+		LoadContext(ctx, v)
+
+	return v, err
+}
+
 func (r *Reader) ListAddresses(ctx context.Context, p *params.ListAddressesParams) (*models.AddressList, error) {
 	dbRunner, err := r.conns.DB().NewSession("list_addresses", cfg.RequestTimeout)
 	if err != nil {
