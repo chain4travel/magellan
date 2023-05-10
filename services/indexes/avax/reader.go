@@ -192,6 +192,9 @@ func (r *Reader) TxfeeAggregate(aggregateCache caching.AggregatesCache, params *
 func (r *Reader) Aggregate(aggregateCache caching.AggregatesCache, params *params.AggregateParams) (*models.AggregatesHistogram, error) {
 	aggregateTransactionMap := aggregateCache.GetAggregateTransactionsMap()
 	if len(aggregateTransactionMap) != 0 {
+		if len(params.ChainIDs) == 0 {
+			return nil, fmt.Errorf("aggregate without chainID not allowed")
+		}
 		// if the request is not coming from the caching mechanism then return the values of the cache and do NOT probe the database
 		cache := models.AggregatesList{}
 		temp := models.Aggregates{}
