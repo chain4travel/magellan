@@ -537,7 +537,7 @@ func getMaxCacheDate(dbRunner *dbr.Session) time.Time {
 		MaxDate time.Time `json:"maxDate"`
 	}
 	_, err := dbRunner.
-		Select("MAX(date_at) as max_date").
+		Select("COALESCE(MAX(date_at), DATE('0001-01-01')) as max_date").
 		From("statistics").
 		Load(&cacheDate)
 
