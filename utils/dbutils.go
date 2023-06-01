@@ -40,19 +40,19 @@ func ForceParseTimeParam(dsn string) (string, error) {
 	return u.FormatDSN(), nil
 }
 
-func DateFilter(startTime time.Time, endTime time.Time, columnName string) string {
+func DateFormat(startTime time.Time, endTime time.Time, columnName string) string {
 	monthsBetween := int(endTime.Month() - startTime.Month())
 	yearsBetween := endTime.Year() - startTime.Year()
-	var filterDate string
+	var dateFormat string
 	switch {
 	// if the date range is greater than or equal to one month the values are averaged per month
 	case (monthsBetween >= 1 || monthsBetween < 0 || startTime.Year() == 1) && yearsBetween == 0:
-		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-%m-01')"
+		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-%m-01')"
 	// if the date range is greater than or equal to one year the values are averaged per year
 	case yearsBetween > 0:
-		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-01-01')"
+		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-01-01')"
 	default:
-		filterDate = "DATE_FORMAT(" + columnName + ",'%Y-%m-%d')"
+		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-%m-%d')"
 	}
-	return filterDate
+	return dateFormat
 }

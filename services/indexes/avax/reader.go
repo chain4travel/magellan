@@ -911,19 +911,38 @@ func uint64Ptr(u64 uint64) *uint64 {
 }
 
 func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
+	var UniqueAddresses []*models.UniqueAddresses
+	var baseq *dbr.SelectStmt
+	var dateFormat string
 	dbRunner, err := r.conns.DB().NewSession("unique_adresses", cfg.RequestTimeout)
 	if err != nil {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
 		}, err
 	}
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "created_at")
-	var UniqueAddresses []*models.UniqueAddresses
-	_, err = dbRunner.Select("COUNT(DISTINCT address) as total_addresses", filterDate+" as date_at").
+	/*
+		If the limit has not been established in the parameters, the query will be carried out with a daily
+		filter ("YYYY-MM-DD" format), if it is not, it will depend on the date range that is sent
+		(Daily: "YYYY-MM-DD", Monthly: "YYYY-MM-01" or Yearly: "YYYY-01-01")
+
+		sending the start date in the two parameters of the DateFormat function forces to obtain
+		the daily grouping filter.
+	*/
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "created_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "created_at")
+	}
+
+	baseq = dbRunner.Select("COUNT(DISTINCT address) as total_addresses", dateFormat+" as date_at").
 		From("magellan.address_chain").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate).LoadContext(ctx, &UniqueAddresses)
+		GroupBy(dateFormat)
 
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
+	_, err = baseq.LoadContext(ctx, &UniqueAddresses)
 	if err != nil || len(UniqueAddresses) == 0 {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
@@ -957,18 +976,28 @@ func (r *Reader) DailyIncreaseInfo(uniquea []*models.UniqueAddresses) *models.Ad
 func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*models.AddressStruct, error) {
 	dbRunner, err := r.conns.DB().NewSession("active_addresses", cfg.RequestTimeout)
 	var addressStatistics *models.AddressStruct
+	var ActiveAddresses []*models.ActiveAddresses
+	var Active *dbr.SelectStmt
+	var dateFormat string
 	if err != nil {
 		return &models.AddressStruct{
 			AddressInfo: []*models.UniqueAddresses{},
 		}, err
 	}
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
-	var ActiveAddresses []*models.ActiveAddresses
-	Active := dbRunner.Select("SUM(send_count) as send_count", "SUM(receive_count) as receive_count", "SUM(active_accounts) as total", filterDate+" as date_at").
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
+
+	Active = dbRunner.Select("SUM(send_count) as send_count", "SUM(receive_count) as receive_count", "SUM(active_accounts) as total", dateFormat+" as date_at").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate)
+		GroupBy(dateFormat)
 
+	if p.Limit > 0 {
+		Active.Limit(uint64(p.Limit))
+	}
 	_, err = Active.LoadContext(ctx, &ActiveAddresses)
 
 	if err != nil || len(ActiveAddresses) == 0 {
