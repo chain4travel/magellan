@@ -38,7 +38,7 @@ const (
 
 type LocalTxPoolJob struct {
 	TxPool *db.TxPool
-	Errs   *avlancheGoUtils.AtomicInterface
+	Errs   *avlancheGoUtils.Atomic[interface{}]
 }
 
 type Control struct {

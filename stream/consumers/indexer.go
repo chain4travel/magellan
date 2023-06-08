@@ -95,7 +95,7 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 		return nil
 	}
 
-	errs := avlancheGoUtils.AtomicInterface{}
+	errs := avlancheGoUtils.Atomic[interface{}]{}
 
 	wg := sync.WaitGroup{}
 	for _, chain := range conf.Chains {
@@ -114,7 +114,7 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 				defer wg.Done()
 				err = bootstrapfactory.Bootstrap(ctx, conns, sc.Persist, sc.GenesisContainer)
 				if err != nil {
-					errs.SetValue(err)
+					errs.Set(err)
 				}
 				sc.Log.Info("finished bootstrap",
 					zap.Uint32("networkID", networkID),
@@ -127,8 +127,8 @@ func Bootstrap(sc *servicesctrl.Control, networkID uint32, conf *cfg.Config, fac
 
 	wg.Wait()
 
-	if errs.GetValue() != nil {
-		return errs.GetValue().(error)
+	if errs.Get() != nil {
+		return errs.Get().(error)
 	}
 
 	// write a complete row.
@@ -163,21 +163,21 @@ func (c *IndexerFactoryControl) handleTxPool(_ int, conns *utils.Connections) {
 			if c.sc.IndexedList.Exists(txd.TxPool.ID) {
 				continue
 			}
-			if txd.Errs != nil && txd.Errs.GetValue() != nil {
+			if txd.Errs != nil && txd.Errs.Get() != nil {
 				continue
 			}
 			if p, ok := c.fsm[txd.TxPool.Topic]; ok {
 				err := p.Process(conns, txd.TxPool)
 				if err != nil {
 					if txd.Errs != nil {
-						txd.Errs.SetValue(err)
+						txd.Errs.Set(err)
 					}
 					continue
 				}
 				err = c.removeTxPool(conns, txd.TxPool)
 				if err != nil {
 					if txd.Errs != nil {
-						txd.Errs.SetValue(err)
+						txd.Errs.Set(err)
 					}
 					continue
 				}
@@ -291,12 +291,12 @@ func IndexerFactories(
 					return
 				}
 
-				errs := &avlancheGoUtils.AtomicInterface{}
+				errs := &avlancheGoUtils.Atomic[interface{}]{}
 
 				var readMessages uint64
 
 				for iterator.Next() {
-					if errs.GetValue() != nil {
+					if errs.Get() != nil {
 						break
 					}
 
@@ -336,7 +336,7 @@ func IndexerFactories(
 					time.Sleep(1 * time.Millisecond)
 				}
 
-				if errIntf := errs.GetValue(); errIntf != nil {
+				if errIntf := errs.Get(); errIntf != nil {
 					err := errIntf.(error)
 					sc.Log.Error("failed processing",
 						zap.String("name", name),

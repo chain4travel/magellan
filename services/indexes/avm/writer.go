@@ -98,7 +98,7 @@ func NewWriter(networkID uint32, chainID string) (*Writer, error) {
 func (*Writer) Name() string { return "avm-index" }
 
 func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]byte, error) {
-	tx, err := x.Parser.ParseGenesis(txBytes)
+	tx, err := x.Parser.ParseGenesisTx(txBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (w *Writer) insertGenesis(ctx services.ConsumerCtx, genesisBytes []byte) er
 }
 
 func (w *Writer) insertTx(ctx services.ConsumerCtx, txBytes []byte) error {
-	tx, err := x.Parser.ParseGenesis(txBytes)
+	tx, err := x.Parser.ParseGenesisTx(txBytes)
 	if err != nil {
 		return err
 	}

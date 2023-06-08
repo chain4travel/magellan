@@ -27,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/avalanchego/vms/platformvm/validator"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/chain4travel/magellan/cfg"
@@ -178,7 +177,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
 		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
 
-	addressStateTx := func(addr ids.ShortID, state uint8) *txs.Tx {
+	addressStateTx := func(addr ids.ShortID, state txs.AddressStateBit) *txs.Tx {
 		tx := &txs.Tx{
 			Unsigned: &txs.AddressStateTx{
 				BaseTx: txs.BaseTx{
@@ -248,16 +247,16 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		default:
 		}
 
-		if as.State&txs.AddressStateKycVerifiedBit != 0 {
-			if tx := addressStateTx(as.Address, txs.AddressStateKycVerified); tx != nil {
+		if as.State&txs.AddressStateKYCVerified != 0 {
+			if tx := addressStateTx(as.Address, txs.AddressStateBitKYCVerified); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		if as.State&txs.AddressStateConsortiumBit != 0 {
-			if tx := addressStateTx(as.Address, txs.AddressStateConsortium); tx != nil {
+		if as.State&txs.AddressStateConsortiumMember != 0 {
+			if tx := addressStateTx(as.Address, txs.AddressStateBitConsortium); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
 					return err
@@ -607,6 +606,14 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.RewardsImportTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeRewardsImport
+	case *txs.CaminoRewardValidatorTx:
+		baseTx = avax.BaseTx{
+			NetworkID:    w.networkID,
+			BlockchainID: w.ctx.ChainID,
+			Ins:          castTx.Ins,
+			Outs:         castTx.Outs,
+		}
+		typ = models.TransactionTypeCaminoRewardValidator
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
@@ -685,7 +692,7 @@ func (w *Writer) insertTransactionsRewardsOwners(ctx services.ConsumerCtx, txID 
 	return ctx.Persist().InsertTransactionsRewardsOwners(ctx.Ctx(), ctx.DB(), txRewardsOwner, cfg.PerformUpdates)
 }
 
-func (w *Writer) InsertTransactionValidator(ctx services.ConsumerCtx, txID ids.ID, validator validator.Validator) error {
+func (w *Writer) InsertTransactionValidator(ctx services.ConsumerCtx, txID ids.ID, validator txs.Validator) error {
 	transactionsValidator := &db.TransactionsValidator{
 		ID:        txID.String(),
 		NodeID:    validator.NodeID.String(),

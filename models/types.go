@@ -58,6 +58,10 @@ var (
 	OutputTypesLockedOutB  OutputType = RegisterOutputTypeCustom + 1
 	OutputTypesLockedOutDB OutputType = RegisterOutputTypeCustom + 2
 
+	Secp256K1FxMultisigCredential  OutputType = RegisterOutputTypeCustom + 12
+	MultisigAliasWithNonce         OutputType = RegisterOutputTypeCustom + 13
+	Secp256K1FxCrossTransferOutput OutputType = RegisterOutputTypeCustom + 14
+
 	TransactionTypeCaminoAddValidator    TransactionType = RegisterTransactionTypeCustom + 2
 	TransactionTypeCaminoRewardValidator TransactionType = RegisterTransactionTypeCustom + 3
 	TransactionTypeAddAddressState       TransactionType = RegisterTransactionTypeCustom + 4
@@ -177,6 +181,12 @@ func (t OutputType) String() string {
 		return "bond_locked"
 	case OutputTypesLockedOutDB:
 		return "deposit_bond_locked"
+	case Secp256K1FxMultisigCredential:
+		return "secp256k1_msig_cred"
+	case MultisigAliasWithNonce:
+		return "msig_alias"
+	case Secp256K1FxCrossTransferOutput:
+		return "secp256k1_xfer"
 	default:
 		return TypeUnknown
 	}

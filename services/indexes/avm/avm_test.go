@@ -24,7 +24,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/avm/txs"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	caminoGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -201,12 +201,12 @@ func TestInsertTxInternal(t *testing.T) {
 	transferableIn.In = &secp256k1fx.TransferInput{}
 	baseTx.Ins = []*caminoGoAvax.TransferableInput{transferableIn}
 
-	f := crypto.FactorySECP256K1R{}
+	f := secp256k1.Factory{}
 	pk, _ := f.NewPrivateKey()
 	sb, _ := pk.Sign(baseTx.Bytes())
 	cred := &secp256k1fx.Credential{}
-	cred.Sigs = make([][crypto.SECP256K1RSigLen]byte, 0, 1)
-	sig := [crypto.SECP256K1RSigLen]byte{}
+	cred.Sigs = make([][secp256k1.SignatureLen]byte, 0, 1)
+	sig := [secp256k1.SignatureLen]byte{}
 	copy(sig[:], sb)
 	cred.Sigs = append(cred.Sigs, sig)
 	tx.Creds = []*fxs.FxCredential{

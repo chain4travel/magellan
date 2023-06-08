@@ -19,9 +19,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/ava-labs/avalanchego/api"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 	caminoGoAvax "github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/chain4travel/magellan/db"
@@ -135,16 +133,17 @@ func (r *Handler) processRewards() error {
 			continue
 		}
 
-		id, err := ids.FromString(rewardTx.Txid)
+		rewardsUtxos := [][]byte{}
+
+		/*id, err := ids.FromString(rewardTx.Txid)
 		if err != nil {
 			return err
 		}
-		var rewardsUtxos [][]byte
 		arg := &api.GetTxArgs{TxID: id, Encoding: formatting.Hex}
 		rewardsUtxos, err = r.client.GetRewardUTXOs(ctx, arg)
 		if err != nil {
 			return err
-		}
+		}*/
 
 		if len(rewardsUtxos) == 0 {
 			return fmt.Errorf("no rewards %s", rewardTx.Txid)

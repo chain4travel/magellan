@@ -21,7 +21,7 @@ import (
 	"github.com/palantir/stacktrace"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto"
+	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -43,7 +43,7 @@ var (
 	MaxMemoLen = 1024
 )
 
-var ecdsaRecoveryFactory = crypto.FactorySECP256K1R{}
+var ecdsaRecoveryFactory = secp256k1.Factory{}
 
 type Writer struct {
 	chainID     string
@@ -205,7 +205,7 @@ func (w *Writer) InsertTransactionIns(
 				if err != nil {
 					return 0, err
 				}
-				err = w.InsertAddressFromPublicKey(ctx, publicKey)
+				err = w.InsertAddressFromPublicKey(ctx, *publicKey)
 				if err != nil {
 					return 0, err
 				}
@@ -326,7 +326,7 @@ func (w *Writer) InsertOutput(
 
 func (w *Writer) InsertAddressFromPublicKey(
 	ctx services.ConsumerCtx,
-	publicKey crypto.PublicKey,
+	publicKey secp256k1.PublicKey,
 ) error {
 	addresses := &db.Addresses{
 		Address:   publicKey.Address().String(),
