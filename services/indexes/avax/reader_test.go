@@ -969,7 +969,7 @@ func initDataTest(t *testing.T) error {
 }
 
 func getWantedDate(startTime time.Time, endTime time.Time, timeNow time.Time) string {
-	dateFilter := utils.DateFilter(startTime, endTime, "")
+	dateFilter := utils.DateFormat(startTime, endTime, "")
 	var date string
 
 	switch {

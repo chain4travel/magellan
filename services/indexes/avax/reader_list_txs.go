@@ -759,15 +759,28 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*
 	dbRunner, err := r.conns.DB().NewSession("daily_transactions", cfg.RequestTimeout)
 	var transactionData []*models.TransactionsInfo
 	var statistics *models.StatisticsStruct
+	var baseq *dbr.SelectStmt
+	var dateFormat string
+
 	if err != nil {
 		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, err
 	}
 
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
-	baseq := dbRunner.Select("SUM(IFNULL(avm_tx,0)+IFNULL(cvm_tx,0)) as total_transactions", filterDate+" as date", "SUM(blocks) as total_block_count", "AVG(avg_block_size) as avg_block_size").
+	if p.Limit > 0 {
+		// Get the date filter by day
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
+
+	baseq = dbRunner.Select("SUM(IFNULL(avm_tx,0)+IFNULL(cvm_tx,0)) as total_transactions", dateFormat+" as date", "SUM(blocks) as total_block_count", "AVG(avg_block_size) as avg_block_size").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate)
+		GroupBy(dateFormat)
+
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
 
 	_, errGas := baseq.LoadContext(ctx, &transactionData)
 
@@ -793,6 +806,8 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*
 
 func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
 	dbRunner, err := r.conns.DB().NewSession("gas_used_per_day", cfg.RequestTimeout)
+	var baseq *dbr.SelectStmt
+	var dateFormat string
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
@@ -800,18 +815,35 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 		gasUsed          []*models.GasUsedPerDate
 		statisticsStruct models.StatisticsStruct
 	)
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
-	sa := dbRunner.Select(filterDate+" as date", "SUM(gas_used) AS gas").
+	/*
+		If the limit has not been established in the parameters, the query will be carried out with a daily
+		filter ("YYYY-MM-DD" format), if it is not, it will depend on the date range that is sent
+		(Daily: "YYYY-MM-DD", Monthly: "YYYY-MM-01" or Yearly: "YYYY-01-01")
+
+		sending the start date in the two parameters of the DateFormat function forces to obtain
+		the daily grouping filter.
+	*/
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
+
+	baseq = dbRunner.Select(dateFormat+" as date", "SUM(gas_used) AS gas").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate)
+		GroupBy(dateFormat)
 
-	_, err = sa.LoadContext(ctx, &gasUsed)
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
+
+	_, err = baseq.LoadContext(ctx, &gasUsed)
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
 	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
-		From(sa.As("gas")).
+		From(baseq.As("gas")).
 		OrderBy("gas DESC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
@@ -819,7 +851,7 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
 	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
-		From(sa.As("gas")).
+		From(baseq.As("gas")).
 		OrderBy("gas ASC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
@@ -832,26 +864,35 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 
 func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (models.StatisticsStruct, error) {
 	dbRunner, err := r.conns.DB().NewSession("avg_gas_price", cfg.RequestTimeout)
+	var baseq *dbr.SelectStmt
+	var dateFormat string
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 	var gasPrice []*models.GasUsedPerDate
 	var statisticsStruct models.StatisticsStruct
 
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
 
-	sa := dbRunner.Select(filterDate+"AS date", "SUM(gas_price) AS gas").
+	baseq = dbRunner.Select(dateFormat+"AS date", "SUM(gas_price) AS gas").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate)
+		GroupBy(dateFormat)
 
-	_, err = sa.LoadContext(ctx, &gasPrice)
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
+	_, err = baseq.LoadContext(ctx, &gasPrice)
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}
 
 	_, err = dbRunner.Select("date as highest_date", "gas as highest_number").
-		From(sa.As("sum_gas")).
+		From(baseq.As("sum_gas")).
 		OrderBy("gas DESC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
@@ -860,7 +901,7 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 	}
 
 	_, err = dbRunner.Select("date as lowest_date", "gas as lowest_number").
-		From(sa.As("sum_gas")).
+		From(baseq.As("sum_gas")).
 		OrderBy("gas ASC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
 
@@ -874,6 +915,8 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 
 func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) ([]*models.TransactionsPerDate, error) {
 	dbRunner, err := r.conns.DB().NewSession("daily_token", cfg.RequestTimeout)
+	var baseq *dbr.SelectStmt
+	var dateFormat string
 	ether := 1e18
 	if err != nil {
 		return []*models.TransactionsPerDate{}, err
@@ -881,13 +924,21 @@ func (r *Reader) DailyTokenTransfer(ctx context.Context, p *params.ListParams) (
 
 	var camCount []*models.TransactionsPerDate
 
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
 
-	_, err = dbRunner.Select(filterDate+"AS date_at", "SUM(token_transfer) as counter").
+	baseq = dbRunner.Select(dateFormat+"AS date_at", "SUM(token_transfer) as counter").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", strings.Split(p.StartTime.String(), " ")[0], strings.Split(p.EndTime.String(), " ")[0]).
-		GroupBy(filterDate).
-		LoadContext(ctx, &camCount)
+		GroupBy(dateFormat)
+
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
+	_, err = baseq.LoadContext(ctx, &camCount)
 
 	if err != nil || len(camCount) == 0 {
 		return []*models.TransactionsPerDate{}, err

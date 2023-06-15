@@ -163,15 +163,37 @@ func (r *Reader) ListCBlocks(ctx context.Context, p *params.ListCBlocksParams) (
 
 func (r *Reader) AverageBlockSizeReader(ctx context.Context, p *params.ListParams) ([]*models.AverageBlockSize, error) {
 	dbRunner, err := r.conns.DB().NewSession("average_block_size", cfg.RequestTimeout)
+	var averageBlockSizeData []*models.AverageBlockSize
+	var baseq *dbr.SelectStmt
+	var dateFormat string
+
 	if err != nil {
 		return []*models.AverageBlockSize{}, err
 	}
-	filterDate := utils.DateFilter(p.StartTime, p.EndTime, "date_at")
-	var averageBlockSizeData []*models.AverageBlockSize
-	_, err = dbRunner.Select("AVG(avg_block_size) AS block_size", filterDate+" as date_info").
+	/*
+		If the limit has not been established in the parameters, the query will be carried out with a daily
+		filter ("YYYY-MM-DD" format), if it is not, it will depend on the date range that is sent
+		(Daily: "YYYY-MM-DD", Monthly: "YYYY-MM-01" or Yearly: "YYYY-01-01")
+
+		sending the start date in the two parameters of the DateFormat function forces to obtain
+		the daily grouping filter.
+	*/
+	if p.Limit > 0 {
+		dateFormat = utils.DateFormat(p.StartTime, p.StartTime, "date_at")
+	} else {
+		dateFormat = utils.DateFormat(p.StartTime, p.EndTime, "date_at")
+	}
+
+	baseq = dbRunner.Select("AVG(avg_block_size) AS block_size", dateFormat+" as date_info").
 		From("statistics").
 		Where("date_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
-		GroupBy(filterDate).LoadContext(ctx, &averageBlockSizeData)
+		GroupBy(dateFormat)
+
+	if p.Limit > 0 {
+		baseq.Limit(uint64(p.Limit))
+	}
+
+	_, err = baseq.LoadContext(ctx, &averageBlockSizeData)
 
 	if err != nil || len(averageBlockSizeData) == 0 {
 		return []*models.AverageBlockSize{}, err

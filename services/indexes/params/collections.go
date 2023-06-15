@@ -64,7 +64,18 @@ type StatisticsParams struct {
 }
 
 func (p *StatisticsParams) ForValues(v uint8, q url.Values) error {
-	return p.ListParams.ForValues(v, q)
+	err := p.ListParams.ForValues(v, q)
+	/*
+		by default the magellan has the default value established, in case the value is not sent in the
+		request, is 5000.
+		To control the number of results requested from the database, there is a default filter that groups
+		the results by day, month or year, therefore the limit must be eliminated so that it is not
+		applied to the query, this is why that the value is set to zero
+	*/
+	if p.ListParams.Limit == 5000 {
+		p.ListParams.Limit = 0
+	}
+	return err
 }
 
 func (p *StatisticsParams) CacheKey() []string {
