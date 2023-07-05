@@ -1,0 +1,46 @@
+version: '3.5'
+volumes:
+  camino-ipcs:
+services:
+  mysql:
+    image: "mysql:8.0.26"
+    volumes:
+      - /var/lib/magellan/mysql:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/my.cnf
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: magellan
+    restart: on-failure
+  migrate:
+    image: "migrate/migrate:v4.14.1"
+    volumes:
+      - ../services/db/migrations:/migrations
+    depends_on:
+      - mysql
+    entrypoint: ["/bin/sh"]
+    command: |
+      -c 'while ! migrate -path=/migrations/ -database "mysql://root:password@tcp(mysql:3306)/magellan" up; do
+        sleep 1
+      done'
+    restart: on-failure
+  indexer: &magellan-app
+    build: ..
+    image: "magellan-local"
+    command: ["stream", "indexer", "-c", "/opt/config.json"]
+    network_mode: "host"
+    depends_on:
+      - mysql
+      - migrate
+    volumes:
+      - camino-ipcs:/tmp
+      - ./config.json:/opt/config.json
+    restart: on-failure
+  api:
+    <<: *magellan-app
+    command: ["api", "-c", "/opt/config.json"]
+    network_mode: "host"
+    environment:
+      authorizationTokenGeoIP: ${authorizationTokenGeoIP}
+      authorizationTokenInmutable: ${authorizationTokenInmutable}

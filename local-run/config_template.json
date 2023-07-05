@@ -1,0 +1,38 @@
+{
+    "networkID": NETWORK_ID,
+    "logDirectory": "/var/log/magellan",
+    "metricsListenAddr": "",
+    "listenAddr": ":8080",
+    "features": [
+    ],
+    "caminoNode": "PROTOCOL://DOMAIN:PORT",
+    "nodeInstance": "default",
+    "chains": {
+      "CCHIAN_ID": {
+        "id": "CCHIAN_ID",
+        "vmType": "cvm"
+      },
+      "PCHIAN_ID": {
+        "id": "PCHIAN_ID",
+        "vmType": "pvm"
+      },
+      "XCHIAN_ID": {
+        "id": "XCHIAN_ID",
+        "vmType": "avm"
+      }
+    },
+    "services": {
+      "db": {
+        "dsn": "root:password@tcp(127.0.0.1:3306)/magellan",
+        "driver": "mysql"
+      },
+  
+      "geoIP": {
+        "urlEndpoint":"http://ip-api.com/json/"
+      },
+  
+      "inmutableInsights": {
+        "urlEndpoint":"https://co2.api.immutableinsight.io"
+      }
+    }
+  }

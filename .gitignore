@@ -30,3 +30,6 @@ vendor
 .secrets
 config.json
 .pre-commit-config.yaml
+
+# local config
+./local-run/config.json

@@ -1,0 +1,39 @@
+{
+    "networkID": 1001,
+    "logDirectory": "/var/log/magellan",
+    "metricsListenAddr": "",
+    "listenAddr": ":8080",
+    "features": [
+    ],
+    "caminoNode": "https://columbus.camino.network:443",
+    "nodeInstance": "default",
+    "chains": {
+      "2avDgyQpecb3vQvMpUvJv75Hphn6o3Ms79FD4Rjqf7jJ1ZY7Qe": {
+        "id": "2avDgyQpecb3vQvMpUvJv75Hphn6o3Ms79FD4Rjqf7jJ1ZY7Qe",
+        "vmType": "cvm"
+      },
+      "11111111111111111111111111111111LpoYY": {
+        "id": "11111111111111111111111111111111LpoYY",
+        "vmType": "pvm"
+      },
+      "CVovNnhBXyrvZtfGBvh3rndjCmMfMdFwQPd3S3CEjPuCkJPDP": {
+        "id": "CVovNnhBXyrvZtfGBvh3rndjCmMfMdFwQPd3S3CEjPuCkJPDP",
+        "vmType": "avm"
+      }
+    },
+    "services": {
+      "db": {
+        "dsn": "root:password@tcp(127.0.0.1:3306)/magellan",
+        "driver": "mysql"
+      },
+  
+      "geoIP": {
+        "urlEndpoint":"http://ip-api.com/json/"
+      },
+  
+      "inmutableInsights": {
+        "urlEndpoint":"https://co2.api.immutableinsight.io"
+      }
+    }
+  }
+  
