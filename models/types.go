@@ -72,6 +72,7 @@ var (
 	TransactionTypeMultisigAlias         TransactionType = RegisterTransactionTypeCustom + 9
 	TransactionTypeClaimReward           TransactionType = RegisterTransactionTypeCustom + 10
 	TransactionTypeRewardsImport         TransactionType = RegisterTransactionTypeCustom + 11
+	TransactionTypeAddDepositOffer       TransactionType = RegisterTransactionTypeCustom + 15
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -153,6 +154,8 @@ func (t TransactionType) String() string {
 		return "claim"
 	case TransactionTypeRewardsImport:
 		return "rewards"
+	case TransactionTypeAddDepositOffer:
+		return "add_deposit_offer"
 	default:
 		return TypeUnknown
 	}

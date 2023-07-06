@@ -587,6 +587,9 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 			Outs:         castTx.Outs,
 		}
 		typ = models.TransactionTypeCaminoRewardValidator
+	case *txs.AddDepositOfferTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddDepositOffer
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
