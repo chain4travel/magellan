@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -1039,4 +1039,42 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 	}
 	addressStatistics.AddressInfo = ActiveAddresses
 	return addressStatistics, err
+}
+
+func (r *Reader) ListDACProposals(ctx context.Context, p *params.ListDACProposalsParams) (*models.DACProposalsList, error) {
+	dbRunner, err := r.conns.DB().NewSession("dac_proposals", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	proposals, err := r.sc.Persist.QueryDACProposals(ctx, dbRunner, p)
+	if err != nil {
+		return nil, err
+	}
+
+	proposalsList := make([]models.DACProposal, 0, len(proposals))
+	for _, v := range proposals {
+		proposalsList = append(proposalsList, models.DACProposal(v))
+	}
+
+	return &models.DACProposalsList{DACProposals: proposalsList}, nil
+}
+
+func (r *Reader) GetDACProposalVotes(ctx context.Context, proposalID string) (*models.DACVotesList, error) {
+	dbRunner, err := r.conns.DB().NewSession("dac_proposal_votes", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	votes, err := r.sc.Persist.QueryDACProposalVotes(ctx, dbRunner, proposalID)
+	if err != nil {
+		return nil, err
+	}
+
+	votesList := make([]models.DACVote, 0, len(votes))
+	for _, v := range votes {
+		votesList = append(votesList, models.DACVote(v))
+	}
+
+	return &models.DACVotesList{DACVotes: votesList}, nil
 }
