@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/chain4travel/magellan/models"
 	"github.com/gocraft/dbr/v2"
 )
 
@@ -47,6 +48,8 @@ const (
 	KeyOutputOutputType = "outputOutputType"
 	KeyOutputGroupID    = "outputGroupId"
 	KeyTransactionID    = "transactionId"
+	KeyProposalType     = "proposalType"
+	KeyProposalStatus   = "proposalStatus"
 	KeyRPC              = "rpc"
 	KeyRaw              = "raw"
 
@@ -211,4 +214,34 @@ func (p ListParams) ApplyPk(listTable string, b *dbr.SelectBuilder, primaryKey s
 	}
 
 	return b
+}
+
+type ListDACProposalsParams struct {
+	ListParams
+	ProposalType   *models.ProposalType
+	ProposalStatus *models.ProposalStatus
+}
+
+func (p *ListDACProposalsParams) ForValues(v uint8, q url.Values) error {
+	val, err := GetQueryInt(q, KeyProposalType, -1)
+	if err != nil {
+		return err
+	}
+	if val != -1 {
+		*p.ProposalType = models.ProposalType(val)
+	}
+
+	val, err = GetQueryInt(q, KeyProposalStatus, -1)
+	if err != nil {
+		return err
+	}
+	if val != -1 {
+		*p.ProposalStatus = models.ProposalStatus(val)
+	}
+
+	return p.ListParams.ForValues(v, q)
+}
+
+func (p *ListDACProposalsParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
 }

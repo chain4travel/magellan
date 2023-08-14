@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -20,6 +20,49 @@ import (
 	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/chain4travel/magellan/modelsc"
 )
+
+type DACProposalsList struct {
+	DACProposals []DACProposal `json:"dacProposals"`
+}
+
+type ProposalStatus int
+
+const (
+	ProposalStatusInProgress ProposalStatus = iota
+	ProposalStatusSuccess
+	ProposalStatusFailed
+	ProposalStatusCompleted // both success and failed
+)
+
+type ProposalType int
+
+const (
+	ProposalTypeBaseFee ProposalType = iota
+)
+
+type DACProposal struct {
+	ID           string         `json:"id"`                // proposal id, also addProposalTx id
+	ProposerAddr string         `json:"proposerAddr"`      // address which authorized proposal
+	StartTime    time.Time      `json:"startTime"`         // time when proposal will become votable
+	EndTime      time.Time      `json:"endTime"`           // time when proposal will become non-votable and will be executed if its successful
+	Type         ProposalType   `json:"type"`              // proposal type
+	Options      []byte         `json:"options"`           // proposal votable options
+	Memo         []byte         `json:"memo"`              // addProposalTx memo
+	Outcome      []byte         `json:"outcome,omitempty"` // outcome of successful proposal, usually is one or multiple options indexes
+	Status       ProposalStatus `json:"status"`            // current status of proposal
+}
+
+type DACVotesList struct {
+	DACVotes []DACVote `json:"dacVotes"`
+}
+
+type DACVote struct {
+	VoteTxID     string    `json:"voteTxID"`     // addVoteTx id
+	VoterAddr    string    `json:"voterAddr"`    // address which authorized this vote
+	VotedAt      time.Time `json:"votedAt"`      // timestamp when this vote happened
+	ProposalID   string    `json:"proposalID"`   // id of proposal that was voted on
+	VotedOptions []byte    `json:"votedOptions"` // proposal options that was voted by this vote, usually one or multiple option indexes
+}
 
 type MultisigAliasList struct {
 	Alias []string `json:"alias"`

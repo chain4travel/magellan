@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/gocraft/dbr/v2"
 )
@@ -384,7 +383,7 @@ func (p *ListCTransactionsParams) CacheKey() []string {
 }
 
 func (p *ListCTransactionsParams) Apply(b *dbr.SelectBuilder) *dbr.SelectBuilder {
-	p.ListParams.ApplyPk(db.TableCvmTransactionsTxdata, b, "hash", false)
+	p.ListParams.ApplyPk("cvm_transactions_txdata", b, "hash", false)
 
 	return b
 }
