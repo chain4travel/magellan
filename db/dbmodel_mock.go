@@ -1,3 +1,13 @@
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -7,7 +17,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/gocraft/dbr/v2"
+	"golang.org/x/exp/slices"
 )
 
 type MockPersist struct {
@@ -43,6 +56,8 @@ type MockPersist struct {
 	MultisigAlias                  map[string]*MultisigAlias
 	RewardOwner                    map[string]*RewardOwner
 	Reward                         map[string]*Reward
+	DACProposals                   map[string]*DACProposal
+	DACVotes                       map[string]*DACVote
 }
 
 func NewPersistMock() *MockPersist {
@@ -664,4 +679,87 @@ func (m *MockPersist) InsertReward(ctx context.Context, session dbr.SessionRunne
 	*nv = *reward
 	m.Reward[nv.RewardOwnerHash] = nv
 	return nil
+}
+
+func (m *MockPersist) InsertDACProposal(ctx context.Context, session dbr.SessionRunner, proposal *DACProposal) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	nv := &DACProposal{}
+	*nv = *proposal
+	m.DACProposals[proposal.ID] = nv
+	return nil
+}
+
+// QueryDACProposals is not deterministic about return result, cause of random mapping order
+func (m *MockPersist) QueryDACProposals(ctx context.Context, session dbr.SessionRunner, params *params.ListDACProposalsParams) ([]DACProposal, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	proposals := make([]DACProposal, 0, len(m.DACProposals))
+	offset := 0
+	if params.Offset != 0 {
+		offset = params.Offset
+	}
+
+	for _, v := range m.DACProposals {
+		if len(proposals) == params.Limit {
+			break
+		}
+
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if (!params.StartTimeProvided || !params.StartTime.Before(v.StartTime)) &&
+			(!params.EndTimeProvided || !params.EndTime.After(v.EndTime)) &&
+			(params.ProposalType == nil || *params.ProposalType == v.Type) &&
+			(params.ProposalStatus == nil || *params.ProposalStatus == v.Status) {
+			proposals = append(proposals, *v)
+		}
+	}
+	return proposals, nil
+}
+
+func (m *MockPersist) UpdateDACProposalsStatus(ctx context.Context, session dbr.SessionRunner, proposalIDs []string, proposalStatus models.ProposalStatus) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	for _, v := range m.DACProposals {
+		if slices.Contains(proposalIDs, v.ID) {
+			v.Status = proposalStatus
+		}
+	}
+	return nil
+}
+
+func (m *MockPersist) FinishDACProposal(ctx context.Context, session dbr.SessionRunner, proposalID string, proposalStatus models.ProposalStatus, outcome []byte) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	proposal, ok := m.DACProposals[proposalID]
+	if !ok {
+		return nil
+	}
+	proposal.Status = proposalStatus
+	proposal.Outcome = outcome
+	return nil
+}
+
+func (m *MockPersist) InsertDACVote(ctx context.Context, session dbr.SessionRunner, vote *DACVote) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	nv := &DACVote{}
+	*nv = *vote
+	m.DACVotes[vote.VoterAddr] = nv
+	return nil
+}
+
+func (m *MockPersist) QueryDACProposalVotes(ctx context.Context, session dbr.SessionRunner, voterAddr string) ([]DACVote, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	votes := make([]DACVote, 0, len(m.DACVotes))
+	for _, v := range m.DACVotes {
+		if v.VoterAddr == voterAddr {
+			votes = append(votes, *v)
+		}
+	}
+	return votes, nil
 }

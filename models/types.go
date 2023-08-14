@@ -1,3 +1,13 @@
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -46,8 +56,6 @@ var (
 	TransactionTypeTransformSubnet            TransactionType = 0x16
 	TransactionTypeAddPermissionlessValidator TransactionType = 0x17
 	TransactionTypeAddPermissionlessDelegator TransactionType = 0x18
-	TransactionTypeAddDaoProposal             TransactionType = 0x19
-	TransactionTypeAddDaoVote                 TransactionType = 0x20
 
 	// Camino Custom Datatypes
 
@@ -73,6 +81,9 @@ var (
 	TransactionTypeClaimReward           TransactionType = RegisterTransactionTypeCustom + 10
 	TransactionTypeRewardsImport         TransactionType = RegisterTransactionTypeCustom + 11
 	TransactionTypeAddDepositOffer       TransactionType = RegisterTransactionTypeCustom + 15
+	TransactionTypeAddDACProposal        TransactionType = RegisterTransactionTypeCustom + 16
+	TransactionTypeAddDACVote            TransactionType = RegisterTransactionTypeCustom + 17
+	TransactionTypeFinishDACProposals    TransactionType = RegisterTransactionTypeCustom + 18
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -136,10 +147,12 @@ func (t TransactionType) String() string {
 		return "add_permissionless_validator"
 	case TransactionTypeAddPermissionlessDelegator:
 		return "add_permissionless_delegator"
-	case TransactionTypeAddDaoProposal:
-		return "add_dao_proposal"
-	case TransactionTypeAddDaoVote:
-		return "add_dao_vote"
+	case TransactionTypeAddDACProposal:
+		return "add_dac_proposal"
+	case TransactionTypeAddDACVote:
+		return "add_dac_vote"
+	case TransactionTypeFinishDACProposals:
+		return "finish_dac_proposals"
 	case TransactionTypeAddAddressState:
 		return "address_state"
 	case TransactionTypeDeposit:

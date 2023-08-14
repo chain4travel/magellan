@@ -1,3 +1,13 @@
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -27,6 +37,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
+	"github.com/ava-labs/avalanchego/vms/platformvm/dac"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -444,6 +455,8 @@ func (w *Writer) indexCommonBlock(
 
 //nolint:gocyclo
 func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *txs.Tx, genesis bool) error {
+	// ctx.Time() isn't strictly correct chaintime (block time) for Apricot blocks,
+	// but we assume we won't have any of them
 	var (
 		txID   = tx.ID()
 		baseTx avax.BaseTx
@@ -590,6 +603,44 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.AddDepositOfferTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddDepositOffer
+	case *txs.AddProposalTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddDACProposal
+		proposal, err := castTx.Proposal()
+		if err != nil {
+			return err
+		}
+		if err := w.InsertDACProposal(ctx, proposal, castTx.ProposerAddress, txID, castTx.Memo); err != nil {
+			return err
+		}
+	case *txs.AddVoteTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddDACVote
+		vote, err := castTx.Vote()
+		if err != nil {
+			return err
+		}
+		if err := w.InsertDACVote(ctx, txID, vote, castTx.VoterAddress, ctx.Time(), castTx.ProposalID); err != nil {
+			return err
+		}
+	case *txs.FinishProposalsTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeFinishDACProposals
+		for _, proposalID := range castTx.EarlyFinishedProposalIDs {
+			if err := w.FinishDACProposalSuccess(ctx, proposalID); err != nil {
+				return err
+			}
+		}
+		for _, proposalID := range castTx.ExpiredSuccessfulProposalIDs {
+			if err := w.FinishDACProposalSuccess(ctx, proposalID); err != nil {
+				return err
+			}
+		}
+		if len(castTx.ExpiredFailedProposalIDs) > 0 {
+			if err := w.FinishDACProposalsFail(ctx, castTx.ExpiredFailedProposalIDs); err != nil {
+				return err
+			}
+		}
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
@@ -743,6 +794,154 @@ func (w *Writer) InsertMultisigAlias(
 		}
 	}
 	return nil
+}
+
+func (w *Writer) InsertDACProposal(
+	ctx services.ConsumerCtx,
+	proposal dac.Proposal,
+	proposerAddr ids.ShortID,
+	txID ids.ID,
+	memo []byte,
+) error {
+	var proposalType models.ProposalType
+	switch proposal := proposal.(type) {
+	case *dac.BaseFeeProposal:
+		proposalType = models.ProposalTypeBaseFee
+	default:
+		return fmt.Errorf("unknown proposal type: %T", proposal)
+	}
+
+	options, err := json.Marshal(proposal.GetOptions())
+	if err != nil {
+		return err
+	}
+
+	return ctx.Persist().InsertDACProposal(ctx.Ctx(), ctx.DB(), &db.DACProposal{
+		ID:           txID.String(),
+		ProposerAddr: proposerAddr.String(),
+		StartTime:    proposal.StartTime(),
+		EndTime:      proposal.EndTime(),
+		Type:         proposalType,
+		Options:      options,
+		Memo:         memo,
+		Status:       models.ProposalStatusInProgress,
+	})
+}
+
+func (w *Writer) FinishDACProposalsFail(
+	ctx services.ConsumerCtx,
+	proposalIDs []ids.ID,
+) error {
+	proposalIDsStrs := make([]string, len(proposalIDs))
+	for i := range proposalIDs {
+		proposalIDsStrs[i] = proposalIDs[i].String()
+	}
+	return ctx.Persist().UpdateDACProposalsStatus(ctx.Ctx(), ctx.DB(), proposalIDsStrs, models.ProposalStatusFailed)
+}
+
+func (w *Writer) FinishDACProposalSuccess(
+	ctx services.ConsumerCtx,
+	proposalID ids.ID,
+) error {
+	queryResult, err := ctx.Persist().QueryTransactions(ctx.Ctx(), ctx.DB(), &db.Transactions{ID: proposalID.String()})
+	if err != nil {
+		return err
+	}
+
+	tx, err := txs.Parse(txs.Codec, queryResult.CanonicalSerialization)
+	if err != nil {
+		return err
+	}
+
+	proposalTx, ok := tx.Unsigned.(*txs.AddProposalTx)
+	if !ok {
+		return errors.New("wrong proposal tx type")
+	}
+
+	proposal, err := proposalTx.Proposal()
+	if err != nil {
+		return err
+	}
+
+	votes, err := ctx.Persist().QueryDACProposalVotes(ctx.Ctx(), ctx.DB(), proposalID.String())
+	if err != nil {
+		return err
+	}
+
+	allowedVoters := make([]ids.ShortID, len(votes))
+	for i := range votes {
+		voterAddr, err := ids.ShortFromString(votes[i].VoterAddr)
+		if err != nil {
+			return err
+		}
+		allowedVoters[i] = voterAddr
+	}
+
+	proposalState := proposal.CreateProposalState(allowedVoters)
+
+	for _, dbVote := range votes {
+		queryResult, err := ctx.Persist().QueryTransactions(ctx.Ctx(), ctx.DB(), &db.Transactions{ID: dbVote.VoteTxID})
+		if err != nil {
+			return err
+		}
+
+		tx, err := txs.Parse(txs.Codec, queryResult.CanonicalSerialization)
+		if err != nil {
+			return err
+		}
+
+		voteTx, ok := tx.Unsigned.(*txs.AddVoteTx)
+		if !ok {
+			return errors.New("wrong proposal tx type")
+		}
+
+		vote, err := voteTx.Vote()
+		if err != nil {
+			return err
+		}
+
+		proposalState, err = proposalState.AddVote(voteTx.VoterAddress, vote)
+		if err != nil {
+			return err
+		}
+	}
+
+	// other option is to marshal proposalState into bytes, keep it in db and update on addVoteTx insert
+	// then get it here and use for getting outcome as it is now
+
+	outcomeBytes, err := json.Marshal(proposalState.Outcome())
+	if err != nil {
+		return err
+	}
+
+	return ctx.Persist().FinishDACProposal(
+		ctx.Ctx(),
+		ctx.DB(),
+		proposalID.String(),
+		models.ProposalStatusSuccess,
+		outcomeBytes,
+	)
+}
+
+func (w *Writer) InsertDACVote(
+	ctx services.ConsumerCtx,
+	voteTxID ids.ID,
+	vote dac.Vote,
+	voterAddr ids.ShortID,
+	votedAt time.Time,
+	proposalID ids.ID,
+) error {
+	options, err := json.Marshal(vote.VotedOptions())
+	if err != nil {
+		return err
+	}
+	return ctx.Persist().InsertDACVote(ctx.Ctx(), ctx.DB(), &db.DACVote{
+		VoterAddr:    voterAddr.String(),
+		VotedAt:      votedAt,
+		VoteTxID:     voteTxID.String(),
+		ProposalID:   proposalID.String(),
+		VotedOptions: options,
+	})
 }
 
 func persistMultisigAliasAddresses(ctx services.ConsumerCtx, addr ids.ShortID, chainID string) error {
