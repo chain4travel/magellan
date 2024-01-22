@@ -1,3 +1,13 @@
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
+//
+// This file is a derived work, based on ava-labs code whose
+// original notices appear below.
+//
+// It is distributed under the same license conditions as the
+// original code from which it is derived.
+//
+// Much love to the original authors for their work.
+// **********************************************************
 // (c) 2021, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -26,7 +36,9 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
+	as "github.com/ava-labs/avalanchego/vms/platformvm/addrstate"
 	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
+	"github.com/ava-labs/avalanchego/vms/platformvm/dac"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -178,7 +190,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 	txDupCheck := set.NewSet[ids.ID](2*len(gc.Genesis.Camino.AddressStates) +
 		2*len(gc.Genesis.Camino.ConsortiumMembersNodeIDs))
 
-	addressStateTx := func(addr ids.ShortID, state txs.AddressStateBit) *txs.Tx {
+	addressStateTx := func(addr ids.ShortID, state as.AddressStateBit) *txs.Tx {
 		tx := &txs.Tx{
 			Unsigned: &txs.AddressStateTx{
 				BaseTx: txs.BaseTx{
@@ -242,22 +254,22 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 		}
 	}
 
-	for _, as := range gc.Genesis.Camino.AddressStates {
+	for _, addrState := range gc.Genesis.Camino.AddressStates {
 		select {
 		case <-ctx.Done():
 		default:
 		}
 
-		if as.State&txs.AddressStateKYCVerified != 0 {
-			if tx := addressStateTx(as.Address, txs.AddressStateBitKYCVerified); tx != nil {
+		if addrState.State&as.AddressStateKYCVerified != 0 {
+			if tx := addressStateTx(addrState.Address, as.AddressStateBitKYCVerified); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		if as.State&txs.AddressStateConsortiumMember != 0 {
-			if tx := addressStateTx(as.Address, txs.AddressStateBitConsortium); tx != nil {
+		if addrState.State&as.AddressStateConsortiumMember != 0 {
+			if tx := addressStateTx(addrState.Address, as.AddressStateBitConsortium); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
 					return err
@@ -444,6 +456,8 @@ func (w *Writer) indexCommonBlock(
 
 //nolint:gocyclo
 func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *txs.Tx, genesis bool) error {
+	// ctx.Time() isn't strictly correct chaintime (block time) for Apricot blocks,
+	// but we assume we won't have any of them
 	var (
 		txID   = tx.ID()
 		baseTx avax.BaseTx
@@ -590,6 +604,32 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.AddDepositOfferTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddDepositOffer
+	case *txs.AddProposalTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddDACProposal
+		proposal, err := castTx.Proposal()
+		if err != nil {
+			return err
+		}
+		if err := w.InsertDACProposal(ctx, proposal, castTx.ProposerAddress, txID); err != nil {
+			return err
+		}
+	case *txs.AddVoteTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeAddDACVote
+		vote, err := castTx.Vote()
+		if err != nil {
+			return err
+		}
+		if err := w.InsertDACVote(ctx, txID, vote, castTx.VoterAddress, ctx.Time(), castTx.ProposalID); err != nil {
+			return err
+		}
+	case *txs.FinishProposalsTx:
+		baseTx = castTx.BaseTx.BaseTx
+		typ = models.TransactionTypeFinishDACProposals
+		if err := w.FinishDACProposals(ctx, castTx, ctx.Time()); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown tx type %T", castTx)
 	}
@@ -777,4 +817,212 @@ func persistMultisigAliasAddresses(ctx services.ConsumerCtx, addr ids.ShortID, c
 	}
 
 	return nil
+}
+
+type dacProposalWrapper struct {
+	dac.ProposalState `serialize:"true"`
+}
+
+func (w *Writer) InsertDACProposal(
+	ctx services.ConsumerCtx,
+	proposal dac.Proposal,
+	proposerAddr ids.ShortID,
+	txID ids.ID,
+) error {
+	proposalType, proposalOptions, proposalData, isAdminProposal, err := parseDACProposal(proposal, w.networkID)
+	if err != nil {
+		return err
+	}
+
+	wrapper := dacProposalWrapper{}
+	if isAdminProposal {
+		proposalState, err := proposal.CreateFinishedProposalState(0)
+		if err != nil {
+			return err
+		}
+		wrapper.ProposalState = proposalState
+	} else {
+		wrapper.ProposalState = proposal.CreateProposalState([]ids.ShortID{})
+	}
+	proposalBytes, err := dac.Codec.Marshal(txs.Version, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	return ctx.Persist().InsertDACProposal(ctx.Ctx(), ctx.DB(), &db.DACProposal{
+		ID:              txID.String(),
+		ProposerAddr:    proposerAddr.String(),
+		StartTime:       proposal.StartTime(),
+		EndTime:         proposal.EndTime(),
+		Type:            proposalType,
+		IsAdminProposal: isAdminProposal,
+		SerializedBytes: proposalBytes,
+		Options:         proposalOptions,
+		Data:            proposalData,
+		Status:          models.ProposalStatusInProgress,
+	})
+}
+
+func (w *Writer) FinishDACProposals(ctx services.ConsumerCtx, tx *txs.FinishProposalsTx, finishedAt time.Time) error {
+	// Finishing successful proposals
+	successfulProposalIDsStrs := make([]string, 0, len(tx.EarlyFinishedSuccessfulProposalIDs)+len(tx.ExpiredSuccessfulProposalIDs))
+	for _, proposalID := range tx.EarlyFinishedSuccessfulProposalIDs {
+		successfulProposalIDsStrs = append(successfulProposalIDsStrs, proposalID.String())
+	}
+	for _, proposalID := range tx.ExpiredSuccessfulProposalIDs {
+		successfulProposalIDsStrs = append(successfulProposalIDsStrs, proposalID.String())
+	}
+	if len(successfulProposalIDsStrs) > 0 {
+		successfulProposals, err := ctx.Persist().GetDACProposals(ctx.Ctx(), ctx.DB(), successfulProposalIDsStrs)
+		if err != nil {
+			return err
+		}
+		for _, dbProposal := range successfulProposals {
+			proposal := dacProposalWrapper{}
+			if _, err := dac.Codec.Unmarshal(dbProposal.SerializedBytes, &proposal); err != nil {
+				return err
+			}
+
+			outcomeBytes, err := json.Marshal(proposal.Outcome())
+			if err != nil {
+				return err
+			}
+
+			if err := ctx.Persist().FinishDACProposalWithOutcome(
+				ctx.Ctx(),
+				ctx.DB(),
+				dbProposal.ID,
+				finishedAt,
+				models.ProposalStatusSuccess,
+				outcomeBytes,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Finishing failed proposals
+	failedProposalIDsStrs := make([]string, 0, len(tx.EarlyFinishedFailedProposalIDs)+len(tx.ExpiredFailedProposalIDs))
+	for _, proposalID := range tx.EarlyFinishedFailedProposalIDs {
+		failedProposalIDsStrs = append(failedProposalIDsStrs, proposalID.String())
+	}
+	for _, proposalID := range tx.ExpiredFailedProposalIDs {
+		failedProposalIDsStrs = append(failedProposalIDsStrs, proposalID.String())
+	}
+	if len(failedProposalIDsStrs) == 0 {
+		return nil
+	}
+	return ctx.Persist().FinishDACProposals(ctx.Ctx(), ctx.DB(), failedProposalIDsStrs, finishedAt, models.ProposalStatusFailed)
+}
+
+func (w *Writer) InsertDACVote(
+	ctx services.ConsumerCtx,
+	voteTxID ids.ID,
+	vote dac.Vote,
+	voterAddr ids.ShortID,
+	votedAt time.Time,
+	proposalID ids.ID,
+) error {
+	options, err := json.Marshal(vote.VotedOptions())
+	if err != nil {
+		return err
+	}
+
+	proposals, err := ctx.Persist().GetDACProposals(ctx.Ctx(), ctx.DB(), []string{proposalID.String()})
+	switch {
+	case err != nil:
+		return err
+	case len(proposals) == 0:
+		return dbr.ErrNotFound
+	case len(proposals) != 1:
+		return errors.New("db returned multiple proposals for one proposalID") // should never happen
+	}
+
+	wrapper := dacProposalWrapper{}
+	if _, err := dac.Codec.Unmarshal(proposals[0].SerializedBytes, &wrapper); err != nil {
+		return err
+	}
+
+	updatedProposal, err := wrapper.ForceAddVote(vote)
+	if err != nil {
+		return err
+	}
+
+	wrapper.ProposalState = updatedProposal
+	proposalBytes, err := dac.Codec.Marshal(txs.Version, &wrapper)
+	if err != nil {
+		return err
+	}
+
+	if err := ctx.Persist().UpdateDACProposal(
+		ctx.Ctx(),
+		ctx.DB(),
+		proposalID.String(),
+		proposalBytes,
+	); err != nil {
+		return err
+	}
+
+	return ctx.Persist().InsertDACVote(ctx.Ctx(), ctx.DB(), &db.DACVote{
+		VoterAddr:    voterAddr.String(),
+		VotedAt:      votedAt,
+		VoteTxID:     voteTxID.String(),
+		ProposalID:   proposalID.String(),
+		VotedOptions: options,
+	})
+}
+
+func parseDACProposal(
+	proposal dac.Proposal, networkID uint32,
+) (
+	proposalType models.ProposalType,
+	options []byte,
+	data []byte,
+	isAdminProposal bool,
+	err error,
+) {
+	adminProposal, isAdminProposal := proposal.(*dac.AdminProposal)
+	if isAdminProposal {
+		proposal = adminProposal.Proposal
+	}
+
+	var proposalData any
+	switch proposal := proposal.(type) {
+	case *dac.BaseFeeProposal:
+		proposalType = models.ProposalTypeBaseFee
+	case *dac.AddMemberProposal:
+		proposalType = models.ProposalTypeAddMember
+		applicantAddress, err := address.Format("P", constants.GetHRP(networkID), proposal.ApplicantAddress[:])
+		if err != nil {
+			return 0, nil, nil, false, err
+		}
+		proposalData = applicantAddress
+	case *dac.ExcludeMemberProposal:
+		proposalType = models.ProposalTypeExcludeMember
+		memberAddress, err := address.Format("P", constants.GetHRP(networkID), proposal.MemberAddress[:])
+		if err != nil {
+			return 0, nil, nil, false, err
+		}
+		proposalData = memberAddress
+	case *dac.GeneralProposal:
+		proposalType = models.ProposalTypeGeneral
+	case *dac.FeeDistributionProposal:
+		proposalType = models.ProposalTypeFeeDistribution
+	default:
+		return 0, nil, nil, false, fmt.Errorf("unknown proposal type: %T", proposal)
+	}
+
+	options, err = json.Marshal(proposal.GetOptions()) // always not nil
+	if err != nil {
+		return 0, nil, nil, false, err
+	}
+
+	if proposalData != nil {
+		data, err = json.Marshal(proposalData)
+		if err != nil {
+			return 0, nil, nil, false, err
+		}
+	}
+
+	return proposalType, options, data, isAdminProposal, nil
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/chain4travel/magellan/db"
 	"github.com/chain4travel/magellan/models"
 	"github.com/gocraft/dbr/v2"
 )
@@ -45,6 +44,7 @@ var (
 	_ Param = &ListOutputsParams{}
 	_ Param = &ListCTransactionsParams{}
 	_ Param = &ListBlocksParams{}
+	_ Param = &ListDACProposalsParams{}
 )
 
 type SearchParams struct {
@@ -384,7 +384,7 @@ func (p *ListCTransactionsParams) CacheKey() []string {
 }
 
 func (p *ListCTransactionsParams) Apply(b *dbr.SelectBuilder) *dbr.SelectBuilder {
-	p.ListParams.ApplyPk(db.TableCvmTransactionsTxdata, b, "hash", false)
+	p.ListParams.ApplyPk("cvm_transactions_txdata", b, "hash", false)
 
 	return b
 }
@@ -799,5 +799,53 @@ func (p *ValidatorParams) SetParamInfo(v uint8, rpc string) error {
 }
 
 func (p *ValidatorParams) CacheKey() []string {
+	return p.ListParams.CacheKey()
+}
+
+type ListDACProposalsParams struct {
+	ListParams
+
+	MinStartTime         time.Time
+	MaxStartTime         time.Time
+	MinStartTimeProvided bool
+	MaxStartTimeProvided bool
+
+	ProposalType   *models.ProposalType
+	ProposalStatus *models.ProposalStatus
+}
+
+func (p *ListDACProposalsParams) ForValues(v uint8, q url.Values) error {
+	val, err := GetQueryInt(q, KeyProposalType, -1)
+	if err != nil {
+		return err
+	}
+	if val != -1 {
+		p.ProposalType = new(models.ProposalType)
+		*p.ProposalType = models.ProposalType(val)
+	}
+
+	val, err = GetQueryInt(q, KeyProposalStatus, -1)
+	if err != nil {
+		return err
+	}
+	if val != -1 {
+		p.ProposalStatus = new(models.ProposalStatus)
+		*p.ProposalStatus = models.ProposalStatus(val)
+	}
+
+	p.MinStartTimeProvided, p.MinStartTime, err = GetQueryTime(q, KeyProposalMinStartTime)
+	if err != nil {
+		return err
+	}
+
+	p.MaxStartTimeProvided, p.MaxStartTime, err = GetQueryTime(q, KeyProposalMaxStartTime)
+	if err != nil {
+		return err
+	}
+
+	return p.ListParams.ForValuesAllowOffset(v, q)
+}
+
+func (p *ListDACProposalsParams) CacheKey() []string {
 	return p.ListParams.CacheKey()
 }

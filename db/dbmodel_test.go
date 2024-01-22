@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -20,7 +20,9 @@ import (
 	"time"
 
 	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/gocraft/dbr/v2"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -1383,4 +1385,541 @@ func TestInsertMultisigAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal("delete fail", err)
 	}
+}
+
+func TestInsertDACProposal(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	baseTxMemo := []byte("serialized base tx memo")
+	proposal := DACProposal{
+		ID:              "1111111111111111111111111111111111111111111111111",
+		ProposerAddr:    "222222222222222222222222222222222",
+		StartTime:       now.Add(1 * time.Second),
+		EndTime:         now.Add(10 * time.Second),
+		Type:            models.ProposalTypeBaseFee,
+		IsAdminProposal: false,
+		SerializedBytes: []byte("serialized proposal bytes"),
+		Options:         []byte("serialized proposal options"),
+		Data:            []byte("serialized proposal data"),
+		Memo:            []byte("should be ignored"),           // should be ingored and not inserted
+		Outcome:         []byte("serialized proposal outcome"), // should be ingored and not inserted
+		Status:          models.ProposalStatusInProgress,
+	}
+
+	require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+		ID:        proposal.ID,
+		Memo:      baseTxMemo,
+		CreatedAt: now,
+	}, false))
+	require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), &proposal))
+
+	expectedProposal := proposal
+	expectedProposal.Memo = baseTxMemo
+	expectedProposal.Outcome = nil
+	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), &params.ListDACProposalsParams{})
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{expectedProposal}, resultProposals)
+}
+
+func TestUpdateDACProposal(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	proposal := DACProposal{
+		ID:              "1111111111111111111111111111111111111111111111111",
+		ProposerAddr:    "222222222222222222222222222222222",
+		StartTime:       now.Add(1 * time.Second),
+		EndTime:         now.Add(10 * time.Second),
+		Type:            models.ProposalTypeBaseFee,
+		IsAdminProposal: false,
+		SerializedBytes: []byte("serialized proposal bytes"),
+		Options:         []byte("serialized proposal options"),
+		Data:            []byte("serialized proposal data"),
+		Memo:            []byte("serialized base tx memo"),
+		Status:          models.ProposalStatusInProgress,
+	}
+	require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+		ID:        proposal.ID,
+		Memo:      proposal.Memo,
+		CreatedAt: now,
+	}, false))
+	require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), &proposal))
+
+	updatedProposalBytes := []byte("updated serialized proposal bytes")
+	require.NoError(t, p.UpdateDACProposal(
+		ctx,
+		rawDBConn.NewSession(stream),
+		proposal.ID,
+		updatedProposalBytes,
+	))
+
+	expectedProposal := proposal
+	expectedProposal.SerializedBytes = updatedProposalBytes
+	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), &params.ListDACProposalsParams{})
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{expectedProposal}, resultProposals)
+}
+
+func TestFinishDACProposals(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	proposals := []*DACProposal{
+		{ // 0
+			ID:              "1111111111111111111111111111111111111111111111111",
+			ProposerAddr:    "111111111111111111111111111111111",
+			StartTime:       now.Add(1 * time.Second),
+			EndTime:         now.Add(10 * time.Second),
+			Type:            models.ProposalTypeBaseFee,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("1 serialized proposal bytes 1"),
+			Options:         []byte("1 serialized proposal options 1"),
+			Data:            []byte("1 serialized proposal data 1"),
+			Memo:            []byte("1 serialized proposal memo 1"),
+			Status:          models.ProposalStatusInProgress,
+		},
+		{ // 1
+			ID:              "2222222222222222222222222222222222222222222222222",
+			ProposerAddr:    "222222222222222222222222222222222",
+			StartTime:       now.Add(1 * time.Second),
+			EndTime:         now.Add(10 * time.Second),
+			Type:            models.ProposalTypeBaseFee,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("2 serialized proposal bytes 2"),
+			Options:         []byte("2 serialized proposal options 2"),
+			Data:            []byte("2 serialized proposal data 2"),
+			Memo:            []byte("2 serialized proposal memo 2"),
+			Status:          models.ProposalStatusInProgress,
+		},
+	}
+
+	for _, proposal := range proposals {
+		require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+			ID:        proposal.ID,
+			Memo:      proposal.Memo,
+			CreatedAt: now,
+		}, false))
+		require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), proposal))
+	}
+
+	finishTime := now.Add(5 * time.Second)
+
+	require.Error(t, p.FinishDACProposals(
+		ctx,
+		rawDBConn.NewSession(stream),
+		[]string{"3333333333333333333333333333333333333333333333333"}, // non-existing
+		finishTime,
+		models.ProposalStatusFailed,
+	))
+
+	require.NoError(t, p.FinishDACProposals(
+		ctx,
+		rawDBConn.NewSession(stream),
+		[]string{proposals[0].ID, proposals[1].ID},
+		finishTime,
+		models.ProposalStatusFailed,
+	))
+
+	expectedProposal0 := *proposals[0]
+	expectedProposal0.Status = models.ProposalStatusFailed
+	expectedProposal0.FinishedAt = &finishTime
+	expectedProposal1 := *proposals[1]
+	expectedProposal1.Status = models.ProposalStatusFailed
+	expectedProposal1.FinishedAt = &finishTime
+	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), &params.ListDACProposalsParams{})
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{expectedProposal0, expectedProposal1}, resultProposals)
+}
+
+func TestFinishDACProposalWithOutcome(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	proposal := DACProposal{
+		ID:              "1111111111111111111111111111111111111111111111111",
+		ProposerAddr:    "222222222222222222222222222222222",
+		StartTime:       now.Add(1 * time.Second),
+		EndTime:         now.Add(10 * time.Second),
+		Type:            models.ProposalTypeBaseFee,
+		IsAdminProposal: false,
+		SerializedBytes: []byte("serialized proposal bytes"),
+		Options:         []byte("serialized proposal options"),
+		Data:            []byte("serialized proposal data"),
+		Memo:            []byte("serialized base tx memo"),
+		Status:          models.ProposalStatusInProgress,
+	}
+	require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+		ID:        proposal.ID,
+		Memo:      proposal.Memo,
+		CreatedAt: now,
+	}, false))
+	require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), &proposal))
+
+	finishTime := now.Add(5 * time.Second)
+	outcome := []byte{}
+
+	require.Error(t, p.FinishDACProposalWithOutcome(
+		ctx,
+		rawDBConn.NewSession(stream),
+		"3333333333333333333333333333333333333333333333333",
+		finishTime,
+		models.ProposalStatusSuccess,
+		outcome,
+	))
+
+	require.NoError(t, p.FinishDACProposalWithOutcome(
+		ctx,
+		rawDBConn.NewSession(stream),
+		proposal.ID,
+		finishTime,
+		models.ProposalStatusSuccess,
+		outcome,
+	))
+
+	expectedProposal := proposal
+	expectedProposal.Status = models.ProposalStatusSuccess
+	expectedProposal.Outcome = outcome
+	expectedProposal.FinishedAt = &finishTime
+	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), &params.ListDACProposalsParams{})
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{expectedProposal}, resultProposals)
+}
+
+func TestGetDACProposals(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	proposals := []*DACProposal{
+		{ // 0
+			ID:              "1111111111111111111111111111111111111111111111111",
+			ProposerAddr:    "111111111111111111111111111111111",
+			StartTime:       now.Add(100 * time.Second),
+			EndTime:         now.Add(100 * time.Second).Add(time.Hour),
+			Type:            models.ProposalTypeBaseFee,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("1 serialized proposal bytes 1"),
+			Options:         []byte("1 serialized proposal options 1"),
+			Data:            []byte("1 serialized proposal data 1"),
+			Memo:            []byte("1 serialized proposal memo 1"),
+			Status:          models.ProposalStatusInProgress,
+		},
+		{ // 1
+			ID:              "2222222222222222222222222222222222222222222222222",
+			ProposerAddr:    "222222222222222222222222222222222",
+			StartTime:       now.Add(100 * time.Second),
+			EndTime:         now.Add(100 * time.Second).Add(time.Hour),
+			Type:            models.ProposalType(100), // different proposal type
+			IsAdminProposal: false,
+			SerializedBytes: []byte("2 serialized proposal bytes 2"),
+			Options:         []byte("2 serialized proposal options 2"),
+			Data:            []byte("2 serialized proposal data 2"),
+			Memo:            []byte("2 serialized proposal memo 2"),
+			Status:          models.ProposalStatusInProgress,
+		},
+		{ // 2
+			ID:              "3333333333333333333333333333333333333333333333333",
+			ProposerAddr:    "333333333333333333333333333333333",
+			StartTime:       now.Add(100 * time.Second),
+			EndTime:         now.Add(100 * time.Second).Add(time.Hour),
+			Type:            models.ProposalTypeBaseFee,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("3 serialized proposal bytes 3"),
+			Options:         []byte("3 serialized proposal options 3"),
+			Data:            []byte("3 serialized proposal data 3"),
+			Memo:            []byte("3 serialized proposal memo 3"),
+			Status:          models.ProposalStatusInProgress,
+		},
+		{ // 3
+			ID:              "4444444444444444444444444444444444444444444444444",
+			ProposerAddr:    "444444444444444444444444444444444",
+			StartTime:       now.Add(100 * time.Second),
+			EndTime:         now.Add(100 * time.Second).Add(time.Hour),
+			Type:            models.ProposalTypeBaseFee,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("4 serialized proposal bytes 4"),
+			Options:         []byte("4 serialized proposal options 4"),
+			Data:            []byte("4 serialized proposal data 4"),
+			Memo:            []byte("4 serialized proposal memo 4"),
+			Status:          models.ProposalStatusInProgress,
+		},
+	}
+
+	for _, proposal := range proposals {
+		require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+			ID:        proposal.ID,
+			Memo:      proposal.Memo,
+			CreatedAt: now,
+		}, false))
+		require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), proposal))
+	}
+
+	resultProposals, err := p.GetDACProposals(ctx, rawDBConn.NewSession(stream), []string{proposals[1].ID, proposals[2].ID})
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{*proposals[1], *proposals[2]}, resultProposals)
+}
+
+func TestQueryDACProposals(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACProposals).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	baseFeeProposalType := models.ProposalTypeBaseFee
+	proposalStatusSuccess := models.ProposalStatusSuccess
+	queryParams := &params.ListDACProposalsParams{
+		ListParams: params.ListParams{
+			Limit:  3,
+			Offset: 1,
+		},
+		MinStartTime:         now.Add(100 * time.Second),
+		MaxStartTime:         now.Add(105 * time.Second),
+		MinStartTimeProvided: true,
+		MaxStartTimeProvided: true,
+		ProposalType:         &baseFeeProposalType,
+		ProposalStatus:       &proposalStatusSuccess,
+	}
+
+	proposals := []*DACProposal{
+		{ // 0
+			ID:              "1111111111111111111111111111111111111111111111111",
+			ProposerAddr:    "111111111111111111111111111111111",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("1 serialized proposal bytes 1"),
+			Options:         []byte("1 serialized proposal options 1"),
+			Data:            []byte("1 serialized proposal data 1"),
+			Memo:            []byte("1 serialized proposal memo 1"),
+			Status:          models.ProposalStatusInProgress, // different proposal status
+		},
+		{ // 1
+			ID:              "2222222222222222222222222222222222222222222222222",
+			ProposerAddr:    "222222222222222222222222222222222",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            models.ProposalType(100), // different proposal type
+			IsAdminProposal: false,
+			SerializedBytes: []byte("2 serialized proposal bytes 2"),
+			Options:         []byte("2 serialized proposal options 2"),
+			Data:            []byte("2 serialized proposal data 2"),
+			Memo:            []byte("2 serialized proposal memo 2"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 2
+			ID:              "3333333333333333333333333333333333333333333333333",
+			ProposerAddr:    "333333333333333333333333333333333",
+			StartTime:       queryParams.MinStartTime.Add(-time.Second), // starttime is before
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("3 serialized proposal bytes 3"),
+			Options:         []byte("3 serialized proposal options 3"),
+			Data:            []byte("3 serialized proposal data 3"),
+			Memo:            []byte("3 serialized proposal memo 3"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 3
+			ID:              "4444444444444444444444444444444444444444444444444",
+			ProposerAddr:    "444444444444444444444444444444444",
+			StartTime:       queryParams.MaxStartTime.Add(time.Second), // starttime is after
+			EndTime:         queryParams.MaxStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("4 serialized proposal bytes 4"),
+			Options:         []byte("4 serialized proposal options 4"),
+			Data:            []byte("4 serialized proposal data 4"),
+			Memo:            []byte("4 serialized proposal memo 4"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 4 // cut by offset
+			ID:              "5555555555555555555555555555555555555555555555555",
+			ProposerAddr:    "555555555555555555555555555555555",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("5 serialized proposal bytes 5"),
+			Options:         []byte("5 serialized proposal options 5"),
+			Data:            []byte("5 serialized proposal data 5"),
+			Memo:            []byte("5 serialized proposal memo 5"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 5
+			ID:              "6666666666666666666666666666666666666666666666666",
+			ProposerAddr:    "666666666666666666666666666666666",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			SerializedBytes: []byte("6 serialized proposal bytes 6"),
+			Options:         []byte("6 serialized proposal options 6"),
+			Data:            []byte("6 serialized proposal data 6"),
+			Memo:            []byte("6 serialized proposal memo 6"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 6
+			ID:              "7777777777777777777777777777777777777777777777777",
+			ProposerAddr:    "777777777777777777777777777777777",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("7 serialized proposal bytes 7"),
+			Options:         []byte("7 serialized proposal options 7"),
+			Data:            []byte("7 serialized proposal data 7"),
+			Memo:            []byte("7 serialized proposal memo 7"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 7
+			ID:              "8888888888888888888888888888888888888888888888888",
+			ProposerAddr:    "888888888888888888888888888888888",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: true,
+			SerializedBytes: []byte("8 serialized proposal bytes 8"),
+			Options:         []byte("8 serialized proposal options 8"),
+			Data:            []byte("8 serialized proposal data 8"),
+			Memo:            []byte("8 serialized proposal memo 8"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 8 // cut by limit
+			ID:              "9999999999999999999999999999999999999999999999999",
+			ProposerAddr:    "999999999999999999999999999999999",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: false,
+			SerializedBytes: []byte("9 serialized proposal bytes 9"),
+			Options:         []byte("9 serialized proposal options 9"),
+			Data:            []byte("9 serialized proposal data 9"),
+			Memo:            []byte("9 serialized proposal memo 9"),
+			Status:          *queryParams.ProposalStatus,
+		},
+		{ // 9
+			ID:              "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			ProposerAddr:    "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			StartTime:       queryParams.MinStartTime,
+			EndTime:         queryParams.MinStartTime.Add(time.Hour),
+			Type:            *queryParams.ProposalType,
+			IsAdminProposal: true,
+			SerializedBytes: []byte("A serialized proposal bytes A"),
+			Options:         []byte("A serialized proposal options A"),
+			Data:            []byte("A serialized proposal data A"),
+			Memo:            []byte("A serialized proposal memo A"),
+			Status:          models.ProposalStatusFailed, // different proposal status, but will be included in "completed" status query
+		},
+	}
+
+	for _, proposal := range proposals {
+		require.NoError(t, p.InsertTransactions(ctx, rawDBConn.NewSession(stream), &Transactions{
+			ID:        proposal.ID,
+			Memo:      proposal.Memo,
+			CreatedAt: now,
+		}, false))
+		require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), proposal))
+	}
+
+	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), queryParams)
+	require.NoError(t, err)
+	require.Equal(t, []DACProposal{*proposals[5], *proposals[6], *proposals[7]}, resultProposals)
+
+	proposalStatusCompleted := models.ProposalStatusCompleted
+	queryParams = &params.ListDACProposalsParams{
+		ProposalStatus: &proposalStatusCompleted,
+	}
+	resultProposals, err = p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), queryParams)
+	require.NoError(t, err)
+	require.Equal(t,
+		[]DACProposal{*proposals[1], *proposals[2], *proposals[3], *proposals[4], *proposals[5], *proposals[6], *proposals[7], *proposals[8], *proposals[9]},
+		resultProposals)
+}
+
+// TestInsertDACVote also tests QueryDACProposalVotes
+func TestInsertDACVote(t *testing.T) {
+	p := NewPersist()
+	ctx := context.Background()
+	stream := &dbr.NullEventReceiver{}
+	rawDBConn, err := dbr.Open(TestDB, TestDSN, stream)
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableTransactions).Exec()
+	require.NoError(t, err)
+	_, err = rawDBConn.NewSession(stream).DeleteFrom(TableDACVotes).Exec()
+	require.NoError(t, err)
+	now := time.Now().UTC().Truncate(time.Second)
+
+	vote := DACVote{
+		VoteTxID:     "1111111111111111111111111111111111111111111111111",
+		VoterAddr:    "222222222222222222222222222222222",
+		VotedAt:      now,
+		ProposalID:   "3333333333333333333333333333333333333333333333333",
+		VotedOptions: []byte("serialized voted options"),
+	}
+
+	require.NoError(t, p.InsertDACVote(ctx, rawDBConn.NewSession(stream), &vote))
+
+	expectedVote := vote
+	expectedVote.ProposalID = ""
+	resultVotes, err := p.QueryDACProposalVotes(ctx, rawDBConn.NewSession(stream), vote.ProposalID)
+	require.NoError(t, err)
+	require.Equal(t, []DACVote{expectedVote}, resultVotes)
 }

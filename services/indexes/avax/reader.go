@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/chain4travel/magellan/caching"
 	"github.com/chain4travel/magellan/cfg"
 	"github.com/chain4travel/magellan/db"
@@ -1039,4 +1041,151 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 	}
 	addressStatistics.AddressInfo = ActiveAddresses
 	return addressStatistics, err
+}
+
+func (r *Reader) ListDACProposals(ctx context.Context, p *params.ListDACProposalsParams) (*models.DACProposalsList, error) {
+	dbRunner, err := r.conns.DB().NewSession("list_dac_proposals", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	proposals, err := r.sc.Persist.QueryDACProposals(ctx, dbRunner, p)
+	if err != nil {
+		return nil, err
+	}
+
+	proposalsList := make([]models.DACProposalWithVotes, len(proposals))
+	for i := range proposals {
+		height, err := r.sc.Persist.GetTxHeight(ctx, dbRunner, proposals[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		votes, err := r.sc.Persist.QueryDACProposalVotes(ctx, dbRunner, proposals[i].ID)
+		if err != nil {
+			return nil, err
+		}
+
+		proposalModel, err := r.dacProposalFromDB(&proposals[i])
+		if err != nil {
+			return nil, err
+		}
+		proposalModel.BlockHeight = height
+
+		votesModel, err := r.dacVotesFromDB(votes)
+		if err != nil {
+			return nil, err
+		}
+
+		proposalsList[i] = models.DACProposalWithVotes{
+			DACProposal: proposalModel,
+			DACVotes:    votesModel,
+		}
+	}
+
+	return &models.DACProposalsList{DACProposals: proposalsList}, nil
+}
+
+func (r *Reader) GetDACProposalWithVotes(ctx context.Context, proposalID string) (*models.DACProposalWithVotes, error) {
+	dbRunner, err := r.conns.DB().NewSession("get_dac_proposal", cfg.RequestTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	proposals, err := r.sc.Persist.GetDACProposals(ctx, dbRunner, []string{proposalID})
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case err != nil:
+		return nil, err
+	case len(proposals) == 0:
+		return nil, dbr.ErrNotFound
+	case len(proposals) != 1:
+		return nil, errors.New("db returned multiple proposals for one proposalID") // should never happen
+	}
+
+	height, err := r.sc.Persist.GetTxHeight(ctx, dbRunner, proposalID)
+	if err != nil {
+		return nil, err
+	}
+
+	votes, err := r.sc.Persist.QueryDACProposalVotes(ctx, dbRunner, proposalID)
+	if err != nil {
+		return nil, err
+	}
+
+	proposalModel, err := r.dacProposalFromDB(&proposals[0])
+	if err != nil {
+		return nil, err
+	}
+	proposalModel.BlockHeight = height
+
+	votesModel, err := r.dacVotesFromDB(votes)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.DACProposalWithVotes{
+		DACVotes:    votesModel,
+		DACProposal: proposalModel,
+	}, nil
+}
+
+func (r *Reader) dacProposalFromDB(proposal *db.DACProposal) (models.DACProposal, error) {
+	id, err := ids.ShortFromString(proposal.ProposerAddr)
+	if err != nil {
+		return models.DACProposal{}, err
+	}
+
+	proposerAddr, err := address.Format("P", constants.GetHRP(r.networkID), id[:])
+	if err != nil {
+		return models.DACProposal{}, err
+	}
+
+	return models.DACProposal{
+		ID:              proposal.ID,
+		ProposerAddr:    proposerAddr,
+		StartTime:       proposal.StartTime,
+		EndTime:         proposal.EndTime,
+		FinishedAt:      proposal.FinishedAt,
+		Type:            proposal.Type,
+		IsAdminProposal: proposal.IsAdminProposal,
+		Options:         proposal.Options,
+		Data:            proposal.Data,
+		Memo:            proposal.Memo,
+		Outcome:         proposal.Outcome,
+		Status:          proposal.Status,
+	}, nil
+}
+
+func (r *Reader) dacVotesFromDB(votes []db.DACVote) ([]models.DACVote, error) {
+	dacVotes := make([]models.DACVote, len(votes))
+	for i := range votes {
+		dacVote, err := r.dacVoteFromDB(&votes[i])
+		if err != nil {
+			return nil, err
+		}
+		dacVotes[i] = dacVote
+	}
+	return dacVotes, nil
+}
+
+func (r *Reader) dacVoteFromDB(vote *db.DACVote) (models.DACVote, error) {
+	id, err := ids.ShortFromString(vote.VoterAddr)
+	if err != nil {
+		return models.DACVote{}, err
+	}
+
+	voterAddr, err := address.Format("P", constants.GetHRP(r.networkID), id[:])
+	if err != nil {
+		return models.DACVote{}, err
+	}
+
+	return models.DACVote{
+		VoteTxID:     vote.VoteTxID,
+		VoterAddr:    voterAddr,
+		VotedAt:      vote.VotedAt,
+		VotedOptions: vote.VotedOptions,
+	}, nil
 }

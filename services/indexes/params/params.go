@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -24,31 +24,35 @@ import (
 )
 
 const (
-	KeyID               = "id"
-	KeyChainID          = "chainID"
-	KeyAddress          = "address"
-	KeyToAddress        = "toAddress"
-	KeyFromAddress      = "fromAddress"
-	KeyBlockStart       = "blockStart"
-	KeyBlockEnd         = "blockEnd"
-	KeyHash             = "hash"
-	KeyAlias            = "alias"
-	KeyAssetID          = "assetID"
-	KeySearchQuery      = "query"
-	KeySortBy           = "sort"
-	KeyLimit            = "limit"
-	KeyOffset           = "offset"
-	KeySpent            = "spent"
-	KeyStartTime        = "startTime"
-	KeyEndTime          = "endTime"
-	KeyIntervalSize     = "intervalSize"
-	KeyDisableCount     = "disableCount"
-	KeyDisableGenesis   = "disableGenesis"
-	KeyOutputOutputType = "outputOutputType"
-	KeyOutputGroupID    = "outputGroupId"
-	KeyTransactionID    = "transactionId"
-	KeyRPC              = "rpc"
-	KeyRaw              = "raw"
+	KeyID                   = "id"
+	KeyChainID              = "chainID"
+	KeyAddress              = "address"
+	KeyToAddress            = "toAddress"
+	KeyFromAddress          = "fromAddress"
+	KeyBlockStart           = "blockStart"
+	KeyBlockEnd             = "blockEnd"
+	KeyHash                 = "hash"
+	KeyAlias                = "alias"
+	KeyAssetID              = "assetID"
+	KeySearchQuery          = "query"
+	KeySortBy               = "sort"
+	KeyLimit                = "limit"
+	KeyOffset               = "offset"
+	KeySpent                = "spent"
+	KeyStartTime            = "startTime"
+	KeyEndTime              = "endTime"
+	KeyIntervalSize         = "intervalSize"
+	KeyDisableCount         = "disableCount"
+	KeyDisableGenesis       = "disableGenesis"
+	KeyOutputOutputType     = "outputOutputType"
+	KeyOutputGroupID        = "outputGroupId"
+	KeyTransactionID        = "transactionId"
+	KeyProposalType         = "proposalType"
+	KeyProposalStatus       = "proposalStatus"
+	KeyProposalMinStartTime = "minStartTime"
+	KeyProposalMaxStartTime = "maxStartTime"
+	KeyRPC                  = "rpc"
+	KeyRaw                  = "raw"
 
 	PaginationMaxLimit      = 5000
 	PaginationDefaultOffset = 0
