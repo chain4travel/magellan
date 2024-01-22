@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -153,7 +153,9 @@ func AddV2Routes(ctx *Context, router *web.Router, path string, indexBytes []byt
 		Get("/cacheassetaggregates", (*V2Context).CacheAssetAggregates).
 		Get("/cacheaggregates/:id", (*V2Context).CacheAggregates).
 		Get("/multisigalias/:owners", (*V2Context).GetMultisigAlias).
-		Post("/rewards", (*V2Context).GetRewardPost)
+		Post("/rewards", (*V2Context).GetRewardPost).
+		Get("/proposals", (*V2Context).ListDACProposals).
+		Get("/proposals/:id", (*V2Context).GetDACProposalWithVotes)
 }
 
 // AVAX
@@ -1144,4 +1146,47 @@ func (c *V2Context) CacheAggregates(w web.ResponseWriter, r *web.Request) {
 	}
 
 	WriteJSON(w, b)
+}
+
+func (c *V2Context) ListDACProposals(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	params := &params.ListDACProposalsParams{}
+	if err := params.ForValues(c.version, r.URL.Query()); err != nil {
+		c.WriteErr(w, 400, err)
+		return
+	}
+
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForParams("list_dac_proposals", params),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.ListDACProposals(ctx, params)
+		},
+	})
+}
+
+func (c *V2Context) GetDACProposalWithVotes(w web.ResponseWriter, r *web.Request) {
+	collectors := utils.NewCollectors(
+		utils.NewCounterObserveMillisCollect(MetricMillis),
+		utils.NewCounterIncCollect(MetricCount),
+	)
+	defer func() {
+		_ = collectors.Collect()
+	}()
+
+	proposalID := r.PathParams["id"]
+	c.WriteCacheable(w, caching.Cacheable{
+		TTL: 5 * time.Second,
+		Key: c.cacheKeyForID("get_dac_proposal", proposalID),
+		CacheableFn: func(ctx context.Context) (interface{}, error) {
+			return c.avaxReader.GetDACProposalWithVotes(ctx, proposalID)
+		},
+	})
 }

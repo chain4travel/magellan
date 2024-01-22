@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -20,6 +20,57 @@ import (
 	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/chain4travel/magellan/modelsc"
 )
+
+type DACProposalWithVotes struct {
+	DACProposal DACProposal `json:"dacProposal"`
+	DACVotes    []DACVote   `json:"dacVotes"`
+}
+
+type DACProposalsList struct {
+	DACProposals []DACProposalWithVotes `json:"dacProposals"`
+}
+
+type ProposalStatus int
+
+const (
+	ProposalStatusInProgress ProposalStatus = iota
+	ProposalStatusSuccess
+	ProposalStatusFailed
+	ProposalStatusCompleted // both success and failed
+)
+
+type ProposalType int
+
+const (
+	ProposalTypeBaseFee ProposalType = iota
+	ProposalTypeAddMember
+	ProposalTypeExcludeMember
+	ProposalTypeGeneral
+	ProposalTypeFeeDistribution
+)
+
+type DACProposal struct {
+	ID              string         `json:"id"`                   // proposal id, also addProposalTx id
+	ProposerAddr    string         `json:"proposerAddr"`         // address which authorized proposal
+	StartTime       time.Time      `json:"startTime"`            // time when proposal will become votable
+	EndTime         time.Time      `json:"endTime"`              // time when proposal will become non-votable and will be executed if its successful
+	FinishedAt      *time.Time     `json:"finishedAt,omitempty"` // time when proposal was finished
+	Type            ProposalType   `json:"type"`                 // proposal type
+	IsAdminProposal bool           `json:"admin_proposal"`       // true if it is admin proposal
+	Options         []byte         `json:"options"`              // proposal votable options
+	Data            []byte         `json:"data,omitempty"`       // arbitrary proposal data
+	Memo            []byte         `json:"memo"`                 // addProposalTx memo
+	Outcome         []byte         `json:"outcome,omitempty"`    // outcome of successful proposal, usually is one or multiple options indexes
+	Status          ProposalStatus `json:"status"`               // current status of proposal
+	BlockHeight     uint64         `json:"blockHeight"`          // height of proposal block
+}
+
+type DACVote struct {
+	VoteTxID     string    `json:"voteTxID"`     // addVoteTx id
+	VoterAddr    string    `json:"voterAddr"`    // address which authorized this vote
+	VotedAt      time.Time `json:"votedAt"`      // timestamp when this vote happened
+	VotedOptions []byte    `json:"votedOptions"` // proposal options that was voted by this vote, usually one or multiple option indexes
+}
 
 type MultisigAliasList struct {
 	Alias []string `json:"alias"`

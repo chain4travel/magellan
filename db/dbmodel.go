@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Chain4Travel AG. All rights reserved.
+// Copyright (C) 2022-2023, Chain4Travel AG. All rights reserved.
 //
 // This file is a derived work, based on ava-labs code whose
 // original notices appear below.
@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/chain4travel/magellan/models"
+	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/chain4travel/magellan/utils"
 	"github.com/gocraft/dbr/v2"
 )
@@ -56,6 +57,8 @@ const (
 	TableMultisigAliases                = "multisig_aliases"
 	TableReward                         = "reward"
 	TableRewardOwner                    = "reward_owner"
+	TableDACProposals                   = "dac_proposals"
+	TableDACVotes                       = "dac_votes"
 )
 
 type Persist interface {
@@ -64,6 +67,11 @@ type Persist interface {
 		dbr.SessionRunner,
 		*Transactions,
 	) (*Transactions, error)
+	QueryMultipleTransactions(
+		context.Context,
+		dbr.SessionRunner,
+		[]string,
+	) (*[]Transactions, error)
 	InsertTransactions(
 		context.Context,
 		dbr.SessionRunner,
@@ -440,6 +448,62 @@ type Persist interface {
 		dbr.SessionRunner,
 		*Reward,
 	) error
+
+	// DAC Proposals
+	InsertDACProposal(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposal *DACProposal,
+	) error
+	UpdateDACProposal(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposalID string,
+		updatedProposal []byte,
+	) error
+	FinishDACProposals(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposalIDs []string,
+		finishedAt time.Time,
+		proposalStatus models.ProposalStatus,
+	) error
+	FinishDACProposalWithOutcome(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposalID string,
+		finishedAt time.Time,
+		proposalStatus models.ProposalStatus,
+		outcome []byte,
+	) error
+	GetDACProposals(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposalIDs []string,
+	) ([]DACProposal, error)
+	QueryDACProposals(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		params *params.ListDACProposalsParams,
+	) ([]DACProposal, error)
+
+	// DAC Votes
+	InsertDACVote(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		vote *DACVote,
+	) error
+	QueryDACProposalVotes(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		proposalID string,
+	) ([]DACVote, error)
+
+	GetTxHeight(
+		ctx context.Context,
+		session dbr.SessionRunner,
+		txID string,
+	) (uint64, error)
 }
 
 type persist struct{}
@@ -496,6 +560,29 @@ func (p *persist) QueryTransactions(
 		"status",
 	).From(TableTransactions).
 		Where("id=?", q.ID).
+		LoadOneContext(ctx, v)
+	return v, err
+}
+
+func (p *persist) QueryMultipleTransactions(
+	ctx context.Context,
+	sess dbr.SessionRunner,
+	txIDs []string,
+) (*[]Transactions, error) {
+	v := &[]Transactions{}
+	err := sess.Select(
+		"id",
+		"chain_id",
+		"type",
+		"memo",
+		"created_at",
+		"canonical_serialization",
+		"txfee",
+		"genesis",
+		"network_id",
+		"status",
+	).From(TableTransactions).
+		Where("id IN ?", txIDs).
 		LoadOneContext(ctx, v)
 	return v, err
 }
@@ -2389,4 +2476,247 @@ func (p *persist) DeactivateReward(ctx context.Context, session dbr.SessionRunne
 	}
 
 	return p.InsertReward(ctx, session, v)
+}
+
+type DACProposal struct {
+	ID              string                `db:"id"`               // proposal id, also addProposalTx id
+	ProposerAddr    string                `db:"proposer_addr"`    // address which authorized proposal
+	StartTime       time.Time             `db:"start_time"`       // time when proposal will become votable
+	EndTime         time.Time             `db:"end_time"`         // time when proposal will become non-votable and will be executed if its successful
+	Type            models.ProposalType   `db:"type"`             // proposal type
+	IsAdminProposal bool                  `db:"admin_proposal"`   // true if it is admin proposal
+	Options         []byte                `db:"options"`          // proposal votable options
+	Data            []byte                `db:"data"`             // arbitrary proposal data
+	SerializedBytes []byte                `db:"serialized_bytes"` // serialized dac.ProposalState
+	Memo            []byte                `db:"memo"`             // addProposalTx memo
+	FinishedAt      *time.Time            `db:"finished_at"`      // time when proposal was finished
+	Outcome         []byte                `db:"outcome"`          // outcome of successful proposal, usually is one or multiple options indexes
+	Status          models.ProposalStatus `db:"status"`           // current status of proposal
+}
+
+func (p *persist) InsertDACProposal(ctx context.Context, session dbr.SessionRunner, proposal *DACProposal) error {
+	_, err := session.
+		InsertInto(TableDACProposals).
+		Pair("id", proposal.ID).
+		Pair("proposer_addr", proposal.ProposerAddr).
+		Pair("start_time", proposal.StartTime).
+		Pair("end_time", proposal.EndTime).
+		Pair("type", proposal.Type).
+		Pair("admin_proposal", proposal.IsAdminProposal).
+		Pair("serialized_bytes", proposal.SerializedBytes).
+		Pair("options", proposal.Options).
+		Pair("data", proposal.Data).
+		Pair("status", proposal.Status).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableDACProposals, false, err)
+	}
+	return nil
+}
+
+func (p *persist) UpdateDACProposal(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	proposalID string,
+	updatedProposal []byte,
+) error {
+	_, err := session.
+		Update(TableDACProposals).
+		Set("serialized_bytes", updatedProposal).
+		Where("id=?", proposalID).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableDACProposals, true, err)
+	}
+	return nil
+}
+
+func (p *persist) FinishDACProposals(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	proposalIDs []string,
+	finishedAt time.Time,
+	proposalStatus models.ProposalStatus,
+) error {
+	result, err := session.
+		Update(TableDACProposals).
+		Set("status", proposalStatus).
+		Set("finished_at", finishedAt).
+		Where("id IN ?", proposalIDs).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableDACProposals, true, err)
+	}
+
+	if rowsAffected, err := result.RowsAffected(); err != nil {
+		return EventErr(TableDACProposals, true, err)
+	} else if rowsAffected == 0 {
+		return EventErr(TableDACProposals, true, dbr.ErrNotFound)
+	}
+
+	return nil
+}
+
+func (p *persist) FinishDACProposalWithOutcome(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	proposalID string,
+	finishedAt time.Time,
+	proposalStatus models.ProposalStatus,
+	outcome []byte,
+) error {
+	result, err := session.
+		Update(TableDACProposals).
+		Set("status", proposalStatus).
+		Set("finished_at", finishedAt).
+		Set("outcome", outcome).
+		Where("id = ?", proposalID).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableDACProposals, true, err)
+	}
+
+	if rowsAffected, err := result.RowsAffected(); err != nil {
+		return EventErr(TableDACProposals, true, err)
+	} else if rowsAffected == 0 {
+		return EventErr(TableDACProposals, true, dbr.ErrNotFound)
+	}
+
+	return nil
+}
+
+func (p *persist) GetDACProposals(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	proposalIDs []string,
+) ([]DACProposal, error) {
+	v := &[]DACProposal{}
+	query := session.Select(
+		"P.id",
+		"P.proposer_addr",
+		"P.start_time",
+		"P.end_time",
+		"P.type",
+		"P.admin_proposal",
+		"P.serialized_bytes",
+		"P.options",
+		"P.data",
+		"T.memo",
+		"P.outcome",
+		"P.status",
+	).From(dbr.I(TableDACProposals).As("P")).
+		Join(dbr.I(TableTransactions).As("T"), "T.id=P.id").
+		Where("P.id in ?", proposalIDs)
+
+	_, err := query.LoadContext(ctx, v)
+	return *v, err
+}
+
+func (p *persist) QueryDACProposals(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	params *params.ListDACProposalsParams,
+) ([]DACProposal, error) {
+	v := &[]DACProposal{}
+	query := session.Select(
+		"P.id",
+		"P.proposer_addr",
+		"P.start_time",
+		"P.end_time",
+		"P.type",
+		"P.admin_proposal",
+		"P.serialized_bytes",
+		"P.options",
+		"P.data",
+		"T.memo",
+		"P.finished_at",
+		"P.outcome",
+		"P.status",
+	).From(dbr.I(TableDACProposals).As("P")).
+		Join(dbr.I(TableTransactions).As("T"), "T.id=P.id")
+
+	if params.Offset > 0 {
+		query.Offset(uint64(params.Offset))
+	}
+	if params.Limit > 0 {
+		query.Limit(uint64(params.Limit))
+	}
+	if params.MinStartTimeProvided {
+		query.Where("P.start_time >= ?", params.MinStartTime)
+	}
+	if params.MaxStartTimeProvided {
+		query.Where("P.start_time <= ?", params.MaxStartTime)
+	}
+	if params.EndTimeProvided {
+		query.Where("P.end_time >= ?", params.EndTime)
+	}
+	if params.ProposalType != nil {
+		query.Where("P.type = ?", params.ProposalType)
+	}
+	if params.ProposalStatus != nil {
+		if *params.ProposalStatus == models.ProposalStatusCompleted {
+			query.Where("P.status IN ?", []models.ProposalStatus{models.ProposalStatusSuccess, models.ProposalStatusFailed})
+		} else {
+			query.Where("P.status = ?", params.ProposalStatus)
+		}
+	}
+
+	_, err := query.LoadContext(ctx, v)
+	return *v, err
+}
+
+type DACVote struct {
+	VoteTxID     string    `db:"id"`            // addVoteTx id
+	VoterAddr    string    `db:"voter_addr"`    // address which authorized this vote
+	VotedAt      time.Time `db:"voted_at"`      // timestamp when this vote happened
+	ProposalID   string    `db:"proposal_id"`   // id of proposal that was voted on
+	VotedOptions []byte    `db:"voted_options"` // proposal options that was voted by this vote, usually one or multiple option indexes
+}
+
+func (p *persist) InsertDACVote(ctx context.Context, session dbr.SessionRunner, vote *DACVote) error {
+	_, err := session.
+		InsertInto(TableDACVotes).
+		Pair("id", vote.VoteTxID).
+		Pair("voter_addr", vote.VoterAddr).
+		Pair("voted_at", vote.VotedAt).
+		Pair("proposal_id", vote.ProposalID).
+		Pair("voted_options", vote.VotedOptions).
+		ExecContext(ctx)
+	if err != nil {
+		return EventErr(TableDACVotes, false, err)
+	}
+	return nil
+}
+
+func (p *persist) QueryDACProposalVotes(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	proposalID string,
+) ([]DACVote, error) {
+	v := &[]DACVote{}
+	_, err := session.Select(
+		"id",
+		"voter_addr",
+		"voted_at",
+		"voted_options",
+	).From(TableDACVotes).
+		Where("proposal_id = ?", proposalID).
+		LoadContext(ctx, v)
+	return *v, err
+}
+
+func (p *persist) GetTxHeight(
+	ctx context.Context,
+	session dbr.SessionRunner,
+	txID string,
+) (uint64, error) {
+	v := uint64(0)
+	err := session.SelectBySql(`
+		SELECT PB.height
+		FROM magellan.pvm_blocks AS PB
+		WHERE PB.id IN (
+			SELECT TB.tx_block_id
+			FROM magellan.transactions_block AS TB
+			WHERE TB.id = ?);`, txID).LoadOneContext(ctx, &v)
+	return v, err
 }
