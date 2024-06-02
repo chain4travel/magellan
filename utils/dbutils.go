@@ -45,14 +45,15 @@ func DateFormat(startTime time.Time, endTime time.Time, columnName string) strin
 	yearsBetween := endTime.Year() - startTime.Year()
 	var dateFormat string
 	switch {
-	// if the date range is greater than or equal to one month the values are averaged per month
-	case (monthsBetween >= 1 || monthsBetween < 0 || startTime.Year() == 1) && yearsBetween == 0:
-		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-%m-01')"
-	// if the date range is greater than or equal to one year the values are averaged per year
-	case yearsBetween > 0:
-		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-01-01')"
-	default:
+	case monthsBetween == 0 && yearsBetween == 0:
 		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-%m-%d')"
+	// if the date range is greater to 2 year the values are averaged per year
+	case yearsBetween > 2:
+		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-01-01')"
+	// if the date range is less or equal to 2 years and months between are more than one the values are
+	// averaged per month
+	default:
+		dateFormat = "DATE_FORMAT(" + columnName + ",'%Y-%m-01')"
 	}
 	return dateFormat
 }
