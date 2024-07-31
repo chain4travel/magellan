@@ -236,7 +236,7 @@ func (w *Writer) insertGenesis(ctx services.ConsumerCtx, genesisBytes []byte) er
 
 	for i, genesisAsset := range avmGenesis.Txs {
 		tx := &txs.Tx{Unsigned: &genesisAsset.CreateAssetTx}
-		if err := x.Parser.InitializeGenesisTx(tx); err != nil {
+		if _, err := x.Parser.ParseGenesisTx(tx.Bytes()); err != nil {
 			return err
 		}
 
@@ -415,7 +415,7 @@ func (w *Writer) insertCreateAssetTx(ctx services.ConsumerCtx, txBytes []byte, t
 func (w *Writer) getVerifiables(creds []*fxs.FxCredential) []verify.Verifiable {
 	verifiables := []verify.Verifiable{}
 	for _, cred := range creds {
-		verifiables = append(verifiables, cred.Verifiable)
+		verifiables = append(verifiables, cred.Credential)
 	}
 	return verifiables
 }

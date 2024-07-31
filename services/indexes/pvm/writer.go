@@ -141,7 +141,7 @@ func (w *Writer) ParseJSON(b []byte, proposer *models.BlockProposal) ([]byte, er
 	}
 
 	// Try and parse as proposervm block
-	proposerBlock, err := block.Parse(b)
+	proposerBlock, err := block.Parse(b, time.Date(10000, time.December, 1, 0, 0, 0, 0, time.UTC))
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +200,6 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 					},
 				},
 				Address: addr,
-				State:   state,
 				Remove:  false,
 			},
 		}
@@ -268,7 +267,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 				}
 			}
 		}
-		if addrState.State&as.AddressStateConsortiumMember != 0 {
+		if addrState.State&as.AddressStateConsortium != 0 {
 			if tx := addressStateTx(addrState.Address, as.AddressStateBitConsortium); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
@@ -368,7 +367,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 }
 
 func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
-	proposerBlock, err := block.Parse(blockBytes)
+	proposerBlock, err := block.Parse(blockBytes, time.Date(10000, time.December, 1, 0, 0, 0, 0, time.UTC))
 	var innerBlockBytes []byte
 	if err != nil {
 		innerBlockBytes = blockBytes
@@ -664,7 +663,7 @@ func (w *Writer) insertReward(ctx services.ConsumerCtx, txID ids.ID, rewardOwner
 		return fmt.Errorf("rewardOwner hash %v", err)
 	}
 	ownerIDStr := ownerID.String()
-	ownerBytes, err := platformvmblock.GenesisCodec.Marshal(txs.Version, rewardOwner)
+	ownerBytes, err := platformvmblock.GenesisCodec.Marshal(txs.CodecVersion, rewardOwner)
 	if err != nil {
 		return fmt.Errorf("rewardOwner bytes %v", err)
 	}
@@ -844,7 +843,7 @@ func (w *Writer) InsertDACProposal(
 	} else {
 		wrapper.ProposalState = proposal.CreateProposalState([]ids.ShortID{})
 	}
-	proposalBytes, err := dac.Codec.Marshal(txs.Version, &wrapper)
+	proposalBytes, err := dac.Codec.Marshal(txs.CodecVersion, &wrapper)
 	if err != nil {
 		return err
 	}
@@ -949,7 +948,7 @@ func (w *Writer) InsertDACVote(
 	}
 
 	wrapper.ProposalState = updatedProposal
-	proposalBytes, err := dac.Codec.Marshal(txs.Version, &wrapper)
+	proposalBytes, err := dac.Codec.Marshal(txs.CodecVersion, &wrapper)
 	if err != nil {
 		return err
 	}

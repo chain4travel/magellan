@@ -201,8 +201,7 @@ func TestInsertTxInternal(t *testing.T) {
 	transferableIn.In = &secp256k1fx.TransferInput{}
 	baseTx.Ins = []*caminoGoAvax.TransferableInput{transferableIn}
 
-	f := secp256k1.Factory{}
-	pk, _ := f.NewPrivateKey()
+	pk, _ := secp256k1.NewPrivateKey()
 	sb, _ := pk.Sign(baseTx.Bytes())
 	cred := &secp256k1fx.Credential{}
 	cred.Sigs = make([][secp256k1.SignatureLen]byte, 0, 1)
@@ -210,7 +209,7 @@ func TestInsertTxInternal(t *testing.T) {
 	copy(sig[:], sb)
 	cred.Sigs = append(cred.Sigs, sig)
 	tx.Creds = []*fxs.FxCredential{
-		{Verifiable: cred},
+		{Credential: cred},
 	}
 
 	tx.Unsigned = baseTx

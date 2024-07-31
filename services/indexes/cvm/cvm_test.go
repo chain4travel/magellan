@@ -86,8 +86,6 @@ func TestInsertTxInternalExport(t *testing.T) {
 		[]*types.Header{},
 		[]*types.Receipt{},
 		nil,
-		tx.Bytes(),
-		false,
 	)
 
 	persist := db.NewPersistMock()
@@ -125,8 +123,6 @@ func TestInsertTxInternalImport(t *testing.T) {
 		[]*types.Header{},
 		[]*types.Receipt{},
 		nil,
-		tx.Bytes(),
-		false,
 	)
 
 	persist := db.NewPersistMock()

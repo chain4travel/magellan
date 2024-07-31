@@ -1,6 +1,6 @@
 module github.com/chain4travel/magellan
 
-go 1.19
+go 1.20
 
 require (
 	github.com/ava-labs/avalanchego v1.10.19-legacy-upgrade-times

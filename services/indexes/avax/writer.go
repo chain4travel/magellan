@@ -43,8 +43,6 @@ var (
 	MaxMemoLen = 1024
 )
 
-var ecdsaRecoveryFactory = secp256k1.Factory{}
-
 type Writer struct {
 	chainID     string
 	avaxAssetID ids.ID
@@ -201,7 +199,7 @@ func (w *Writer) InsertTransactionIns(
 		cred, ok := creds[idx].(*secp256k1fx.Credential)
 		if ok {
 			for _, sig := range cred.Sigs {
-				publicKey, err := ecdsaRecoveryFactory.RecoverPublicKey(unsignedBytes, sig[:])
+				publicKey, err := secp256k1.RecoverPublicKey(unsignedBytes, sig[:])
 				if err != nil {
 					return 0, err
 				}

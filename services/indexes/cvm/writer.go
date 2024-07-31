@@ -151,7 +151,7 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 	ethBlock := &types.Block{}
 	cvmProposer := &models.BlockProposal{}
 
-	if proposerBlock, err := block.Parse(blockBytes); err != nil {
+	if proposerBlock, err := block.Parse(blockBytes, time.Date(10000, time.December, 1, 0, 0, 0, 0, time.UTC)); err != nil {
 		// Container with index 0 doesn't have the 62 byte header + leading checksum
 		if err = rlp.DecodeBytes(blockBytes, ethBlock); err != nil {
 			return err
@@ -297,7 +297,7 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 	if err != nil {
 		return err
 	}
-	size := utils.GetSizeFromStringtoFloat(block.Size().String())
+	size := utils.GetSizeFromStringtoFloat(fmt.Sprint(block.Size()))
 	cvmBlocks := &db.CvmBlocks{
 		Block:         block.Header().Number.String(),
 		Hash:          block.Hash().String(),
