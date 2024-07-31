@@ -37,7 +37,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	as "github.com/ava-labs/avalanchego/vms/platformvm/addrstate"
-	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
+	platformvmblock "github.com/ava-labs/avalanchego/vms/platformvm/block"
 	"github.com/ava-labs/avalanchego/vms/platformvm/dac"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/proposervm/block"
@@ -102,17 +102,17 @@ func NewWriter(networkID uint32, chainID string) (*Writer, error) {
 func (*Writer) Name() string { return "pvm-index" }
 
 type PtxDataModel struct {
-	Tx        *txs.Tx               `json:"tx,omitempty"`
-	TxType    *string               `json:"txType,omitempty"`
-	Block     *blocks.Block         `json:"block,omitempty"`
-	BlockID   *string               `json:"blockID,omitempty"`
-	BlockType *string               `json:"blockType,omitempty"`
-	Proposer  *models.BlockProposal `json:"proposer,omitempty"`
+	Tx        *txs.Tx                `json:"tx,omitempty"`
+	TxType    *string                `json:"txType,omitempty"`
+	Block     *platformvmblock.Block `json:"block,omitempty"`
+	BlockID   *string                `json:"blockID,omitempty"`
+	BlockType *string                `json:"blockType,omitempty"`
+	Proposer  *models.BlockProposal  `json:"proposer,omitempty"`
 }
 
 func (w *Writer) ParseJSON(b []byte, proposer *models.BlockProposal) ([]byte, error) {
 	// Try and parse as a tx
-	tx, err := txs.Parse(blocks.GenesisCodec, b)
+	tx, err := txs.Parse(platformvmblock.GenesisCodec, b)
 	if err == nil {
 		tx.Unsigned.InitCtx(w.ctx)
 		// TODO: Should we be reporting the type of [tx.Unsigned] rather than
@@ -126,7 +126,7 @@ func (w *Writer) ParseJSON(b []byte, proposer *models.BlockProposal) ([]byte, er
 	}
 
 	// Try and parse as block
-	blk, err := blocks.Parse(blocks.GenesisCodec, b)
+	blk, err := platformvmblock.Parse(platformvmblock.GenesisCodec, b)
 	if err == nil {
 		blk.InitCtx(w.ctx)
 		blkID := blk.ID()
@@ -146,7 +146,7 @@ func (w *Writer) ParseJSON(b []byte, proposer *models.BlockProposal) ([]byte, er
 		return nil, err
 	}
 
-	blk, err = blocks.Parse(blocks.GenesisCodec, proposerBlock.Block())
+	blk, err = platformvmblock.Parse(platformvmblock.GenesisCodec, proposerBlock.Block())
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +340,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 			cCtx,
 			blockIDs[index],
 			models.BlockTypeStandard,
-			blocks.CommonBlock{
+			platformvmblock.CommonBlock{
 				PrntID: parent,
 				Hght:   uint64(index + 1),
 			},
@@ -379,7 +379,7 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 		innerBlockBytes = proposerBlock.Block()
 	}
 
-	blk, err := blocks.Parse(blocks.GenesisCodec, innerBlockBytes)
+	blk, err := platformvmblock.Parse(platformvmblock.GenesisCodec, innerBlockBytes)
 	if err != nil {
 		return err
 	}
@@ -396,26 +396,26 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 
 	errs := wrappers.Errs{}
 	switch blk := blk.(type) {
-	case *blocks.ApricotProposalBlock:
+	case *platformvmblock.ApricotProposalBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.ApricotStandardBlock:
+	case *platformvmblock.ApricotStandardBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.ApricotAtomicBlock:
+	case *platformvmblock.ApricotAtomicBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeProposal, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.ApricotAbortBlock:
+	case *platformvmblock.ApricotAbortBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.ApricotCommitBlock:
+	case *platformvmblock.ApricotCommitBlock:
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.BanffProposalBlock:
+	case *platformvmblock.BanffProposalBlock:
 		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.BanffStandardBlock:
+	case *platformvmblock.BanffStandardBlock:
 		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeStandard, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.BanffAbortBlock:
+	case *platformvmblock.BanffAbortBlock:
 		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeAbort, blk.CommonBlock, pvmProposer, innerBlockBytes))
-	case *blocks.BanffCommitBlock:
+	case *platformvmblock.BanffCommitBlock:
 		adjustCtxTime(blk.Time)
 		errs.Add(w.indexCommonBlock(ctx, blkID, models.BlockTypeCommit, blk.CommonBlock, pvmProposer, innerBlockBytes))
 	default:
@@ -432,7 +432,7 @@ func (w *Writer) indexCommonBlock(
 	ctx services.ConsumerCtx,
 	blkID ids.ID,
 	blkType models.BlockType,
-	blk blocks.CommonBlock,
+	blk platformvmblock.CommonBlock,
 	proposer *models.BlockProposal,
 	blockBytes []byte,
 ) error {
@@ -664,7 +664,7 @@ func (w *Writer) insertReward(ctx services.ConsumerCtx, txID ids.ID, rewardOwner
 		return fmt.Errorf("rewardOwner hash %v", err)
 	}
 	ownerIDStr := ownerID.String()
-	ownerBytes, err := blocks.GenesisCodec.Marshal(txs.Version, rewardOwner)
+	ownerBytes, err := platformvmblock.GenesisCodec.Marshal(txs.Version, rewardOwner)
 	if err != nil {
 		return fmt.Errorf("rewardOwner bytes %v", err)
 	}

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/blocks"
+	platformvmblock "github.com/ava-labs/avalanchego/vms/platformvm/block"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
@@ -129,7 +129,7 @@ func TestCommonBlock(t *testing.T) {
 	defer closeFn()
 	ctx := context.Background()
 
-	tx := blocks.CommonBlock{}
+	tx := platformvmblock.CommonBlock{}
 	blkid := ids.ID{}
 
 	persist := db.NewPersistMock()
