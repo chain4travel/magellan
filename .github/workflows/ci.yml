@@ -15,13 +15,9 @@ jobs:
           - '1.19'
     steps:
       - uses: actions/checkout@v3
-      - name: Submodules
-        run: git submodule update --init --recursive
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.52.2
-          args: --timeout 5m
+      - name: Run static analysis tests
+        shell: bash
+        run: scripts/lint.sh
   test-and-build:
     name: Test and build on Go ${{ matrix.go }}
     runs-on: ubuntu-22.04

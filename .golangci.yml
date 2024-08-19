@@ -1,8 +1,6 @@
 run:
   max-same-issues: 0
   max-issues-per-linter: 0
-  skip-dirs:
-    - dependencies
 
 issues:
   exclude:
@@ -29,38 +27,37 @@ linters-settings:
     check-exported: false
 
 linters:
+  disable-all: true
   enable:
     - asciicheck
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - errcheck
+    - exportloopref
     - goconst
     - gocritic
     - gocyclo
-#    - godox
+    # - godox
     - gofmt
+    # - gofumpt
     - goimports
-    - golint
     - goprintffuncname
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - maligned
     - misspell
     - nakedret
+    - noctx
     - nolintlint
     - prealloc
+    - revive
     - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
