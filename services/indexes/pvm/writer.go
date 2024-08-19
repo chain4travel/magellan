@@ -199,9 +199,9 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 						BlockchainID: ChainID,
 					},
 				},
-				Address: addr,
-				State:   state,
-				Remove:  false,
+				Address:  addr,
+				StateBit: state,
+				Remove:   false,
 			},
 		}
 		if tx.Sign(txs.GenesisCodec, nil) != nil || txDupCheck.Contains(tx.ID()) {
@@ -268,7 +268,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 				}
 			}
 		}
-		if addrState.State&as.AddressStateConsortiumMember != 0 {
+		if addrState.State&as.AddressStateConsortium != 0 {
 			if tx := addressStateTx(addrState.Address, as.AddressStateBitConsortium); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {
@@ -583,7 +583,7 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.MultisigAliasTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeMultisigAlias
-		err := w.InsertMultisigAlias(ctx, &castTx.MultisigAlias, castTx.Auth, txID)
+		err := w.IndexMultisigAlias(ctx, &castTx.MultisigAlias, castTx.Auth, txID)
 		if err != nil {
 			return err
 		}
@@ -719,7 +719,7 @@ func (w *Writer) InsertTransactionBlock(ctx services.ConsumerCtx, txID ids.ID, b
 	return ctx.Persist().InsertTransactionsBlock(ctx.Ctx(), ctx.DB(), transactionsBlock, cfg.PerformUpdates)
 }
 
-func (w *Writer) InsertMultisigAlias(
+func (w *Writer) IndexMultisigAlias(
 	ctx services.ConsumerCtx,
 	alias *multisig.Alias,
 	auth verify.Verifiable,
@@ -728,25 +728,26 @@ func (w *Writer) InsertMultisigAlias(
 	var err error
 
 	// If alias.ID is an empty ID, then it's a new alias, and we need to generate the aliasID from the txID
-	if alias.ID == ids.ShortEmpty {
-		alias.ID = multisig.ComputeAliasID(txID)
+	aliasID := alias.ID
+	if aliasID == ids.ShortEmpty {
+		aliasID = multisig.ComputeAliasID(txID)
 	}
 
-	_, err = ctx.Persist().QueryMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
+	_, err = ctx.Persist().QueryMultisigAlias(ctx.Ctx(), ctx.DB(), aliasID.String())
 	if err != nil && err != dbr.ErrNotFound {
 		return err
 	}
 
 	// if there is an already existing alias with this aliasID or auth is nil, then we need to delete it
-	if auth == nil || err == nil {
-		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
+	if auth == nil || err == nil || alias.Owners.IsZero() {
+		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), aliasID.String())
 		if err != nil {
 			return err
 		}
 	}
 
 	// add alias to bech32 address mapping table
-	err = persistMultisigAliasAddresses(ctx, alias.ID, w.chainID)
+	err = persistMultisigAliasAddresses(ctx, aliasID, w.chainID)
 	if err != nil {
 		return err
 	}
@@ -764,7 +765,7 @@ func (w *Writer) InsertMultisigAlias(
 			return err
 		}
 		multisigAlias := &db.MultisigAlias{
-			Alias:         alias.ID.String(),
+			Alias:         aliasID.String(),
 			Memo:          string(alias.Memo),
 			Owner:         addrid.String(),
 			TransactionID: txID.String(),
