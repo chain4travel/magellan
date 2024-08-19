@@ -739,7 +739,7 @@ func (w *Writer) IndexMultisigAlias(
 	}
 
 	// if there is an already existing alias with this aliasID or auth is nil, then we need to delete it
-	if auth == nil || err == nil || alias.Owners.IsZero() {
+	if auth == nil || err == nil || alias.ID != ids.ShortEmpty && alias.Owners.IsZero() {
 		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), aliasID.String())
 		if err != nil {
 			return err
