@@ -728,26 +728,31 @@ func (w *Writer) IndexMultisigAlias(
 	var err error
 
 	// If alias.ID is an empty ID, then it's a new alias, and we need to generate the aliasID from the txID
-	aliasID := alias.ID
-	if aliasID == ids.ShortEmpty {
-		aliasID = multisig.ComputeAliasID(txID)
+	hasEmptyID := alias.ID == ids.ShortEmpty
+	if hasEmptyID {
+		alias.ID = multisig.ComputeAliasID(txID)
 	}
 
-	_, err = ctx.Persist().QueryMultisigAlias(ctx.Ctx(), ctx.DB(), aliasID.String())
+	_, err = ctx.Persist().QueryMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String())
 	if err != nil && err != dbr.ErrNotFound {
 		return err
 	}
 
-	// if there is an already existing alias with this aliasID or auth is nil, then we need to delete it
-	if auth == nil || err == nil || alias.ID != ids.ShortEmpty && alias.Owners.IsZero() {
-		err = ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), aliasID.String())
-		if err != nil {
+	isRemoval := !hasEmptyID && alias.Owners.IsZero()
+
+	// if there is an already existing alias with this aliasID
+	// or auth is nil or its alias removal, then we need to delete it
+	if auth == nil || err == nil || isRemoval {
+		if err := ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String()); err != nil {
 			return err
 		}
 	}
+	if isRemoval {
+		return nil
+	}
 
 	// add alias to bech32 address mapping table
-	err = persistMultisigAliasAddresses(ctx, aliasID, w.chainID)
+	err = persistMultisigAliasAddresses(ctx, alias.ID, w.chainID)
 	if err != nil {
 		return err
 	}
@@ -765,7 +770,7 @@ func (w *Writer) IndexMultisigAlias(
 			return err
 		}
 		multisigAlias := &db.MultisigAlias{
-			Alias:         aliasID.String(),
+			Alias:         alias.ID.String(),
 			Memo:          string(alias.Memo),
 			Owner:         addrid.String(),
 			TransactionID: txID.String(),
