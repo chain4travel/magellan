@@ -12,23 +12,19 @@ jobs:
     strategy:
       matrix:
         go:
-          - '1.18'
+          - '1.19'
     steps:
       - uses: actions/checkout@v3
-      - name: Submodules
-        run: git submodule update --init --recursive
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.52.2
-          args: --timeout 5m
+      - name: Run static analysis tests
+        shell: bash
+        run: scripts/lint.sh
   test-and-build:
     name: Test and build on Go ${{ matrix.go }}
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         go:
-          - '1.18'
+          - '1.19'
     services:
       mysql:
         image: mysql:8.0.26
