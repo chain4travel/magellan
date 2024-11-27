@@ -1,0 +1,2 @@
+ALTER TABLE `dac_proposals`
+MODIFY `options` VARBINARY(2048) NOT NULL;
