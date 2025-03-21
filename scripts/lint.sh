@@ -8,6 +8,6 @@ if ! [[ "$0" =~ scripts/lint.sh ]]; then
 fi
 
 go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
-golangci-lint run --config .golangci.yml
+golangci-lint run --config .golangci.yml --timeout 3m
 
 echo "ALL SUCCESS!"
