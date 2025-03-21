@@ -38,7 +38,7 @@ func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.Endpoi
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
-	chainIDs, _ := accessibleChains(config)
+	chainIDs, _ := accessibleChains(context.Background(), config)
 	chainIDs = deleteNotSelectedNetwork(chainIDs, networkName)
 	for _, chain := range chainIDs {
 		networkEmissions, err := network(chain, startDatef, endDatef, config)
@@ -68,7 +68,7 @@ func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 		Name:  "Network Emissions",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	NetworkInmutable, err := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = network(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -84,7 +84,7 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
-	networkInmutable, _ := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	networkInmutable, _ := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	emissionsInfo := []*models.CountryEmissionsResult{}
 	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config)
 	if err == nil {
@@ -114,7 +114,7 @@ func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, c
 		Name:  "Network Emissions Per Transaction",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	NetworkInmutable, err := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = transaction(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -231,11 +231,11 @@ func country(country string, startDate string, endDate string, config cfg.Endpoi
 
 	return response, nil
 }
-func accessibleChains(config cfg.EndpointService) ([]string, error) {
+func accessibleChains(ctx context.Context, config cfg.EndpointService) ([]string, error) {
 	response := []string{}
 	url := fmt.Sprintf("%s/misc/accessible_chains", config.URLEndpoint)
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
 	if err != nil {
 		return response, err
@@ -323,8 +323,8 @@ func stringToDate(date string) (time.Time, error) {
 	return t, err
 }
 
-func getNetworkNameInmutable(networkName string, config cfg.EndpointService) (string, error) {
-	chainIDs, err := accessibleChains(config)
+func getNetworkNameInmutable(ctx context.Context, networkName string, config cfg.EndpointService) (string, error) {
+	chainIDs, err := accessibleChains(ctx, config)
 	for _, chain := range chainIDs {
 		if strings.Contains(strings.ToLower(chain), strings.ToLower(networkName)) {
 			return chain, err

@@ -182,7 +182,7 @@ func (w *Writer) indexBlock(ctx services.ConsumerCtx, blockBytes []byte) error {
 func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.Tx, proposer *models.BlockProposal, block *types.Block) error {
 	txIDs := make([]string, len(atomicTXs))
 
-	var typ models.CChainType = 0
+	var typ models.CChainType
 	var err error
 	// OPT: Store maybe only TX bytes instead whole ExtData
 	for i, atomicTX := range atomicTXs {

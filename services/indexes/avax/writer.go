@@ -80,8 +80,8 @@ func (w *Writer) InsertTransaction(
 ) error {
 	var (
 		err      error
-		totalin  uint64 = 0
-		totalout uint64 = 0
+		totalin  uint64
+		totalout uint64
 	)
 
 	inidx := 0

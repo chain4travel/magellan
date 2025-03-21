@@ -62,28 +62,28 @@ var (
 	RegisterTransactionTypeCustom TransactionType = 8192
 	RegisterOutputTypeCustom      OutputType      = 8192
 
-	OutputTypesLockedOutD  OutputType = RegisterOutputTypeCustom + 0
-	OutputTypesLockedOutB  OutputType = RegisterOutputTypeCustom + 1
-	OutputTypesLockedOutDB OutputType = RegisterOutputTypeCustom + 2
+	OutputTypesLockedOutD  = RegisterOutputTypeCustom + 0
+	OutputTypesLockedOutB  = RegisterOutputTypeCustom + 1
+	OutputTypesLockedOutDB = RegisterOutputTypeCustom + 2
 
-	Secp256K1FxMultisigCredential  OutputType = RegisterOutputTypeCustom + 12
-	MultisigAliasWithNonce         OutputType = RegisterOutputTypeCustom + 13
-	Secp256K1FxCrossTransferOutput OutputType = RegisterOutputTypeCustom + 14
+	Secp256K1FxMultisigCredential  = RegisterOutputTypeCustom + 12
+	MultisigAliasWithNonce         = RegisterOutputTypeCustom + 13
+	Secp256K1FxCrossTransferOutput = RegisterOutputTypeCustom + 14
 
-	TransactionTypeCaminoAddValidator    TransactionType = RegisterTransactionTypeCustom + 2
-	TransactionTypeCaminoRewardValidator TransactionType = RegisterTransactionTypeCustom + 3
-	TransactionTypeAddAddressState       TransactionType = RegisterTransactionTypeCustom + 4
-	TransactionTypeDeposit               TransactionType = RegisterTransactionTypeCustom + 5
-	TransactionTypeUnlockDeposit         TransactionType = RegisterTransactionTypeCustom + 6
-	TransactionTypeRegisterNodeTx        TransactionType = RegisterTransactionTypeCustom + 7
-	TransactionTypePvmBase               TransactionType = RegisterTransactionTypeCustom + 8
-	TransactionTypeMultisigAlias         TransactionType = RegisterTransactionTypeCustom + 9
-	TransactionTypeClaimReward           TransactionType = RegisterTransactionTypeCustom + 10
-	TransactionTypeRewardsImport         TransactionType = RegisterTransactionTypeCustom + 11
-	TransactionTypeAddDepositOffer       TransactionType = RegisterTransactionTypeCustom + 15
-	TransactionTypeAddDACProposal        TransactionType = RegisterTransactionTypeCustom + 16
-	TransactionTypeAddDACVote            TransactionType = RegisterTransactionTypeCustom + 17
-	TransactionTypeFinishDACProposals    TransactionType = RegisterTransactionTypeCustom + 18
+	TransactionTypeCaminoAddValidator    = RegisterTransactionTypeCustom + 2
+	TransactionTypeCaminoRewardValidator = RegisterTransactionTypeCustom + 3
+	TransactionTypeAddAddressState       = RegisterTransactionTypeCustom + 4
+	TransactionTypeDeposit               = RegisterTransactionTypeCustom + 5
+	TransactionTypeUnlockDeposit         = RegisterTransactionTypeCustom + 6
+	TransactionTypeRegisterNodeTx        = RegisterTransactionTypeCustom + 7
+	TransactionTypePvmBase               = RegisterTransactionTypeCustom + 8
+	TransactionTypeMultisigAlias         = RegisterTransactionTypeCustom + 9
+	TransactionTypeClaimReward           = RegisterTransactionTypeCustom + 10
+	TransactionTypeRewardsImport         = RegisterTransactionTypeCustom + 11
+	TransactionTypeAddDepositOffer       = RegisterTransactionTypeCustom + 15
+	TransactionTypeAddDACProposal        = RegisterTransactionTypeCustom + 16
+	TransactionTypeAddDACVote            = RegisterTransactionTypeCustom + 17
+	TransactionTypeFinishDACProposals    = RegisterTransactionTypeCustom + 18
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
