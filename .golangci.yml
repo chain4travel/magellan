@@ -32,15 +32,12 @@ linters:
     - asciicheck
     - bodyclose
     - depguard
-    - dogsled
     - errcheck
     - exportloopref
     - goconst
     - gocritic
-    - gocyclo
-    # - godox
     - gofmt
-    # - gofumpt
+    - gofumpt
     - goimports
     - goprintffuncname
     - gosec
@@ -53,7 +50,6 @@ linters:
     - nolintlint
     - prealloc
     - revive
-    - rowserrcheck
     - staticcheck
     - stylecheck
     - typecheck
