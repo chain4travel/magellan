@@ -84,6 +84,7 @@ var (
 	TransactionTypeAddDACProposal        = RegisterTransactionTypeCustom + 16
 	TransactionTypeAddDACVote            = RegisterTransactionTypeCustom + 17
 	TransactionTypeFinishDACProposals    = RegisterTransactionTypeCustom + 18
+	TransactionTypeUnlockExpiredDeposit  = RegisterTransactionTypeCustom + 19
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"

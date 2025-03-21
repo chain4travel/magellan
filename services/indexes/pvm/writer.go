@@ -571,6 +571,14 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.UnlockDepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeUnlockDeposit
+	case *txs.UnlockExpiredDepositTx:
+		baseTx = avax.BaseTx{
+			NetworkID:    w.networkID,
+			BlockchainID: w.ctx.ChainID,
+			Ins:          castTx.Ins,
+			Outs:         castTx.Outs,
+		}
+		typ = models.TransactionTypeUnlockExpiredDeposit
 	case *txs.AddressStateTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddAddressState
@@ -948,7 +956,10 @@ func (w *Writer) InsertDACVote(
 		return err
 	}
 
-	updatedProposal, err := wrapper.ForceAddVote(vote)
+	// TODO@ check if votedAt time is after Cairo
+	isAfterCairo := false
+
+	updatedProposal, err := wrapper.ForceAddVote(vote, isAfterCairo)
 	if err != nil {
 		return err
 	}
