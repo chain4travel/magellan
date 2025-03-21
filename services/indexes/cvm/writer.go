@@ -311,7 +311,6 @@ func (w *Writer) indexBlockInternal(ctx services.ConsumerCtx, atomicTXs []*evm.T
 		Size:          size,
 	}
 	err = ctx.Persist().InsertCvmBlocks(ctx.Ctx(), ctx.DB(), cvmBlocks)
-
 	if err != nil {
 		return err
 	}

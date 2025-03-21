@@ -107,9 +107,7 @@ func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]by
 }
 
 func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
-	var (
-		err error
-	)
+	var err error
 
 	defer func() {
 		if err != nil {

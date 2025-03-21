@@ -26,6 +26,7 @@ func PeerIndex(peers []info.Peer, nodeID ids.NodeID) int {
 	}
 	return -1
 }
+
 func GetDate(unixTime uint64) (string, error) {
 	// Date in Unix Format
 	timestamp := int64(unixTime)
@@ -108,7 +109,6 @@ func GetLocationByIP(ctx context.Context, ip string, config *cfg.EndpointService
 	client := &http.Client{}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-
 	if err != nil {
 		fmt.Println(err)
 		return response, err

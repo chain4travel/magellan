@@ -1027,7 +1027,6 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 		From(Active.As("q")).
 		OrderBy("total DESC LIMIT 1").
 		LoadContext(ctx, &addressStatistics)
-
 	if err != nil {
 		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}
@@ -1035,7 +1034,6 @@ func (r *Reader) ActiveAddresses(ctx context.Context, p *params.ListParams) (*mo
 		From(Active.As("q")).
 		OrderBy("total ASC LIMIT 1").
 		LoadContext(ctx, &addressStatistics)
-
 	if err != nil {
 		return &models.AddressStruct{AddressInfo: []*models.ActiveAddresses{}}, err
 	}

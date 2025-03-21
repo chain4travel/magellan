@@ -11,7 +11,8 @@ func UnionStatistics(
 	cvmLatestBlocks []*models.CvmBlocksStatisticsCache,
 	avmLatestTx []*models.AvmStatisticsCache,
 	addressesFrom []*models.AddressesCache,
-	addressesTo []*models.AddressesCache) []models.StatisticsCache {
+	addressesTo []*models.AddressesCache,
+) []models.StatisticsCache {
 	statisticsCache := []models.StatisticsCache{}
 	// set all the information from cvmTx in statisticsCache variable
 	setCvmTxStatistics(&statisticsCache, cvmLatestTx)

@@ -128,7 +128,6 @@ func TestIndexBootstrap(t *testing.T) {
 		ChainIDs:  []string{testXChainID.String()},
 		Addresses: []ids.ShortID{ids.ShortEmpty},
 	}, ids.Empty)
-
 	if err != nil {
 		t.Fatal("Failed to list transactions:", err.Error())
 	}

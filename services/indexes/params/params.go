@@ -113,6 +113,7 @@ type ListParams struct {
 func (p *ListParams) ForValues(version uint8, q url.Values) (err error) {
 	return p.forValues(version, q, false)
 }
+
 func (p *ListParams) ForValuesAllowOffset(version uint8, q url.Values) (err error) {
 	return p.forValues(version, q, true)
 }
