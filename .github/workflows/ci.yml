@@ -1,8 +1,6 @@
 name: build-check
 
 on:
-  push:
-    branches: [c4t, dev]
   pull_request:
     branches: [c4t, dev]
 
@@ -49,4 +47,16 @@ jobs:
 
       - name: Run tests
         run: make tests
+
+  docker-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build docker
+        uses: docker/build-push-action@v6
+        with:
+          push: false
+          tags: c4tplatform/magellan:latest
+
 
