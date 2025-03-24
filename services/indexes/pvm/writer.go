@@ -740,9 +740,8 @@ func (w *Writer) IndexMultisigAlias(
 
 	isRemoval := !hasEmptyID && alias.Owners.IsZero()
 
-	// if there is an already existing alias with this aliasID
-	// or auth is nil or its alias removal, then we need to delete it
-	if auth == nil || err == nil || isRemoval {
+	// if there is an already existing alias with this aliasID and its alias removal, then we need to delete it
+	if err == nil || isRemoval {
 		if err := ctx.Persist().DeleteMultisigAlias(ctx.Ctx(), ctx.DB(), alias.ID.String()); err != nil {
 			return err
 		}
