@@ -170,6 +170,8 @@ func (t TransactionType) String() string {
 		return "rewards"
 	case TransactionTypeAddDepositOffer:
 		return "add_deposit_offer"
+	case TransactionTypeUnlockExpiredDeposit:
+		return "unlock_expired_deposit"
 	default:
 		return TypeUnknown
 	}

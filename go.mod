@@ -128,6 +128,6 @@ require (
 )
 
 replace (
-	github.com/ava-labs/avalanchego => github.com/chain4travel/caminogo v1.1.0-rc6
+	github.com/ava-labs/avalanchego => github.com/chain4travel/caminogo v1.1.1-0.20250320114625-5389df0a0dd4
 	github.com/ava-labs/coreth => github.com/chain4travel/caminoethvm v1.1.0-rc11
 )

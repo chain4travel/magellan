@@ -33,6 +33,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -956,10 +957,8 @@ func (w *Writer) InsertDACVote(
 		return err
 	}
 
-	// TODO@ check if votedAt time is after Cairo
-	isAfterCairo := false
-
-	updatedProposal, err := wrapper.ForceAddVote(vote, isAfterCairo)
+	isCairo := !ctx.Time().Before(version.GetCairoPhaseTime(w.networkID))
+	updatedProposal, err := wrapper.ForceAddVote(vote, isCairo)
 	if err != nil {
 		return err
 	}
