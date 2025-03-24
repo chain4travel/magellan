@@ -26,6 +26,7 @@ func PeerIndex(peers []info.Peer, nodeID ids.NodeID) int {
 	}
 	return -1
 }
+
 func GetDate(unixTime uint64) (string, error) {
 	// Date in Unix Format
 	timestamp := int64(unixTime)
@@ -62,7 +63,7 @@ func GetValidatorsGeoIPInfo(rpc string, geoIPConfig *cfg.EndpointService, log lo
 		validatorGeoIPInfo := setValidatorInfo(validator)
 		indexPeerWithSameID := PeerIndex(peers, validator.NodeID)
 		if indexPeerWithSameID >= 0 {
-			err = setGeoIPInfo(validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
+			err = setGeoIPInfo(context.Background(), validatorGeoIPInfo, peers[indexPeerWithSameID].IP, geoIPConfig)
 			if err != nil {
 				log.Error(err.Error())
 			}
@@ -89,8 +90,8 @@ func setValidatorInfo(validator platformvm.ClientPermissionlessValidator) *model
 	}
 }
 
-func setGeoIPInfo(validatorInfo *models.Validator, peerIP string, config *cfg.EndpointService) error {
-	geoIPInfo, err := GetLocationByIP(peerIP, config)
+func setGeoIPInfo(ctx context.Context, validatorInfo *models.Validator, peerIP string, config *cfg.EndpointService) error {
+	geoIPInfo, err := GetLocationByIP(ctx, peerIP, config)
 	validatorInfo.IP = strings.Split(peerIP, ":")[0]
 	validatorInfo.Country = geoIPInfo.Country
 	validatorInfo.Lng = geoIPInfo.Lon
@@ -100,15 +101,14 @@ func setGeoIPInfo(validatorInfo *models.Validator, peerIP string, config *cfg.En
 	return err
 }
 
-func GetLocationByIP(ip string, config *cfg.EndpointService) (models.IPAPIResponse, error) {
+func GetLocationByIP(ctx context.Context, ip string, config *cfg.EndpointService) (models.IPAPIResponse, error) {
 	var response models.IPAPIResponse
 	ip = strings.Split(ip, ":")[0]
 	url := fmt.Sprintf("%s%s?key=%s", config.URLEndpoint, ip, config.AuthorizationToken)
 	// Perform the HTTP GET request
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", url, nil)
-
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		fmt.Println(err)
 		return response, err

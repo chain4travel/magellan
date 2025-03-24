@@ -46,7 +46,6 @@ func (c *Client) Close() {
 }
 
 type ExtendedReceipt struct {
-
 	// Consensus fields: These fields are defined by the Yellow Paper
 	PostState         []byte       `json:"root"`
 	Status            uint64       `json:"status"`

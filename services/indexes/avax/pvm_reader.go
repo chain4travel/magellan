@@ -34,7 +34,6 @@ func (r *Reader) ListBlocks(ctx context.Context, params *params.ListBlocksParams
 		Select("id", "type", "parent_id", "chain_id", "created_at").
 		From("pvm_blocks")).
 		LoadContext(ctx, &blocks)
-
 	if err != nil {
 		return nil, err
 	}

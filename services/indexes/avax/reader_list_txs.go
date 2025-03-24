@@ -287,9 +287,10 @@ func (r *Reader) ListTransactions(ctx context.Context, p *params.ListTransaction
 
 	next := r.transactionProcessNext(txs, listParamsOriginal, p)
 
-	return &models.TransactionList{ListMetadata: models.ListMetadata{
-		Count: count,
-	},
+	return &models.TransactionList{
+		ListMetadata: models.ListMetadata{
+			Count: count,
+		},
 		Transactions: txs,
 		StartTime:    listParamsOriginal.StartTime,
 		EndTime:      listParamsOriginal.EndTime,
@@ -514,7 +515,7 @@ func dressTransactionsTx(
 		if inputs, ok := cvmins[tx.ID]; ok {
 			for _, input := range inputs {
 				var i models.Input
-				var o = input
+				o := input
 				i.Output = &o
 				tx.Inputs = append(tx.Inputs, &i)
 			}
@@ -527,7 +528,7 @@ func dressTransactionsTx(
 		}
 		if outputs, ok := cvmouts[tx.ID]; ok {
 			for _, output := range outputs {
-				var o = output
+				o := output
 				tx.Outputs = append(tx.Outputs, &o)
 			}
 		}
@@ -748,7 +749,6 @@ func (r *Reader) DailyTransactions(ctx context.Context, p *params.ListParams) (*
 		From(baseq.As("gas")).
 		OrderBy("total_transactions DESC LIMIT 1").
 		LoadContext(ctx, &statistics)
-
 	if err != nil {
 		return &models.StatisticsStruct{TxInfo: []*models.TransactionsInfo{}}, errGas
 	}
@@ -806,7 +806,6 @@ func (r *Reader) GasUsedPerDay(ctx context.Context, p *params.ListParams) (model
 		From(baseq.As("gas")).
 		OrderBy("gas DESC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
-
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.TransactionsInfo{}}, err
 	}
@@ -855,7 +854,6 @@ func (r *Reader) AvgGasPriceUsed(ctx context.Context, p *params.ListParams) (mod
 		From(baseq.As("sum_gas")).
 		OrderBy("gas DESC LIMIT 1").
 		LoadContext(ctx, &statisticsStruct)
-
 	if err != nil {
 		return models.StatisticsStruct{TxInfo: []models.GasUsedPerDate{}}, err
 	}

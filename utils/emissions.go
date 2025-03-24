@@ -22,8 +22,10 @@ const (
 	perDay   string = "Per Day"
 )
 
-var countryIDs = []string{"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN",
-	"ICELAND", "NORWAY", "CHINA", "SWEDEN"}
+var countryIDs = []string{
+	"UNITED_STATES", "GERMANY", "UNITED_KINGDOM", "AUSTRALIA", "SINGAPORE", "JAPAN",
+	"ICELAND", "NORWAY", "CHINA", "SWEDEN",
+}
 
 var networkMap = map[string]string{
 	"camino":     "mainnet",
@@ -38,7 +40,7 @@ func GetDailyEmissions(startDate time.Time, endDate time.Time, config cfg.Endpoi
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
-	chainIDs, _ := accessibleChains(config)
+	chainIDs, _ := accessibleChains(context.Background(), config)
 	chainIDs = deleteNotSelectedNetwork(chainIDs, networkName)
 	for _, chain := range chainIDs {
 		networkEmissions, err := network(chain, startDatef, endDatef, config)
@@ -68,7 +70,7 @@ func GetNetworkEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 		Name:  "Network Emissions",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	NetworkInmutable, err := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = network(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -84,7 +86,7 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	endDatef := strings.Split(endDate.String(), " ")[0]
 	infoClient := info.NewClient(rpc)
 	networkName, _ := infoClient.GetNetworkName(context.Background())
-	networkInmutable, _ := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	networkInmutable, _ := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	emissionsInfo := []*models.CountryEmissionsResult{}
 	networkInfo, err := carbonIntensityFactor(networkInmutable, startDatef, endDatef, config)
 	if err == nil {
@@ -104,6 +106,7 @@ func GetCountryEmissions(startDate time.Time, endDate time.Time, config cfg.Endp
 	}
 	return models.Emissions{Name: fmt.Sprintf("Network Emissions Per Country %s", networkName), Value: emissionsInfo}, nil
 }
+
 func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, config cfg.EndpointService, rpc string) (*models.Emissions, error) {
 	startDatef := strings.Split(startDate.String(), " ")[0]
 	endDatef := strings.Split(endDate.String(), " ")[0]
@@ -114,7 +117,7 @@ func GetNetworkEmissionsPerTransaction(startDate time.Time, endDate time.Time, c
 		Name:  "Network Emissions Per Transaction",
 		Value: emissionsResult,
 	}
-	NetworkInmutable, err := getNetworkNameInmutable(networkMap[strings.ToLower(networkName)], config)
+	NetworkInmutable, err := getNetworkNameInmutable(context.Background(), networkMap[strings.ToLower(networkName)], config)
 	if NetworkInmutable != "" {
 		emissionsResult, err = transaction(NetworkInmutable, startDatef, endDatef, config)
 		if err != nil || emissionsResult == nil {
@@ -130,7 +133,6 @@ func network(chain string, startDate string, endDate string, config cfg.Endpoint
 	url := fmt.Sprintf("%s/co2/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
-
 	if err != nil {
 		return response, err
 	}
@@ -154,7 +156,6 @@ func network(chain string, startDate string, endDate string, config cfg.Endpoint
 	for i, Value := range response {
 		formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
 		parsedValue, err := strconv.ParseFloat(formatValue, 64)
-
 		if err != nil {
 			continue
 		}
@@ -169,7 +170,6 @@ func transaction(chain string, startDate string, endDate string, config cfg.Endp
 	url := fmt.Sprintf("%s/co2/transaction?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
-
 	if err != nil {
 		return response, err
 	}
@@ -192,7 +192,6 @@ func transaction(chain string, startDate string, endDate string, config cfg.Endp
 	for i, Value := range response {
 		formatValue := strconv.FormatFloat(Value.Value, 'f', 2, 64)
 		parsedValue, err := strconv.ParseFloat(formatValue, 64)
-
 		if err != nil {
 			continue
 		}
@@ -207,7 +206,6 @@ func country(country string, startDate string, endDate string, config cfg.Endpoi
 	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/country?from=%s&to=%s&country=%s", config.URLEndpoint, startDate, endDate, country)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
-
 	if err != nil {
 		return response, err
 	}
@@ -231,12 +229,12 @@ func country(country string, startDate string, endDate string, config cfg.Endpoi
 
 	return response, nil
 }
-func accessibleChains(config cfg.EndpointService) ([]string, error) {
+
+func accessibleChains(ctx context.Context, config cfg.EndpointService) ([]string, error) {
 	response := []string{}
 	url := fmt.Sprintf("%s/misc/accessible_chains", config.URLEndpoint)
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, nil)
-
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return response, err
 	}
@@ -258,6 +256,7 @@ func accessibleChains(config cfg.EndpointService) ([]string, error) {
 	}
 	return response, nil
 }
+
 func getAvgEmissionsValue(e []*models.EmissionsResult) float64 {
 	var Total float64
 	for _, value := range e {
@@ -271,6 +270,7 @@ func getAvgEmissionsValue(e []*models.EmissionsResult) float64 {
 	}
 	return parsedValue
 }
+
 func getAvgEmissionsFilter(e []*models.EmissionsResult, perYear bool) ([]*models.EmissionsResult, error) {
 	var (
 		Total        float64
@@ -316,6 +316,7 @@ func getAvgEmissionsFilter(e []*models.EmissionsResult, perYear bool) ([]*models
 
 	return resultsPerMonth, err
 }
+
 func stringToDate(date string) (time.Time, error) {
 	// parse a string "YYYY-MM-DD" e.g. "2022-12-25" to time.Time using timeLayout "2006-01-02" predefined in
 	// go Time package
@@ -323,8 +324,8 @@ func stringToDate(date string) (time.Time, error) {
 	return t, err
 }
 
-func getNetworkNameInmutable(networkName string, config cfg.EndpointService) (string, error) {
-	chainIDs, err := accessibleChains(config)
+func getNetworkNameInmutable(ctx context.Context, networkName string, config cfg.EndpointService) (string, error) {
+	chainIDs, err := accessibleChains(ctx, config)
 	for _, chain := range chainIDs {
 		if strings.Contains(strings.ToLower(chain), strings.ToLower(networkName)) {
 			return chain, err
@@ -377,7 +378,6 @@ func carbonIntensityFactor(chain string, startDate string, endDate string, confi
 	url := fmt.Sprintf("%s/co2/carbon-intensity-factor/network?chain=%s&from=%s&to=%s", config.URLEndpoint, chain, startDate, endDate)
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
-
 	if err != nil {
 		return response, err
 	}

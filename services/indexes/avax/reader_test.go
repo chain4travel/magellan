@@ -377,7 +377,6 @@ func TestDailyTransactionsStatistics(t *testing.T) {
 	ctx := newTestContext()
 	require := require.New(t)
 	err := initDataTest(t)
-
 	if err != nil {
 		t.Error("Fail to init tables in test database")
 	}
@@ -581,7 +580,7 @@ func TestAvgGasPrice(t *testing.T) {
 	prevMonth := timeNow.UTC().AddDate(0, -1, 0)
 	prevYear := timeNow.UTC().AddDate(-1, 0, 0)
 
-	var gasPrice = 50000
+	gasPrice := 50000
 	tests := map[string]struct {
 		params params.StatisticsParams
 		want   models.StatisticsStruct
@@ -682,10 +681,11 @@ func TestBlockSize(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.AverageBlockSize{{
-				BlockSize: 1024,
-				DateInfo:  getWantedDate(prevDays, timeNow, timeNow),
-			},
+			want: []*models.AverageBlockSize{
+				{
+					BlockSize: 1024,
+					DateInfo:  getWantedDate(prevDays, timeNow, timeNow),
+				},
 			},
 		},
 		"monthlyResults": {
@@ -695,10 +695,11 @@ func TestBlockSize(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.AverageBlockSize{{
-				BlockSize: 1024,
-				DateInfo:  getWantedDate(prevMonth, timeNow, timeNow),
-			},
+			want: []*models.AverageBlockSize{
+				{
+					BlockSize: 1024,
+					DateInfo:  getWantedDate(prevMonth, timeNow, timeNow),
+				},
 			},
 		},
 		"yearlyResults": {
@@ -708,10 +709,11 @@ func TestBlockSize(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.AverageBlockSize{{
-				BlockSize: 1024,
-				DateInfo:  getWantedDate(prevYear, timeNow, timeNow),
-			},
+			want: []*models.AverageBlockSize{
+				{
+					BlockSize: 1024,
+					DateInfo:  getWantedDate(prevYear, timeNow, timeNow),
+				},
 			},
 		},
 	}
@@ -847,10 +849,11 @@ func TestTokenTransfer(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.TransactionsPerDate{{
-				Counter: float64(token),
-				DateAt:  getWantedDate(prevDays, timeNow, timeNow),
-			},
+			want: []*models.TransactionsPerDate{
+				{
+					Counter: float64(token),
+					DateAt:  getWantedDate(prevDays, timeNow, timeNow),
+				},
 			},
 		},
 		"monthlyResults": {
@@ -860,10 +863,11 @@ func TestTokenTransfer(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.TransactionsPerDate{{
-				Counter: float64(token),
-				DateAt:  getWantedDate(prevMonth, timeNow, timeNow),
-			},
+			want: []*models.TransactionsPerDate{
+				{
+					Counter: float64(token),
+					DateAt:  getWantedDate(prevMonth, timeNow, timeNow),
+				},
 			},
 		},
 		"yearlyResults": {
@@ -873,10 +877,11 @@ func TestTokenTransfer(t *testing.T) {
 					EndTime:   timeNow,
 				},
 			},
-			want: []*models.TransactionsPerDate{{
-				Counter: float64(token),
-				DateAt:  getWantedDate(prevYear, timeNow, timeNow),
-			},
+			want: []*models.TransactionsPerDate{
+				{
+					Counter: float64(token),
+					DateAt:  getWantedDate(prevYear, timeNow, timeNow),
+				},
 			},
 		},
 	}

@@ -80,12 +80,15 @@ func (c *Conn) NewSessionForEventReceiver(er dbr.EventReceiver) *dbr.Session {
 func (c *Conn) SetMaxOpenConns(n int) {
 	c.conn.SetMaxOpenConns(n)
 }
+
 func (c *Conn) SetMaxIdleConns(n int) {
 	c.conn.SetMaxIdleConns(n)
 }
+
 func (c *Conn) SetConnMaxIdleTime(d time.Duration) {
 	c.conn.SetConnMaxIdleTime(d)
 }
+
 func (c *Conn) SetConnMaxLifetime(d time.Duration) {
 	c.conn.SetConnMaxLifetime(d)
 }

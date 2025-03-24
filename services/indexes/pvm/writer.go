@@ -199,9 +199,9 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 						BlockchainID: ChainID,
 					},
 				},
-				Address: addr,
-				State:   state,
-				Remove:  false,
+				Address:  addr,
+				StateBit: state,
+				Remove:   false,
 			},
 		}
 		if tx.Sign(txs.GenesisCodec, nil) != nil || txDupCheck.Contains(tx.ID()) {
@@ -268,7 +268,7 @@ func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persis
 				}
 			}
 		}
-		if addrState.State&as.AddressStateConsortiumMember != 0 {
+		if addrState.State&as.AddressStateConsortium != 0 {
 			if tx := addressStateTx(addrState.Address, as.AddressStateBitConsortium); tx != nil {
 				err := w.indexTransaction(cCtx, ChainID, tx, true)
 				if err != nil {

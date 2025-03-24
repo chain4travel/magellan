@@ -61,16 +61,14 @@ const (
 )
 
 var (
-	IntervalMinute = 1 * time.Minute
-	IntervalHour   = 60 * time.Minute
-	IntervalDay    = 1440 * time.Minute
-	IntervalWeek   = 7 * IntervalDay
-	IntervalMonth  = 30 * IntervalDay
-	IntervalYear   = 365 * IntervalDay
-	IntervalAll    = time.Duration(0)
-	IntervalNames  = map[string]time.Duration{
-		"minute": IntervalMinute,
-		"hour":   IntervalHour,
+	IntervalDay   = 1440 * time.Minute
+	IntervalWeek  = 7 * IntervalDay
+	IntervalMonth = 30 * IntervalDay
+	IntervalYear  = 365 * IntervalDay
+	IntervalAll   = time.Duration(0)
+	IntervalNames = map[string]time.Duration{
+		"minute": time.Minute,
+		"hour":   time.Hour,
 		"day":    IntervalDay,
 		"week":   IntervalWeek,
 		"month":  IntervalMonth,
@@ -115,6 +113,7 @@ type ListParams struct {
 func (p *ListParams) ForValues(version uint8, q url.Values) (err error) {
 	return p.forValues(version, q, false)
 }
+
 func (p *ListParams) ForValuesAllowOffset(version uint8, q url.Values) (err error) {
 	return p.forValues(version, q, true)
 }

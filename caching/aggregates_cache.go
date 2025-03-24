@@ -523,7 +523,6 @@ func updateStatisticsCacheInfo(dbRunner *dbr.Session, transactionCache []models.
 					"gas_price", "blocks", "avg_block_size").
 				Record(transaction).
 				Exec()
-
 			if err != nil {
 				fmt.Println("Error insert: ", err.Error())
 			}
@@ -540,7 +539,6 @@ func getMaxCacheDate(dbRunner *dbr.Session) time.Time {
 		Select("COALESCE(MAX(date_at), DATE('0001-01-01')) as max_date").
 		From("statistics").
 		Load(&cacheDate)
-
 	if err != nil {
 		return time.Time{}
 	}
@@ -560,7 +558,6 @@ func getLatestCvmTransactions(dbRunner *dbr.Session, maxDate time.Time) []*model
 		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
 		GroupBy("DATE(created_at)").
 		Load(&cvmLatestTransactions)
-
 	if err != nil {
 		fmt.Println(err.Error())
 		return []*models.CvmStatisticsCache{}
@@ -586,7 +583,6 @@ func getLatestAvmTransactions(dbRunner *dbr.Session, maxDate time.Time, chains m
 		Where("avm_transactions.chain_id IN ?", chainIds).
 		GroupBy("DATE(created_at)").
 		Load(&avmLatestTransactions)
-
 	if err != nil {
 		return []*models.AvmStatisticsCache{}
 	}
@@ -600,7 +596,6 @@ func getLatestCvmBlocks(dbRunner *dbr.Session, maxDate time.Time) []*models.CvmB
 	_, err := dbRunner.Select("DATE(created_at) as date_at", "AVG(size) as avg_block_size").
 		From("cvm_blocks").Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
 		GroupBy("DATE(created_at)").Load(&cvmLatestBlocks)
-
 	if err != nil {
 		return []*models.CvmBlocksStatisticsCache{}
 	}
@@ -622,7 +617,6 @@ func getLatestAddressActive(dbRunner *dbr.Session, maxDate time.Time) ([]*models
 		Where("DATE(created_at) >= ?", maxDate.Format(time.RFC3339)).
 		OrderBy("date_at ASC").
 		Load(&addressTo)
-
 	if err != nil {
 		return []*models.AddressesCache{}, []*models.AddressesCache{}
 	}

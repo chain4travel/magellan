@@ -12,9 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-var (
-	Prometheus Metrics
-)
+var Prometheus Metrics
 
 func init() {
 	Prometheus.Init()

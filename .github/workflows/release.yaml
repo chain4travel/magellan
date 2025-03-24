@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-      - name: Submodules
-        run: git submodule update --init --recursive
       - name: Set output
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}

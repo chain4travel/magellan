@@ -12,7 +12,7 @@ import (
 )
 
 func TestCommonAddressHexRepair(t *testing.T) {
-	var addr *common.Address = nil
+	var addr *common.Address
 	if CommonAddressHexRepair(addr) != "" {
 		t.Fatal("nil failed")
 	}

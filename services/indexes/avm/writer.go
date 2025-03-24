@@ -107,9 +107,7 @@ func (w *Writer) ParseJSON(txBytes []byte, proposer *models.BlockProposal) ([]by
 }
 
 func (w *Writer) Bootstrap(ctx context.Context, conns *utils.Connections, persist db.Persist, genesis *utils.GenesisContainer) error {
-	var (
-		err error
-	)
+	var err error
 
 	defer func() {
 		if err != nil {
@@ -324,7 +322,7 @@ func (w *Writer) insertOperationTx(
 		err         error
 		outputCount uint32
 		amount      uint64
-		totalout    uint64 = 0
+		totalout    uint64
 	)
 
 	// we must process the Outs to get the outputCount updated
@@ -368,7 +366,7 @@ func (w *Writer) insertCreateAssetTx(ctx services.ConsumerCtx, txBytes []byte, t
 		err         error
 		outputCount uint32
 		amount      uint64
-		totalout    uint64 = 0
+		totalout    uint64
 	)
 
 	// we must process the Outs to get the outputCount updated
