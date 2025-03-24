@@ -169,6 +169,12 @@ func (t TransactionType) String() string {
 		return "rewards"
 	case TransactionTypeAddDepositOffer:
 		return "add_deposit_offer"
+	case TransactionTypeAddDACProposal:
+		return "add_dac_proposal"
+	case TransactionTypeAddDACVote:
+		return "add_dac_vote"
+	case TransactionTypeFinishDACProposals:
+		return "finish_dac_proposals"
 	default:
 		return TypeUnknown
 	}
