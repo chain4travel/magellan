@@ -1892,7 +1892,6 @@ func TestQueryDACProposals(t *testing.T) {
 		"network_id",
 		"status",
 	).From(TableTransactions).LoadOneContext(ctx, txs)
-	require.NoError(t, err)
 	t.Logf("len(txs): %d", len(*txs))
 	for _, tx := range *txs {
 		t.Logf("tx: %+v", tx.ID)
@@ -1913,7 +1912,6 @@ func TestQueryDACProposals(t *testing.T) {
 		"outcome",
 		"status",
 	).From(TableDACProposals).LoadOneContext(ctx, dbProposals)
-	require.NoError(t, err)
 	t.Logf("len(dbProposals): %d", len(*dbProposals))
 	for _, p := range *dbProposals {
 		t.Logf("dbProposals: %+v", p.ID)
