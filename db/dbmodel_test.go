@@ -1879,44 +1879,6 @@ func TestQueryDACProposals(t *testing.T) {
 		require.NoError(t, p.InsertDACProposal(ctx, rawDBConn.NewSession(stream), proposal))
 	}
 
-	txs := &[]Transactions{}
-	err = rawDBConn.NewSession(stream).Select(
-		"id",
-		"chain_id",
-		"type",
-		"memo",
-		"created_at",
-		"canonical_serialization",
-		"txfee",
-		"genesis",
-		"network_id",
-		"status",
-	).From(TableTransactions).LoadOneContext(ctx, txs)
-	t.Logf("len(txs): %d", len(*txs))
-	for _, tx := range *txs {
-		t.Logf("tx: %+v", tx.ID)
-	}
-
-	dbProposals := &[]DACProposal{}
-	err = rawDBConn.NewSession(stream).Select(
-		"id",
-		"proposer_addr",
-		"start_time",
-		"end_time",
-		"type",
-		"admin_proposal",
-		"serialized_bytes",
-		"options",
-		"data",
-		"finished_at",
-		"outcome",
-		"status",
-	).From(TableDACProposals).LoadOneContext(ctx, dbProposals)
-	t.Logf("len(dbProposals): %d", len(*dbProposals))
-	for _, p := range *dbProposals {
-		t.Logf("dbProposals: %+v", p.ID)
-	}
-
 	resultProposals, err := p.QueryDACProposals(ctx, rawDBConn.NewSession(stream), queryParams)
 	require.NoError(t, err)
 	require.Equal(t, []DACProposal{*proposals[5], *proposals[6], *proposals[7]}, resultProposals)

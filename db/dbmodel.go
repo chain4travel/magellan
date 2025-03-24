@@ -607,9 +607,6 @@ func (p *persist) InsertTransactions(
 		Pair("network_id", v.NetworkID).
 		Pair("status", v.Status).
 		ExecContext(ctx)
-	if err != nil {
-		fmt.Printf("InsertTransactions: %v\n", err)
-	}
 	if err != nil && !utils.ErrIsDuplicateEntryError(err) {
 		return EventErr(TableTransactions, false, err)
 	}
