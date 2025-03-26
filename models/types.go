@@ -84,6 +84,7 @@ var (
 	TransactionTypeAddDACProposal        = RegisterTransactionTypeCustom + 16
 	TransactionTypeAddDACVote            = RegisterTransactionTypeCustom + 17
 	TransactionTypeFinishDACProposals    = RegisterTransactionTypeCustom + 18
+	TransactionTypeUnlockExpiredDeposit  = RegisterTransactionTypeCustom + 19
 
 	ResultTypeTransaction SearchResultType = "transaction"
 	ResultTypeAsset       SearchResultType = "asset"
@@ -169,6 +170,8 @@ func (t TransactionType) String() string {
 		return "rewards"
 	case TransactionTypeAddDepositOffer:
 		return "add_deposit_offer"
+	case TransactionTypeUnlockExpiredDeposit:
+		return "unlock_expired_deposit"
 	default:
 		return TypeUnknown
 	}

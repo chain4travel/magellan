@@ -227,8 +227,8 @@ github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cb
 github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/chain4travel/caminoethvm v1.1.0-rc11 h1:VrtBEpxDF85sT66+nts8/bR9U0YOMn2bDRLFuz59jpQ=
 github.com/chain4travel/caminoethvm v1.1.0-rc11/go.mod h1:UqYeExLmuw9fp8ZqOz52bN8l6o6OhgEcdRsX/Q0C5B8=
-github.com/chain4travel/caminogo v1.1.0-rc6 h1:1LezyBoDUrXONM4jwfzjZhFU/0Z6k+u7Z5DivAIScgU=
-github.com/chain4travel/caminogo v1.1.0-rc6/go.mod h1:1sYFbm9CbpDKeNfOwIa9Y3moN/xdLVCzsIU5X2GssTY=
+github.com/chain4travel/caminogo v1.2.0-rc1 h1:tXNwZ+7eIQA/JxbULREa8iQpnkXix8FWrl+cBMWAQ2A=
+github.com/chain4travel/caminogo v1.2.0-rc1/go.mod h1:1sYFbm9CbpDKeNfOwIa9Y3moN/xdLVCzsIU5X2GssTY=
 github.com/checkpoint-restore/go-criu/v4 v4.1.0/go.mod h1:xUQBLp4RLc5zJtWY++yjOoMoB5lihDt7fai+75m+rGw=
 github.com/checkpoint-restore/go-criu/v5 v5.0.0/go.mod h1:cfwC0EG7HMUenopBsUf9d89JlCLQIfgVcNsNN0t6T2M=
 github.com/checkpoint-restore/go-criu/v5 v5.3.0/go.mod h1:E/eQpaFtUKGOOSEBZgmKAcn+zUUwWxqcaKZlF54wK8E=

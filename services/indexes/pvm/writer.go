@@ -33,6 +33,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/wrappers"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/multisig"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
@@ -571,6 +572,14 @@ func (w *Writer) indexTransaction(ctx services.ConsumerCtx, blkID ids.ID, tx *tx
 	case *txs.UnlockDepositTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeUnlockDeposit
+	case *txs.UnlockExpiredDepositTx:
+		baseTx = avax.BaseTx{
+			NetworkID:    w.networkID,
+			BlockchainID: w.ctx.ChainID,
+			Ins:          castTx.Ins,
+			Outs:         castTx.Outs,
+		}
+		typ = models.TransactionTypeUnlockExpiredDeposit
 	case *txs.AddressStateTx:
 		baseTx = castTx.BaseTx.BaseTx
 		typ = models.TransactionTypeAddAddressState
@@ -948,7 +957,8 @@ func (w *Writer) InsertDACVote(
 		return err
 	}
 
-	updatedProposal, err := wrapper.ForceAddVote(vote)
+	isCairo := !ctx.Time().Before(version.GetCairoPhaseTime(w.networkID))
+	updatedProposal, err := wrapper.ForceAddVote(vote, isCairo)
 	if err != nil {
 		return err
 	}
