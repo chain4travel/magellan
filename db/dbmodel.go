@@ -20,6 +20,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/hashing"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/chain4travel/magellan/models"
 	"github.com/chain4travel/magellan/services/indexes/params"
 	"github.com/chain4travel/magellan/utils"
@@ -2538,6 +2539,11 @@ func (p *persist) FinishDACProposals(
 	finishedAt time.Time,
 	proposalStatus models.ProposalStatus,
 ) error {
+	proposalIDsSet := set.NewSet[string](len(proposalIDs))
+	for _, id := range proposalIDs {
+		proposalIDsSet.Add(id)
+	}
+
 	result, err := session.
 		Update(TableDACProposals).
 		Set("status", proposalStatus).
@@ -2550,7 +2556,7 @@ func (p *persist) FinishDACProposals(
 
 	if rowsAffected, err := result.RowsAffected(); err != nil {
 		return EventErr(TableDACProposals, true, err)
-	} else if rowsAffected == 0 {
+	} else if rowsAffected != int64(len(proposalIDsSet)) {
 		return EventErr(TableDACProposals, true, dbr.ErrNotFound)
 	}
 
@@ -2590,8 +2596,14 @@ func (p *persist) GetDACProposals(
 	session dbr.SessionRunner,
 	proposalIDs []string,
 ) ([]DACProposal, error) {
-	v := &[]DACProposal{}
-	query := session.Select(
+	v := []DACProposal{}
+
+	proposalIDsSet := set.NewSet[string](len(proposalIDs))
+	for _, id := range proposalIDs {
+		proposalIDsSet.Add(id)
+	}
+
+	_, err := session.Select(
 		"P.id",
 		"P.proposer_addr",
 		"P.start_time",
@@ -2606,10 +2618,17 @@ func (p *persist) GetDACProposals(
 		"P.status",
 	).From(dbr.I(TableDACProposals).As("P")).
 		Join(dbr.I(TableTransactions).As("T"), "T.id=P.id").
-		Where("P.id in ?", proposalIDs)
+		Where("P.id in ?", proposalIDs).
+		LoadContext(ctx, &v)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err := query.LoadContext(ctx, v)
-	return *v, err
+	if len(v) != len(proposalIDsSet) {
+		return nil, dbr.ErrNotFound
+	}
+
+	return v, nil
 }
 
 func (p *persist) QueryDACProposals(
