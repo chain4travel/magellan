@@ -955,7 +955,7 @@ func (r *Reader) UniqueAddresses(ctx context.Context, p *params.ListParams) (*mo
 	}
 
 	baseq = dbRunner.Select("COUNT(DISTINCT address) as total_addresses", dateFormat+" as date_at").
-		From("magellan.address_chain").
+		From("address_chain").
 		Where("created_at BETWEEN ? AND ?", p.StartTime, p.EndTime).
 		GroupBy(dateFormat)
 

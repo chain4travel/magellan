@@ -2732,10 +2732,10 @@ func (p *persist) GetTxHeight(
 	v := uint64(0)
 	err := session.SelectBySql(`
 		SELECT PB.height
-		FROM magellan.pvm_blocks AS PB
+		FROM pvm_blocks AS PB
 		WHERE PB.id IN (
 			SELECT TB.tx_block_id
-			FROM magellan.transactions_block AS TB
+			FROM transactions_block AS TB
 			WHERE TB.id = ?);`, txID).LoadOneContext(ctx, &v)
 	return v, err
 }
